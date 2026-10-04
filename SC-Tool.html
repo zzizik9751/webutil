@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특수문자 툴바</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --fg:#1f2937; --muted:#9aa3af;
+    --line:#e5e7eb; --btn:#ffffff; --btn-line:#dfe3e8;
+    --accent:#2563eb; --accent-soft:#eaf1ff; --accent-line:#bcd0ff;
+    --warn:#dc2626; --warn-soft:#fdecec;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font-family:"Pretendard","Malgun Gothic","맑은 고딕",system-ui,sans-serif;font-size:14px;}
+  #app{padding:10px 12px 14px;}
+
+  /* ── 한 줄 바: 조합창 + 버튼들 ── */
+  .bar{position:sticky;top:0;z-index:6;background:var(--bg);
+    display:flex;gap:6px;align-items:stretch;padding-bottom:6px;}
+  #combo{flex:1;min-width:60px;height:38px;border:1px solid var(--btn-line);
+    border-radius:9px;padding:0 11px;font-size:16px;background:var(--card);
+    color:var(--fg);font-family:inherit;box-shadow:var(--shadow);}
+  #combo:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+
+  .btn{height:38px;border:1px solid var(--btn-line);border-radius:9px;cursor:pointer;
+    font-size:13px;font-weight:700;padding:0 11px;white-space:nowrap;background:var(--card);
+    color:var(--fg);box-shadow:var(--shadow);transition:.12s;}
+  .btn:active{transform:translateY(1px);}
+  .btn.copy{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .btn.copy:hover{filter:brightness(1.06);}
+  .btn.clear{color:var(--warn);}
+  .btn.clear:hover{background:var(--warn-soft);border-color:var(--warn);}
+  .btn.mini{padding:0 10px;font-weight:600;}
+  .btn.mini:hover{border-color:var(--accent);color:var(--accent);}
+  .btn.mini.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent);}
+
+  .hint{font-size:11px;color:var(--muted);margin:2px 2px 0;}
+
+  /* ── 그룹/버튼 ── */
+  .group{margin-top:12px;}
+  .glabel{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.02em;
+    margin:0 0 5px 3px;text-transform:uppercase;}
+  .row{display:flex;flex-wrap:wrap;gap:5px;}
+  button.ch{min-width:34px;height:34px;padding:0 7px;border:1px solid var(--btn-line);
+    border-radius:8px;background:var(--btn);color:var(--fg);cursor:pointer;
+    font-size:16px;line-height:1;box-shadow:var(--shadow);transition:.1s;
+    display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;}
+  button.ch:hover{background:var(--accent-soft);border-color:var(--accent-line);
+    transform:translateY(-1px);}
+  button.ch:active{transform:translateY(0);}
+  button.ch.snippet{font-size:12px;font-family:ui-monospace,Consolas,monospace;color:var(--accent);}
+
+  #recent .row:empty:after{content:"버튼을 누르면 여기에 쌓여요";color:var(--muted);font-size:12px;}
+
+  #app.collapsed #groups{display:none;}
+
+  #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+    background:#111827;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;
+    opacity:0;transition:opacity .15s;pointer-events:none;z-index:50;white-space:nowrap;
+    box-shadow:0 4px 12px rgba(0,0,0,.25);}
+  #toast.show{opacity:.96;}
+
+  .app-footer{margin-top:16px;text-align:center;font-size:11px;color:var(--muted);}
+  .app-footer a{color:var(--accent);text-decoration:none;}
+  .app-footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 한 줄: 조합창 + 복사/초기화/접기/항상위 -->
+  <div class="bar">
+    <input id="combo" type="text" placeholder="여기에 문자가 쌓입니다" autocomplete="off">
+    <button class="btn copy" id="copyAllBtn" title="조합창 전체 복사">복사</button>
+    <button class="btn clear" id="clearBtn" title="조합창 비우기">초기화</button>
+    <button class="btn mini" id="toggleBtn" title="접으면 최근 사용만">접기</button>
+    <button class="btn mini" id="pipBtn" title="화면 맨 위에 작게 띄우기">📌</button>
+  </div>
+  <div class="hint">문자 버튼을 누르면 조합창에 쌓이고, 그 문자도 바로 복사됩니다.</div>
+
+  <!-- 최근 사용 -->
+  <div class="group" id="recent">
+    <div class="glabel">최근 사용</div>
+    <div class="row" id="recentRow"></div>
+  </div>
+
+  <!-- 전체 그룹 -->
+  <div id="groups"></div>
+
+  <div class="app-footer">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer">zzizik</a>, with Claude AI.<br>Thanks to <a href="http://hwjy.co.kr/" target="_blank" rel="noopener noreferrer">HWJY Co., Ltd.</a></div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+const GROUPS = [
+  ["도형·기호", ["·","•","⊙","◎","○","●","◇","◆","□","■","△","▲","▽","▼","❖","❏","★","☆","✦","➜","※"]],
+  ["그리스 문자", ["α","β","γ","δ","ε","ζ","η","θ","λ","μ","ν","π","ρ","σ","τ","φ","χ","ψ","ω","Δ","Σ","Ω","Φ","Ψ","Ø"]],
+  ["단위", ["˚","℃","℉","㎜","㎝","m","㎞","㎟","㎠","㎡","㎢","㎣","㎤","㎥","㎕","㎖","㎗","L","㎏","g","%","‰"]],
+  ["원·괄호 숫자", ["⓪","➀","➁","➂","➃","➄","➅","➆","➇","➈","➉","⓿","❶","❷","❸","❹","❺","❻","❼","❽","❾","❿","⊕","⊖","⊗","⊘"]],
+  ["괄호 숫자 (1~15)", ["⑴","⑵","⑶","⑷","⑸","⑹","⑺","⑻","⑼","⑽","⑾","⑿","⒀","⒁","⒂"]],
+  ["원 한글 (자음 ㉠)", ["㉠","㉡","㉢","㉣","㉤","㉥","㉦","㉧","㉨","㉩","㉪","㉫","㉬","㉭"]],
+  ["괄호 한글 (자음 ㈀)", ["㈀","㈁","㈂","㈃","㈄","㈅","㈆","㈇","㈈","㈉","㈊","㈋","㈌","㈍"]],
+  ["원 한글 (가나다 ㉮)", ["㉮","㉯","㉰","㉱","㉲","㉳","㉴","㉵","㉶","㉷","㉸","㉹","㉺","㉻"]],
+  ["괄호 한글 (가나다 ㈎)", ["㈎","㈏","㈐","㈑","㈒","㈓","㈔","㈕","㈖","㈗","㈘","㈙","㈚","㈛"]],
+  ["로마 숫자", ["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ","Ⅵ","Ⅶ","Ⅷ","Ⅸ","Ⅹ","Ⅺ","Ⅻ"]],
+  ["수학 기호", ["±","–","×","÷","≒","≠","≤","≥","√","∞","∑","∫","∂","∝","∴","∵","∠","⊥","∥","∈","≡","≈","°","½","⅓","¼"]],
+  ["전기·전자", ["V","㎸","㎃","㎄","㎀","㎂","㎾","㎿","㎐","㎑","㎒","㎓","Ω","㏀","㏁"]],
+  ["위첨자", ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹","⁻","⁺","ⁱ","ʲ","ᵏ","ˡ","ᵐ","ⁿ"]],
+  ["아래첨자", ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉","₋","₊","ᵢ","ⱼ","ₖ","ₗ","ₘ","ₙ"]],
+  ["화살표", ["←","↑","→","↓","↔","↕","⇐","⇑","⇒","⇓","⇔","↗","↘","↙","↖"]],
+  ["경고·아이콘", ["⚠","⚡","☠","☢","☣","⏻","🔋","💡","🔥","🔌"]],
+  ["이모지·표시", ["🔼","🔽","✅","❌","⭕️","📌","❗","❓","☑️","✔️","➡️","⬅️","#️⃣","*️⃣","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]],
+  ["수식 스니펫", [
+    {label:"a/b 분수", text:"\\frac { } { }"},
+    {label:"루트", text:"\\sqrt { }"},
+    {label:"\\small", text:"\\small "},
+    {label:"\\tiny", text:"\\tiny "},
+    {label:"\\large", text:"\\large "},
+    {label:"\\color{red}", text:"\\color{red} "},
+    {label:"\\color{blue}", text:"\\color{blue} "},
+    {label:"\\displaystyle ", text:"\\displaystyle "},
+  ]],
+  ["HTML·CSS 속성", [
+    {label:"vertical-align middle", text:"style=\"vertical-align: middle;\""},
+  ]],
+];
+
+const RECENT_KEY = "specialToolbarRecent_v2";
+const toastEl = document.getElementById("toast");
+const combo = document.getElementById("combo");
+let toastTimer = null;
+
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toastEl.classList.remove("show"), 900);
+}
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{}, ()=>fallbackCopy(text));
+  } else { fallbackCopy(text); }
+}
+function fallbackCopy(text){
+  const ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{document.execCommand("copy");}catch(e){}
+  document.body.removeChild(ta);
+}
+function loadRecent(){
+  try{return JSON.parse(localStorage.getItem(RECENT_KEY))||[];}catch(e){return [];}
+}
+function pushRecent(item){
+  let r=loadRecent().filter(x=>x.text!==item.text);
+  r.unshift(item); r=r.slice(0,14);
+  try{localStorage.setItem(RECENT_KEY,JSON.stringify(r));}catch(e){}
+  renderRecent();
+}
+
+// 버튼 클릭 -> 조합창에 쌓기 + 그 문자 즉시 복사
+function onPick(item){
+  combo.value = combo.value + item.text;
+  copyText(item.text);
+  showToast("복사됨:  " + (item.label||item.text));
+  pushRecent(item);
+}
+function makeBtn(item){
+  const b=document.createElement("button");
+  b.className="ch"+(item.label?" snippet":"");
+  b.textContent=item.label?item.label:item.text;
+  b.title=item.text;
+  b.addEventListener("click",()=>onPick(item));
+  return b;
+}
+function normalize(v){return (typeof v==="string")?{text:v}:v;}
+
+function renderGroups(){
+  const wrap=document.getElementById("groups"); wrap.innerHTML="";
+  GROUPS.forEach(([name,items])=>{
+    const g=document.createElement("div"); g.className="group";
+    const lab=document.createElement("div"); lab.className="glabel"; lab.textContent=name;
+    const row=document.createElement("div"); row.className="row";
+    items.map(normalize).forEach(it=>row.appendChild(makeBtn(it)));
+    g.appendChild(lab); g.appendChild(row); wrap.appendChild(g);
+  });
+}
+function renderRecent(){
+  const row=document.getElementById("recentRow"); row.innerHTML="";
+  loadRecent().forEach(it=>row.appendChild(makeBtn(it)));
+}
+
+// 조합창 복사 / 초기화
+document.getElementById("copyAllBtn").addEventListener("click",()=>{
+  const t=combo.value;
+  if(!t){ showToast("조합창이 비어 있어요"); return; }
+  copyText(t); showToast("전체 복사됨  ("+t.length+"자)");
+});
+document.getElementById("clearBtn").addEventListener("click",()=>{
+  combo.value=""; combo.focus(); showToast("초기화됨");
+});
+
+// 접기 / 펼치기
+let pipWin=null, collapsed=false;
+const COLLAPSED={w:400,h:400}, EXPANDED={w:480,h:640};
+const toggleBtn=document.getElementById("toggleBtn");
+function applyCollapse(){
+  document.getElementById("app").classList.toggle("collapsed",collapsed);
+  toggleBtn.textContent=collapsed?"펼치기":"접기";
+  if(pipWin){const s=collapsed?COLLAPSED:EXPANDED; try{pipWin.resizeTo(s.w,s.h);}catch(e){}}
+}
+toggleBtn.addEventListener("click",()=>{collapsed=!collapsed; applyCollapse();});
+
+// 항상 위 (Document PiP) — 원래(밝은) 스타일 그대로 유지
+const pipBtn=document.getElementById("pipBtn");
+pipBtn.addEventListener("click",async()=>{
+  if(!("documentPictureInPicture" in window)){
+    showToast("이 브라우저는 '항상 위'를 지원하지 않아요 (크롬/엣지 권장)"); return;
+  }
+  try{
+    const s=collapsed?COLLAPSED:EXPANDED;
+    const pip=await documentPictureInPicture.requestWindow({width:s.w,height:s.h});
+    pipWin=pip;
+    // 색 테마가 어둡게 바뀌지 않도록 라이트 모드 강제
+    const meta=pip.document.createElement('meta');
+    meta.name="color-scheme"; meta.content="light";
+    pip.document.head.appendChild(meta);
+    document.querySelectorAll('style').forEach(st=>{
+      const c=pip.document.createElement('style'); c.textContent=st.textContent;
+      pip.document.head.appendChild(c);
+    });
+    pip.document.documentElement.style.colorScheme="light";
+    pip.document.body.style.margin="0";
+    pip.document.body.style.background="#f7f8fa";
+    pip.document.body.style.color="#1f2937";
+    const moved=document.getElementById("app");
+    pip.document.body.appendChild(moved);
+    pip.document.body.appendChild(toastEl);
+    pipBtn.classList.add("on");
+    pip.addEventListener("pagehide",()=>{
+      document.body.appendChild(moved);
+      document.body.appendChild(toastEl);
+      pipBtn.classList.remove("on");
+      pipWin=null;
+    });
+  }catch(e){ showToast("작은 창 열기에 실패했어요"); }
+});
+
+renderGroups(); renderRecent();
+</script>
+</body>
+</html>

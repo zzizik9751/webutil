@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>콤마로 이루어진 리스트 오름 차순 정렬</title>
+  <style>
+    :root { color-scheme: light; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: #f9fafb;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px; margin: 0 auto; background: white;
+      border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: #1f2937; }
+    .desc { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+    .input-group { display: flex; gap: 8px; margin-bottom: 16px; }
+    textarea {
+      flex: 1; padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 6px;
+      font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px;
+    }
+    textarea:focus {
+      outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    button {
+      padding: 10px 24px; background: #3b82f6; color: white; border: none;
+      border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2563eb; }
+    button:active { background: #1d4ed8; }
+    h2 { font-size: 16px; font-weight: 600; color: #374151; margin: 20px 0 12px 0; }
+    .result-section {
+      background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;
+    }
+    .result-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .result-item {
+      background: white; color: #1f2937; padding: 10px 16px; border-radius: 6px;
+      font-size: 14px; font-weight: 500; border: 1px solid #e5e7eb;
+    }
+    .count { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
+    .copy-btn { background: #10b981; }
+    .copy-btn:hover { background: #059669; }
+    .copy-btn.copied { background: #6b7280; }
+    .empty-state { text-align: center; padding: 32px 16px; color: #9ca3af; font-size: 14px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>오름차순 정렬</h1>
+    <p class="desc">콤마(,) 또는 줄바꿈으로 구분된 리스트를 입력하세요. 한글·영어·숫자 모두 지원합니다.</p>
+
+    <div class="input-group">
+      <textarea id="listInput" placeholder="예: 08-07-39, 21-04-03, 03-05-37"></textarea>
+    </div>
+    <button id="sortBtn">정렬하기</button>
+
+    <div class="result-section hidden" id="resultSection">
+      <h2>정렬 결과</h2>
+      <div class="count" id="count"></div>
+      <div class="result-list" id="resultList"></div>
+      <button id="copyBtn" class="copy-btn">📋 복사</button>
+    </div>
+
+    <div class="empty-state" id="emptyState">위에 리스트를 입력하고 정렬하기를 누르세요</div>
+
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;line-height:1.8;">
+      Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:none;font-weight:600;">zzizik</a>, with Claude AI.<br>
+      Thanks to <a href="http://hwjy.co.kr/" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:none;font-weight:600;">HWJY Co., Ltd.</a>
+    </div>
+  </div>
+
+  <script>
+    const listInput = document.getElementById('listInput');
+    const sortBtn = document.getElementById('sortBtn');
+    const resultList = document.getElementById('resultList');
+    const copyBtn = document.getElementById('copyBtn');
+    const resultSection = document.getElementById('resultSection');
+    const emptyState = document.getElementById('emptyState');
+    const count = document.getElementById('count');
+
+    let sortedItems = [];
+
+    function doSort() {
+      // 콤마 또는 줄바꿈으로 분리 → 공백 제거 → 빈 항목 제외
+      const items = listInput.value
+        .split(/[,\n]/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      // 한글 가나다 + 영어 + 숫자 오름차순
+      sortedItems = items.sort((a, b) => a.localeCompare(b, 'ko'));
+
+      resultList.innerHTML = sortedItems
+        .map(v => `<div class="result-item">${v}</div>`)
+        .join('');
+      count.textContent = `총 ${sortedItems.length}개`;
+
+      if (sortedItems.length > 0) {
+        resultSection.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+      } else {
+        resultSection.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+      }
+    }
+
+    function copyToClipboard() {
+      const text = sortedItems.join(', ');
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✓ 복사됨';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = '📋 복사';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    sortBtn.addEventListener('click', doSort);
+    copyBtn.addEventListener('click', copyToClipboard);
+    // Ctrl+Enter로도 정렬
+    listInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doSort();
+    });
+  </script>
+</body>
+</html>

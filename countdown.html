@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>D-day counter</title>
+<style>
+  :root{
+    --bg-1:#fafaf9; --bg-2:#f1f0ee;
+    --ink:#1c1b1a; --ink-soft:#9a9794;
+    --day:#4a4845; --clock:#9a9794; --accent:#3f3d3b;
+    --panel-bg:#ffffff; --panel-bd:#ececea;
+  }
+  html.dark{
+    --bg-1:#161514; --bg-2:#0c0b0b;
+    --ink:#f2f1ef; --ink-soft:#6f6c69;
+    --day:#d8d6d3; --clock:#6f6c69; --accent:#cbc9c6;
+    --panel-bg:#222120; --panel-bd:#34322f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%,var(--bg-1) 0%,var(--bg-2) 100%);
+    color:var(--ink); min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    -webkit-font-smoothing:antialiased; padding:24px;
+    transition:background .3s,color .3s;
+  }
+  body.flash{animation:flash .9s ease-out 1}
+  @keyframes flash{0%{filter:brightness(1)}15%{filter:brightness(1.9)}30%{filter:brightness(1)}45%{filter:brightness(1.9)}60%{filter:brightness(1)}}
+
+  .card{width:min(700px,100%);text-align:center;padding:44px 26px 40px}
+  .title{font-size:clamp(34px,7vw,58px);font-weight:800;letter-spacing:-.01em;line-height:1.12;color:var(--ink);cursor:pointer;user-select:none}
+  .date{margin-top:18px;font-size:clamp(20px,4.5vw,30px);font-weight:500;color:var(--ink-soft);letter-spacing:.02em}
+  .date.hide{display:none}
+
+  .dday{margin-top:8px;font-size:clamp(92px,25vw,196px);font-weight:800;line-height:1;color:var(--day);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .dday .unit{font-size:.62em;font-weight:800}
+  .dday.time{font-size:clamp(74px,19vw,150px)}
+  .dday.after{font-size:clamp(46px,12vw,104px);font-weight:800;color:var(--accent)}
+  .dday .sep{animation:blink 1s steps(1,end) infinite}
+
+  .clock{margin-top:38px;font-size:clamp(36px,9vw,66px);font-weight:600;color:var(--clock);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .clock .sep{animation:blink 1s steps(1,end) infinite}
+  @keyframes blink{50%{opacity:.22}}
+
+  .memo{margin-top:22px;font-size:clamp(15px,3.4vw,21px);font-weight:500;line-height:1.5;color:var(--ink-soft);white-space:pre-wrap;word-break:break-word}
+  .memo:empty{display:none}
+
+  .tools{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:4}
+  .tools button{
+    border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;
+    padding:8px 14px;border-radius:20px;color:var(--ink-soft);
+    background:rgba(125,122,118,.12);transition:background .15s,color .15s;
+  }
+  .tools button:hover{background:rgba(125,122,118,.22);color:var(--accent)}
+
+  .panel{
+    position:fixed;top:60px;right:16px;width:min(300px,calc(100vw - 32px));
+    background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.18);padding:18px;text-align:left;display:none;z-index:6;
+  }
+  .panel.open{display:block}
+  .panel label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:12px 0 5px}
+  .panel label:first-of-type{margin-top:0}
+  .panel input{width:100%;padding:9px 11px;font-size:14px;border:1px solid var(--panel-bd);border-radius:9px;font-family:inherit;color:var(--ink);background:transparent}
+  .panel textarea{width:100%;padding:9px 11px;font-size:14px;border:1px solid var(--panel-bd);border-radius:9px;font-family:inherit;color:var(--ink);background:transparent;resize:vertical}
+  .panel input:focus,.panel textarea:focus{outline:none;border-color:var(--ink-soft)}
+  .panel .row2{display:flex;gap:8px}.panel .row2>div{flex:1}
+  .panel .hint{font-size:11px;color:var(--ink-soft);opacity:.8;margin-top:8px;line-height:1.4}
+
+  @media (prefers-reduced-motion:reduce){.clock .sep,.dday .sep{animation:none}body.flash{animation:none}}
+  @media print{.tools,.panel{display:none!important}}
+</style>
+</head>
+<body>
+  <div class="tools">
+    <button id="fsBtn">전체 화면</button>
+    <button id="dmBtn">다크 모드</button>
+    <button id="copyBtn">주소 복사</button>
+    <button id="setBtn">설정</button>
+  </div>
+
+  <div class="panel" id="panel">
+    <label for="in-before">제목 (카운트다운 중)</label>
+    <input id="in-before" type="text" autocomplete="off">
+    <label for="in-after">메시지 (시험일 도래 후)</label>
+    <input id="in-after" type="text" autocomplete="off">
+    <div class="row2">
+      <div><label for="in-date">날짜</label><input id="in-date" type="date"></div>
+      <div><label for="in-time">시각(선택)</label><input id="in-time" type="time"></div>
+    </div>
+    <label for="in-memo">메모 (시계 아래 표시)</label>
+    <textarea id="in-memo" rows="2" autocomplete="off"></textarea>
+  </div>
+
+  <main class="card">
+    <h1 class="title" id="title">3회 필기시험</h1>
+    <p class="date" id="date"></p>
+    <div class="dday" id="dday"></div>
+    <div class="clock" id="clock"></div>
+    <div class="memo" id="memo"></div>
+    <div style="margin-top:22px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25);font-size:11px;color:var(--ink-soft);line-height:1.8;">
+      Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;font-weight:600;">zzizik</a>, with Claude AI.<br>
+      Thanks to <a href="http://hwjy.co.kr/" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;font-weight:600;">HWJY Co., Ltd.</a>
+    </div>
+  </main>
+
+<script>
+  // ── 기본 설정값 (여기만 바꿔도 됩니다) ───────────────
+  const config = {
+    titleBefore: "3회 필기시험",
+    titleAfter:  "파이팅! 📚",   // 시험일이 지난 뒤 표시되는 메시지
+    date: "2026-08-07",          // YYYY-MM-DD
+    time: "",                    // "HH:MM" 또는 "" (= 자정)
+    memo: ""                     // 시계 아래 표시할 메모 (줄바꿈 가능)
+  };
+  // ────────────────────────────────────────────────────
+
+  const el = {
+    title:document.getElementById('title'), date:document.getElementById('date'),
+    dday:document.getElementById('dday'), clock:document.getElementById('clock'),
+    memo:document.getElementById('memo'),
+    inBefore:document.getElementById('in-before'), inAfter:document.getElementById('in-after'),
+    inDate:document.getElementById('in-date'), inTime:document.getElementById('in-time'),
+    inMemo:document.getElementById('in-memo'),
+  };
+  const pad = n => String(n).padStart(2,'0');
+  const DAY = 86400000;
+  let showDate = true, ended = false;
+
+  // ── URL 해시에 설정 저장/복원 (piliapp 방식) ──────────
+  // 형식:  #제목#종료후메시지#날짜#시각#메모
+  function encodeState(){
+    return '#' + [config.titleBefore, config.titleAfter, config.date, config.time, config.memo]
+      .map(encodeURIComponent).join('#');
+  }
+  function applyHash(){
+    const raw = location.hash.replace(/^#/, '');
+    if(!raw) return;
+    const p = raw.split('#').map(s=>{ try{return decodeURIComponent(s);}catch(e){return s;} });
+    if(p[0]) config.titleBefore = p[0];
+    if(p[1]!==undefined) config.titleAfter = p[1];
+    if(p[2]) config.date = p[2];
+    if(p[3]!==undefined) config.time = p[3];
+    if(p[4]!==undefined) config.memo = p[4];
+  }
+  function saveHash(){
+    const h = encodeState();
+    try { history.replaceState(null, '', h); }
+    catch(e){ try{ location.hash = h; }catch(_){} }
+  }
+  // ────────────────────────────────────────────────────
+
+  function target(){
+    const [y,m,d] = config.date.split('-').map(Number);
+    let hh=0, mm=0;
+    if(config.time){ const t=config.time.split(':').map(Number); hh=t[0]||0; mm=t[1]||0; }
+    return new Date(y, m-1, d, hh, mm, 0, 0);
+  }
+  function fmtDate(){
+    const [y,m,d] = config.date.split('-').map(Number);
+    let s = `${y}. ${m}. ${d}.`;
+    if(config.time) s += ` ${config.time}`;
+    return s;
+  }
+  function clockHTML(date){
+    return `${pad(date.getHours())}<span class="sep">:</span>`+
+           `${pad(date.getMinutes())}<span class="sep">:</span>`+
+           `${pad(date.getSeconds())}`;
+  }
+
+  function render(){
+    const now = new Date();
+    const diff = target() - now;
+
+    el.title.textContent = config.titleBefore;
+    el.date.textContent = fmtDate();
+    el.date.classList.toggle('hide', !showDate || ended);
+
+    if(diff >= DAY){
+      // 24시간 이상 → N일
+      ended = false; el.title.style.display='';
+      el.dday.className = 'dday';
+      el.dday.innerHTML = `${Math.floor(diff/DAY)}<span class="unit">일</span>`;
+      document.title = `D-${Math.floor(diff/DAY)} · ${config.titleBefore}`;
+    } else if(diff > 0){
+      // 24시간 미만 → HH:MM:SS 잔여
+      ended = false; el.title.style.display='';
+      const ts = Math.floor(diff/1000);
+      const h = Math.floor(ts/3600), m = Math.floor((ts%3600)/60), s = ts%60;
+      let big;
+      if(h>0) big = `${h}<span class="sep">:</span>${pad(m)}<span class="sep">:</span>${pad(s)}`;
+      else if(m>0) big = `${m}<span class="sep">:</span>${pad(s)}`;
+      else big = `${s}`;
+      el.dday.className = 'dday time';
+      el.dday.innerHTML = big;
+      document.title = `D-DAY · ${config.titleBefore}`;
+    } else {
+      // 종료 → 메시지
+      if(!ended){ ended = true; document.body.classList.add('flash');
+        setTimeout(()=>document.body.classList.remove('flash'),1000); }
+      el.title.style.display='none';
+      el.dday.className = 'dday after';
+      el.dday.textContent = config.titleAfter;
+      document.title = config.titleAfter;
+    }
+    el.clock.innerHTML = clockHTML(now);
+    el.memo.textContent = config.memo;
+  }
+
+  // 제목 클릭 → 날짜 표시 토글
+  el.title.addEventListener('click', ()=>{ showDate=!showDate; render(); });
+
+  // 설정 패널
+  const panel=document.getElementById('panel'), setBtn=document.getElementById('setBtn');
+  function syncInputs(){ el.inBefore.value=config.titleBefore; el.inAfter.value=config.titleAfter; el.inDate.value=config.date; el.inTime.value=config.time; el.inMemo.value=config.memo; }
+  setBtn.addEventListener('click', e=>{ e.stopPropagation(); panel.classList.toggle('open'); if(panel.classList.contains('open')) syncInputs(); });
+  document.addEventListener('click', e=>{ if(!panel.contains(e.target) && e.target!==setBtn) panel.classList.remove('open'); });
+  el.inBefore.addEventListener('input', e=>{ config.titleBefore=e.target.value; render(); saveHash(); });
+  el.inAfter.addEventListener('input',  e=>{ config.titleAfter=e.target.value; render(); saveHash(); });
+  el.inDate.addEventListener('change',  e=>{ if(e.target.value){ config.date=e.target.value; render(); saveHash(); } });
+  el.inTime.addEventListener('change',  e=>{ config.time=e.target.value||""; render(); saveHash(); });
+  el.inMemo.addEventListener('input',   e=>{ config.memo=e.target.value; render(); saveHash(); });
+
+  // 전체 화면
+  document.getElementById('fsBtn').addEventListener('click', ()=>{
+    if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  });
+  // 다크 모드
+  document.getElementById('dmBtn').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
+  // 주소 복사 (즐겨찾기/공유용)
+  document.getElementById('copyBtn').addEventListener('click', async (e)=>{
+    saveHash();
+    const url = location.href, btn = e.currentTarget, orig = btn.textContent;
+    try { await navigator.clipboard.writeText(url); btn.textContent='복사됨 ✓'; }
+    catch(_){ prompt('이 주소를 복사해 즐겨찾기에 저장하세요:', url); btn.textContent=orig; }
+    setTimeout(()=>{ btn.textContent=orig; }, 1500);
+  });
+
+  applyHash();   // URL에 설정이 있으면 먼저 복원
+  render();
+  saveHash();    // 현재 상태를 주소에 반영(즐겨찾기/공유용)
+  setInterval(render, 500);
+  window.addEventListener('hashchange', ()=>{ applyHash(); render(); });
+</script>
+</body>
+</html>

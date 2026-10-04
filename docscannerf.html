@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DocScan</title>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#09090d; --bg2:#101016; --bg3:#17171f; --border:#252530;
+  --mint:#00e5c3; --red:#ff4d6d; --gold:#f5c542;
+  --text:#e6e6f0; --text2:#80809a; --text3:#44445a;
+  --mono:'DM Mono',monospace; --sans:'Syne',sans-serif;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; }
+
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; border-bottom:1px solid var(--border);
+  background:var(--bg);
+}
+.logo { font-size:18px; font-weight:800; color:var(--mint); letter-spacing:-.5px; }
+.logo span { color:var(--text); }
+
+main { max-width:480px; margin:0 auto; padding:16px; }
+
+/* ── SCREEN SYSTEM ── */
+.screen { display:none; }
+.screen.on { display:block; animation:fu .25s ease; }
+@keyframes fu { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── DROPZONE ── */
+.dropzone {
+  border:2px dashed var(--border); border-radius:14px;
+  padding:48px 20px; text-align:center; cursor:pointer;
+  background:var(--bg2); transition:.3s; position:relative;
+}
+.dropzone:hover, .dropzone.over { border-color:var(--mint); }
+.intro-link:hover { border-color:var(--mint); background:rgba(0,229,195,.1); box-shadow:0 0 8px rgba(0,229,195,.35); }
+.dropzone input { display:none; }
+.dz-icon { font-size:44px; margin-bottom:14px; }
+.dz-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+.dz-sub { font-size:12px; color:var(--text2); font-family:var(--mono); }
+
+/* ── PAGE LIST ── */
+.page-list { display:flex; flex-direction:column; gap:8px; margin:14px 0; }
+.page-row {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; background:var(--bg2);
+  border:1px solid var(--border); border-radius:10px;
+}
+.page-row.done { border-color:rgba(0,229,195,.3); }
+.page-thumb { width:38px; height:50px; object-fit:cover; border-radius:5px; background:var(--bg3); flex-shrink:0; }
+.page-info { flex:1; min-width:0; }
+.page-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.page-meta { font-size:10px; font-family:var(--mono); color:var(--text2); }
+.page-meta.ok { color:var(--mint); }
+.page-btns { display:flex; gap:5px; flex-shrink:0; }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:11px 16px; border-radius:10px; font-family:var(--sans);
+  font-size:13px; font-weight:700; cursor:pointer; transition:.18s; border:none;
+}
+.btn-full { width:100%; }
+.btn-p { background:var(--mint); color:var(--bg); }
+.btn-p:hover { background:#00bfa5; }
+.btn-s { background:var(--bg3); color:var(--text); border:1px solid var(--border); }
+.btn-s:hover { border-color:var(--mint); color:var(--mint); }
+.btn-r { background:rgba(255,77,109,.12); color:var(--red); border:1px solid rgba(255,77,109,.3); }
+.btn-sm { padding:6px 11px; font-size:11px; border-radius:8px; }
+.btn:disabled { opacity:.35; cursor:not-allowed; }
+.brow { display:flex; gap:8px; margin-bottom:10px; }
+.brow .btn { flex:1; }
+
+/* ── EDIT SCREEN ── */
+.edit-header {
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:12px;
+}
+.edit-title { font-size:14px; font-weight:700; flex:1; }
+.edit-sub { font-size:11px; font-family:var(--mono); color:var(--text2); }
+
+/* canvas wrap */
+.cv-wrap {
+  position:relative; display:inline-block;
+  border-radius:10px; overflow:visible;
+  margin-bottom:12px; display:block;
+}
+#editCanvas {
+  display:block; max-width:100%; border-radius:10px;
+  border:1px solid var(--border);
+}
+/* corner handles rendered as SVG overlay */
+#svgOverlay {
+  position:absolute; top:0; left:0;
+  width:100%; height:100%;
+  pointer-events:none;
+  overflow:visible;
+}
+.handle-circle {
+  fill:var(--mint); stroke:#09090d; stroke-width:3;
+  cursor:grab; pointer-events:all;
+  filter:drop-shadow(0 0 6px rgba(0,229,195,.7));
+}
+.handle-circle:active { cursor:grabbing; }
+.quad-poly { fill:rgba(0,229,195,.08); stroke:rgba(0,229,195,.7); stroke-width:1.5; stroke-dasharray:6 4; }
+
+/* sliders */
+.slrow {
+  display:flex; align-items:center; gap:8px;
+  padding:9px 12px; background:var(--bg2);
+  border-radius:9px; border:1px solid var(--border); margin-bottom:8px;
+}
+.sll { font-size:11px; font-family:var(--mono); color:var(--text2); width:40px; flex-shrink:0; }
+.slv { font-size:11px; font-family:var(--mono); color:var(--mint); width:30px; text-align:right; flex-shrink:0; }
+input[type=range] { flex:1; -webkit-appearance:none; height:3px; background:var(--border); border-radius:2px; outline:none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--mint); cursor:pointer; box-shadow:0 0 8px rgba(0,229,195,.5); }
+
+/* result canvas */
+#resultCanvas { display:block; max-width:100%; border-radius:10px; border:1px solid var(--border); margin-bottom:12px; }
+
+/* ibox */
+.ibox { padding:9px 12px; background:rgba(0,229,195,.04); border:1px solid rgba(0,229,195,.12); border-radius:8px; font-size:11px; font-family:var(--mono); color:var(--text2); margin-bottom:10px; line-height:1.7; }
+
+/* page grid for PDF */
+.pgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:12px; }
+.pgthumb { position:relative; aspect-ratio:3/4; border-radius:7px; overflow:hidden; border:1px solid var(--border); background:var(--bg2); }
+.pgthumb img { width:100%; height:100%; object-fit:cover; }
+.pgthumb-del { position:absolute; top:3px; right:3px; width:18px; height:18px; background:rgba(255,77,109,.85); border:none; border-radius:50%; color:#fff; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.pgnum { position:absolute; bottom:3px; left:4px; background:rgba(0,0,0,.65); color:#fff; font-size:9px; padding:2px 5px; border-radius:3px; font-family:var(--mono); }
+
+/* divider */
+.div { height:1px; background:var(--border); margin:14px 0; }
+.label { font-size:11px; font-weight:600; color:var(--text2); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; font-family:var(--mono); }
+
+/* toast */
+.toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(60px); background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:9px 16px; border-radius:18px; font-size:12px; font-family:var(--mono); z-index:999; transition:.28s; white-space:nowrap; pointer-events:none; }
+.toast.on { transform:translateX(-50%) translateY(0); }
+.toast.ok { border-color:rgba(0,229,195,.45); color:var(--mint); }
+.toast.er { border-color:rgba(255,77,109,.45); color:var(--red); }
+.toast.wa { border-color:rgba(245,197,66,.45); color:var(--gold); }
+
+/* camera */
+.cam-wrap { position:relative; border-radius:12px; overflow:hidden; background:#000; aspect-ratio:3/4; margin-bottom:12px; }
+#camVideo { width:100%; height:100%; object-fit:cover; display:block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DOC<span>SCAN</span></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:11px;font-family:var(--mono);color:var(--text3)" id="pageCount"></span>
+    <a href="https://blog.naver.com/zzizik/224406775448" target="_blank" rel="noopener noreferrer" title="DocScan 소개 보기" class="intro-link"
+       style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex-shrink:0;border-radius:50%;
+              border:1px solid var(--border);background:var(--bg2);color:var(--mint);font-size:15px;text-decoration:none;
+              transition:.2s;">ℹ</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ══ SCREEN: HOME ══ -->
+<div class="screen on" id="sHome">
+  <div style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-s btn-sm" id="tabFile" onclick="setTab('file')" style="flex:1;border-color:var(--mint);color:var(--mint)">📁 파일</button>
+      <button class="btn btn-s btn-sm" id="tabCam" onclick="setTab('cam')" style="flex:1">📷 카메라</button>
+    </div>
+
+    <div id="mFile">
+      <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
+        <input type="file" id="fi" accept="image/*" multiple onchange="loadFiles(this.files)">
+        <div class="dz-icon">📂</div>
+        <div class="dz-title">사진 파일 선택</div>
+        <div class="dz-sub">JPG · PNG · HEIC · 여러 장 동시 선택 가능</div>
+      </div>
+    </div>
+
+    <div id="mCam" style="display:none">
+      <div class="cam-wrap"><video id="camVideo" autoplay playsinline muted></video></div>
+      <div class="brow">
+        <button class="btn btn-p" onclick="captureCam()">📸 촬영</button>
+        <button class="btn btn-s btn-sm" onclick="stopCam()">✕ 종료</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="div"></div>
+  <div class="label">불러온 사진 <span id="homeCount" style="color:var(--mint)"></span></div>
+  <div class="page-list" id="homeList"></div>
+
+  <button class="btn btn-p btn-full" id="savePdfBtn" style="display:none" onclick="showPdfScreen()">
+    💾 PDF 저장
+  </button>
+</div>
+
+<!-- ══ SCREEN: EDIT ══ -->
+<div class="screen" id="sEdit">
+  <div class="edit-header">
+    <button class="btn btn-s btn-sm" onclick="goHome()">← 목록</button>
+    <div>
+      <div class="edit-title" id="editTitle">편집</div>
+      <div class="edit-sub" id="editSub"></div>
+    </div>
+  </div>
+
+  <div class="ibox" id="editHint">꼭짓점 4개를 드래그해서 문서 영역을 맞춰주세요</div>
+
+  <div class="cv-wrap" id="cvWrap">
+    <canvas id="editCanvas"></canvas>
+    <svg id="svgOverlay" xmlns="http://www.w3.org/2000/svg">
+      <polygon id="quadPoly" class="quad-poly" points=""/>
+      <circle class="handle-circle" id="h0" r="14" data-i="0"/>
+      <circle class="handle-circle" id="h1" r="14" data-i="1"/>
+      <circle class="handle-circle" id="h2" r="14" data-i="2"/>
+      <circle class="handle-circle" id="h3" r="14" data-i="3"/>
+    </svg>
+  </div>
+
+  <div class="slrow">
+    <span class="sll">밝기</span>
+    <input type="range" id="sBright" min="-100" max="100" value="0" oninput="applyFilters()">
+    <span class="slv" id="vBright">0</span>
+  </div>
+  <div class="slrow">
+    <span class="sll">대비</span>
+    <input type="range" id="sCont" min="-100" max="100" value="0" oninput="applyFilters()">
+    <span class="slv" id="vCont">0</span>
+  </div>
+
+  <div class="brow" style="margin-top:4px">
+    <button class="btn btn-s btn-sm" onclick="rotateEdit(-90)" title="왼쪽 90°">↺ 90°</button>
+    <button class="btn btn-s btn-sm" onclick="rotateEdit(180)" title="180°">↕ 180°</button>
+    <button class="btn btn-s btn-sm" onclick="rotateEdit(90)" title="오른쪽 90°">↻ 90°</button>
+    <button class="btn btn-s btn-sm" onclick="resetEdit()">원본</button>
+  </div>
+  <div class="brow">
+    <button class="btn btn-p" onclick="applyWarp()">✓ 보정 적용</button>
+  </div>
+
+  <!-- result -->
+  <div id="resultWrap" style="display:none">
+    <div class="div"></div>
+    <div class="label">보정 결과</div>
+    <canvas id="resultCanvas"></canvas>
+    <div class="brow">
+      <button class="btn btn-p" onclick="confirmPage()">+ 페이지에 추가</button>
+      <button class="btn btn-s btn-sm" onclick="reEdit()">다시 편집</button>
+    </div>
+
+    <!-- 템플릿 저장/일괄 적용 -->
+    <div id="tplBox" style="margin-top:4px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text2);margin-bottom:8px">
+        📐 이 설정을 다른 페이지에 일괄 적용
+      </div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:10px" id="tplDesc">
+        저장된 템플릿 없음
+      </div>
+      <div class="brow" style="margin-bottom:0">
+        <button class="btn btn-b btn-sm" onclick="saveTemplate()">💾 이 설정 저장</button>
+        <button class="btn btn-g btn-sm" id="applyTplBtn" onclick="applyTemplateAll()" disabled>⚡ 전체 적용</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: PDF ══ -->
+<div class="screen" id="sPdf">
+  <div class="edit-header">
+    <button class="btn btn-s btn-sm" onclick="goHome()">← 목록</button>
+    <div class="edit-title">PDF 저장</div>
+  </div>
+  <div class="label">페이지 순서 <span id="pdfCount" style="color:var(--mint)"></span></div>
+  <div class="pgrid" id="pdfGrid"></div>
+
+  <!-- OCR 옵션 -->
+  <label id="ocrOption" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:10px;transition:.2s">
+    <input type="checkbox" id="ocrCheck" style="width:16px;height:16px;margin-top:2px;accent-color:var(--mint);flex-shrink:0">
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:3px">OCR 텍스트 레이어 포함</div>
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text2);line-height:1.6">
+        검색 가능한 PDF로 저장됩니다<br>
+        페이지당 5~15초 추가 소요 · 한국어+영어 인식<br>
+        <span style="color:var(--gold)">⚠ 수식·손글씨 인식률 낮음</span>
+      </div>
+    </div>
+  </label>
+
+  <!-- OCR 진행 상황 -->
+  <div id="ocrSaveProgress" style="display:none">
+    <div style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);color:var(--text2);margin-bottom:7px">
+        <span id="ocrSaveLbl">OCR 처리 중...</span>
+        <span id="ocrSavePct">0%</span>
+      </div>
+      <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div id="ocrSaveFill" style="height:100%;background:linear-gradient(90deg,var(--mint),var(--mint2));border-radius:2px;transition:width .35s;width:0"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-p btn-full" id="savePdfBtn2" onclick="savePDF()">💾 PDF 다운로드</button>
+</div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<div style="max-width:480px;margin:20px auto 0;padding:16px 16px 4px;text-align:center;font-size:11px;color:#8a8a9a;line-height:1.8;border-top:1px solid rgba(128,128,128,.25);">
+  Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer" style="color:#00e5c3;text-decoration:none;font-weight:600;">zzizik</a>, with Claude AI.<br>
+  Thanks to <a href="http://hwjy.co.kr/" target="_blank" rel="noopener noreferrer" style="color:#00e5c3;text-decoration:none;font-weight:600;">HWJY Co., Ltd.</a>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+// items[]: { name, dataUrl, img, correctedUrl }
+let items = [];
+let pages = [];       // confirmed corrected dataUrls
+let editIdx = -1;
+
+// edit state
+let editImg = null;       // Image object (EXIF-corrected)
+let origPixels = null;    // ImageData before filter
+let corners = [];         // [{x,y}] in canvas logical coords
+let camStream = null;
+
+// ══════════════════════════════════════════
+//  SCREENS
+// ══════════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+function goHome() { show('sHome'); renderHomeList(); }
+
+// ══════════════════════════════════════════
+//  TABS (file / camera)
+// ══════════════════════════════════════════
+function setTab(t) {
+  document.getElementById('tabFile').style.borderColor = t==='file' ? 'var(--mint)' : 'var(--border)';
+  document.getElementById('tabFile').style.color       = t==='file' ? 'var(--mint)' : 'var(--text2)';
+  document.getElementById('tabCam').style.borderColor  = t==='cam'  ? 'var(--mint)' : 'var(--border)';
+  document.getElementById('tabCam').style.color        = t==='cam'  ? 'var(--mint)' : 'var(--text2)';
+  document.getElementById('mFile').style.display = t==='file' ? 'block' : 'none';
+  document.getElementById('mCam').style.display  = t==='cam'  ? 'block' : 'none';
+  if (t==='cam') startCam(); else stopCam();
+}
+
+// drag & drop
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); loadFiles(e.dataTransfer.files); });
+
+// ══════════════════════════════════════════
+//  LOAD FILES
+// ══════════════════════════════════════════
+async function loadFiles(fileList) {
+  for (const f of Array.from(fileList)) {
+    toast('불러오는 중...', 'wa');
+    const raw = await readAsDataUrl(f);
+    const exifRot = getExifOrientation(raw);
+    const corrected = await applyExifRotation(raw, exifRot);
+    const img = await loadImage(corrected);
+    items.push({ name: f.name, dataUrl: corrected, img, correctedUrl: null });
+  }
+  renderHomeList();
+  toast(`${fileList.length}개 불러옴`, 'ok');
+}
+
+function readAsDataUrl(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+
+// ══════════════════════════════════════════
+//  EXIF ORIENTATION  (pure JS, no library)
+// ══════════════════════════════════════════
+function getExifOrientation(dataUrl) {
+  try {
+    const base64 = dataUrl.split(',')[1];
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    // Must be JPEG
+    if (bytes[0] !== 0xFF || bytes[1] !== 0xD8) return 1;
+
+    let offset = 2;
+    while (offset < bytes.length) {
+      if (bytes[offset] !== 0xFF) break;
+      const marker = bytes[offset + 1];
+      const segLen = (bytes[offset + 2] << 8) | bytes[offset + 3];
+
+      if (marker === 0xE1) {
+        // Check "Exif\0\0"
+        if (bytes[offset+4]===0x45 && bytes[offset+5]===0x78 &&
+            bytes[offset+6]===0x69 && bytes[offset+7]===0x66) {
+          const tiffBase = offset + 10;
+          const littleEndian = bytes[tiffBase] === 0x49; // 'II'
+
+          const read16 = pos => littleEndian
+            ? (bytes[tiffBase+pos] | (bytes[tiffBase+pos+1] << 8))
+            : ((bytes[tiffBase+pos] << 8) | bytes[tiffBase+pos+1]);
+
+          const read32 = pos => littleEndian
+            ? (bytes[tiffBase+pos] | (bytes[tiffBase+pos+1]<<8) | (bytes[tiffBase+pos+2]<<16) | (bytes[tiffBase+pos+3]<<24))
+            : ((bytes[tiffBase+pos]<<24) | (bytes[tiffBase+pos+1]<<16) | (bytes[tiffBase+pos+2]<<8) | bytes[tiffBase+pos+3]);
+
+          const ifd0Offset = read32(4);
+          const numEntries = read16(ifd0Offset);
+
+          for (let e = 0; e < numEntries; e++) {
+            const entryOffset = ifd0Offset + 2 + e * 12;
+            const tag = read16(entryOffset);
+            if (tag === 0x0112) { // Orientation
+              return read16(entryOffset + 8);
+            }
+          }
+        }
+      }
+      offset += 2 + segLen;
+    }
+  } catch(e) { /* ignore */ }
+  return 1; // default: normal
+}
+
+function applyExifRotation(dataUrl, orientation) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const w = img.width, h = img.height;
+
+      // orientation 5,6,7,8 swap width/height
+      const swapped = [5,6,7,8].includes(orientation);
+      canvas.width  = swapped ? h : w;
+      canvas.height = swapped ? w : h;
+
+      ctx.save();
+      switch (orientation) {
+        case 2: ctx.transform(-1, 0, 0, 1, w, 0); break;
+        case 3: ctx.transform(-1, 0, 0, -1, w, h); break;
+        case 4: ctx.transform(1, 0, 0, -1, 0, h); break;
+        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+        case 6: ctx.transform(0, 1, -1, 0, h, 0); break;
+        case 7: ctx.transform(0, -1, -1, 0, h, w); break;
+        case 8: ctx.transform(0, -1, 1, 0, 0, w); break;
+        default: break; // 1 = normal
+      }
+      ctx.drawImage(img, 0, 0);
+      ctx.restore();
+      res(canvas.toDataURL('image/jpeg', 0.95));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// ══════════════════════════════════════════
+//  HOME LIST
+// ══════════════════════════════════════════
+function renderHomeList() {
+  const list = document.getElementById('homeList');
+  const cnt  = document.getElementById('homeCount');
+  const pdfBtn = document.getElementById('savePdfBtn');
+  cnt.textContent = items.length ? `(${items.length})` : '';
+
+  if (!items.length) { list.innerHTML = ''; pdfBtn.style.display='none'; return; }
+
+  list.innerHTML = items.map((item, i) => `
+    <div class="page-row ${item.correctedUrl ? 'done' : ''}" id="row-${i}">
+      <img class="page-thumb" src="${item.correctedUrl || item.dataUrl}">
+      <div class="page-info">
+        <div class="page-name">${item.name}</div>
+        <div class="page-meta ${item.correctedUrl ? 'ok' : ''}">
+          ${item.correctedUrl ? '✓ 보정 완료' : `${item.img.width}×${item.img.height}`}
+        </div>
+      </div>
+      <div class="page-btns">
+        <button class="btn btn-s btn-sm" onclick="openEdit(${i})">편집</button>
+        <button class="btn btn-r btn-sm" onclick="removeItem(${i})">✕</button>
+      </div>
+    </div>`).join('');
+
+  pdfBtn.style.display = pages.length ? 'flex' : 'none';
+  document.getElementById('pageCount').textContent = pages.length ? `${pages.length}p` : '';
+}
+
+function removeItem(i) {
+  items.splice(i, 1);
+  renderHomeList();
+}
+
+// ══════════════════════════════════════════
+//  OPEN EDIT
+// ══════════════════════════════════════════
+function openEdit(i) {
+  editIdx = i;
+  templateRotDeg = 0;
+  const item = items[i];
+  editImg = item.img;
+
+  document.getElementById('editTitle').textContent = item.name;
+  document.getElementById('editSub').textContent = `${item.img.width} × ${item.img.height}`;
+  document.getElementById('editHint').textContent = '꼭짓점 4개를 드래그해서 문서 영역을 맞춰주세요';
+  document.getElementById('resultWrap').style.display = 'none';
+
+  // reset sliders
+  document.getElementById('sBright').value = 0;
+  document.getElementById('sCont').value = 0;
+  document.getElementById('vBright').textContent = '0';
+  document.getElementById('vCont').textContent = '0';
+
+  show('sEdit');
+  drawEditCanvas(item.img);
+}
+
+function drawEditCanvas(img) {
+  const canvas = document.getElementById('editCanvas');
+  const maxW = Math.min(window.innerWidth - 32, 448);
+  const scale = Math.min(maxW / img.width, (window.innerHeight * 0.55) / img.height);
+  canvas.width  = Math.round(img.width  * scale);
+  canvas.height = Math.round(img.height * scale);
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  origPixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Default corners: 15% inset so user can see them
+  const m = Math.round(Math.min(canvas.width, canvas.height) * 0.04);
+  corners = [
+    { x: m,                 y: m },
+    { x: canvas.width - m,  y: m },
+    { x: canvas.width - m,  y: canvas.height - m },
+    { x: m,                 y: canvas.height - m },
+  ];
+
+  updateSVG();
+  bindHandles();
+}
+
+// ══════════════════════════════════════════
+//  SVG OVERLAY
+// ══════════════════════════════════════════
+function updateSVG() {
+  const canvas = document.getElementById('editCanvas');
+  const svg    = document.getElementById('svgOverlay');
+
+  // SVG must match canvas display size
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = rect.width  / canvas.width;
+  const scaleY = rect.height / canvas.height;
+
+  // polygon
+  const pts = corners.map(c => `${c.x * scaleX},${c.y * scaleY}`).join(' ');
+  document.getElementById('quadPoly').setAttribute('points', pts);
+
+  // handles
+  corners.forEach((c, i) => {
+    const h = document.getElementById('h' + i);
+    h.setAttribute('cx', c.x * scaleX);
+    h.setAttribute('cy', c.y * scaleY);
+  });
+}
+
+function bindHandles() {
+  document.querySelectorAll('.handle-circle').forEach(h => {
+    h.onmousedown  = startDrag;
+    h.ontouchstart = startDrag;
+  });
+}
+
+function startDrag(e) {
+  e.preventDefault();
+  const idx = +this.dataset.i;
+  const canvas = document.getElementById('editCanvas');
+
+  const getPos = ev => {
+    const pt = ev.touches ? ev.touches[0] : ev;
+    const rect = canvas.getBoundingClientRect();
+    // Convert display pixels → canvas logical pixels
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: Math.max(0, Math.min(canvas.width,  (pt.clientX - rect.left) * scaleX)),
+      y: Math.max(0, Math.min(canvas.height, (pt.clientY - rect.top)  * scaleY)),
+    };
+  };
+
+  const move = ev => {
+    ev.preventDefault();
+    const pos = getPos(ev);
+    corners[idx].x = pos.x;
+    corners[idx].y = pos.y;
+    updateSVG();
+  };
+  const end = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('touchmove', move);
+    window.removeEventListener('mouseup',   end);
+    window.removeEventListener('touchend',  end);
+  };
+
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('mouseup',   end);
+  window.addEventListener('touchend',  end);
+}
+
+// ══════════════════════════════════════════
+//  FILTERS
+// ══════════════════════════════════════════
+function applyFilters() {
+  const br = +document.getElementById('sBright').value;
+  const co = +document.getElementById('sCont').value;
+  document.getElementById('vBright').textContent = br;
+  document.getElementById('vCont').textContent   = co;
+
+  const canvas = document.getElementById('editCanvas');
+  const ctx    = canvas.getContext('2d');
+  if (!origPixels) return;
+
+  const src = origPixels.data;
+  const out = ctx.createImageData(canvas.width, canvas.height);
+  const d   = out.data;
+  const f   = (259 * (co + 255)) / (255 * (259 - co));
+
+  for (let i = 0; i < src.length; i += 4) {
+    d[i]   = cl(f * (src[i]   - 128) + 128 + br);
+    d[i+1] = cl(f * (src[i+1] - 128) + 128 + br);
+    d[i+2] = cl(f * (src[i+2] - 128) + 128 + br);
+    d[i+3] = src[i+3];
+  }
+  ctx.putImageData(out, 0, 0);
+  updateSVG();
+}
+function cl(v) { return Math.max(0, Math.min(255, Math.round(v))); }
+
+// ══════════════════════════════════════════
+//  PERSPECTIVE WARP  (pure JS, no OpenCV)
+// ══════════════════════════════════════════
+function applyWarp() {
+  const srcCanvas = document.getElementById('editCanvas');
+
+  // Use full-resolution source (not the small display canvas)
+  const fullImg = editImg;
+  const scaleX = fullImg.width  / srcCanvas.width;
+  const scaleY = fullImg.height / srcCanvas.height;
+
+  // Scale corners to full-res coords
+  const fullCorners = corners.map(c => ({ x: c.x * scaleX, y: c.y * scaleY }));
+
+  // Output size = natural pixel size of the selected quad
+  const w1 = Math.hypot(fullCorners[1].x-fullCorners[0].x, fullCorners[1].y-fullCorners[0].y);
+  const w2 = Math.hypot(fullCorners[2].x-fullCorners[3].x, fullCorners[2].y-fullCorners[3].y);
+  const h1 = Math.hypot(fullCorners[3].x-fullCorners[0].x, fullCorners[3].y-fullCorners[0].y);
+  const h2 = Math.hypot(fullCorners[2].x-fullCorners[1].x, fullCorners[2].y-fullCorners[1].y);
+  const OUT_W = Math.round((w1 + w2) / 2);
+  const OUT_H = Math.round((h1 + h2) / 2);
+
+  const dst = document.getElementById('resultCanvas');
+  dst.width  = OUT_W;
+  dst.height = OUT_H;
+  const ctx = dst.getContext('2d');
+
+  // Read full-res pixels
+  const srcFull = document.createElement('canvas');
+  srcFull.width = fullImg.width; srcFull.height = fullImg.height;
+  srcFull.getContext('2d').drawImage(fullImg, 0, 0);
+  const srcData = srcFull.getContext('2d').getImageData(0, 0, fullImg.width, fullImg.height);
+  const SW = fullImg.width, SH = fullImg.height;
+
+  const dstC = [
+    {x:0,y:0},{x:OUT_W,y:0},{x:OUT_W,y:OUT_H},{x:0,y:OUT_H}
+  ];
+  const M = getPerspectiveTransform(dstC, fullCorners);
+
+  const outData = ctx.createImageData(OUT_W, OUT_H);
+  const outPx   = outData.data;
+
+  for (let dy = 0; dy < OUT_H; dy++) {
+    for (let dx = 0; dx < OUT_W; dx++) {
+      const pt = applyMatrix(M, dx, dy);
+      const fx = pt.x, fy = pt.y;
+      const x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const x1 = x0+1, y1 = y0+1;
+      const wx = fx-x0, wy = fy-y0;
+      const dIdx = (dy*OUT_W+dx)*4;
+
+      if (x0>=0 && x1<SW && y0>=0 && y1<SH) {
+        const i00=(y0*SW+x0)*4, i10=(y0*SW+x1)*4;
+        const i01=(y1*SW+x0)*4, i11=(y1*SW+x1)*4;
+        for (let ch=0; ch<3; ch++) {
+          outPx[dIdx+ch] = Math.round(
+            srcData.data[i00+ch]*(1-wx)*(1-wy) + srcData.data[i10+ch]*wx*(1-wy) +
+            srcData.data[i01+ch]*(1-wx)*wy     + srcData.data[i11+ch]*wx*wy
+          );
+        }
+        outPx[dIdx+3] = 255;
+      } else if (x0>=0 && x0<SW && y0>=0 && y0<SH) {
+        const i=(y0*SW+x0)*4;
+        outPx[dIdx]=srcData.data[i]; outPx[dIdx+1]=srcData.data[i+1];
+        outPx[dIdx+2]=srcData.data[i+2]; outPx[dIdx+3]=255;
+      } else {
+        outPx[dIdx+3]=0;
+      }
+    }
+  }
+  ctx.putImageData(outData, 0, 0);
+
+  // 자동 밝기 보정
+  autoEnhance(dst);
+
+  document.getElementById('resultWrap').style.display = 'block';
+  document.getElementById('editHint').textContent = '보정 결과를 확인하세요';
+  toast('원근 보정 완료', 'ok');
+}
+
+// 자동 밝기/대비: 히스토그램 기반 white/black point 정규화
+// 상위 1% → 255(흰색), 하위 1% → 0(검정)으로 당겨서
+// 문서 배경을 깨끗하게, 텍스트를 선명하게 만듦
+function autoEnhance(canvas) {
+  const ctx = canvas.getContext('2d');
+  const id  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d   = id.data;
+  const n   = canvas.width * canvas.height;
+
+  // 밝기(luminance) 히스토그램
+  const hist = new Int32Array(256);
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = Math.round(0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]);
+    hist[lum]++;
+  }
+
+  // 하위 1% → black point, 상위 1% → white point
+  const cutoff = Math.round(n * 0.01);
+  let blackPt = 0, whitePt = 255;
+  let cumLow = 0, cumHigh = 0;
+  for (let v = 0;   v < 256; v++) { cumLow  += hist[v]; if (cumLow  < cutoff) blackPt = v; else break; }
+  for (let v = 255; v >= 0;  v--) { cumHigh += hist[v]; if (cumHigh < cutoff) whitePt = v; else break; }
+
+  const range = (whitePt - blackPt) || 1;
+
+  for (let i = 0; i < d.length; i += 4) {
+    for (let ch = 0; ch < 3; ch++) {
+      d[i+ch] = Math.max(0, Math.min(255, Math.round((d[i+ch] - blackPt) / range * 255)));
+    }
+  }
+  ctx.putImageData(id, 0, 0);
+}
+
+// ── Perspective matrix math ──────────────
+// Compute 3x3 homography H such that H * src = dst  (using 4-point DLT)
+function getPerspectiveTransform(srcPts, dstPts) {
+  const A = [];
+  for (let i = 0; i < 4; i++) {
+    const sx = srcPts[i].x, sy = srcPts[i].y;
+    const dx = dstPts[i].x, dy = dstPts[i].y;
+    A.push([-sx, -sy, -1,   0,   0,  0, sx*dx, sy*dx, dx]);
+    A.push([  0,   0,  0, -sx, -sy, -1, sx*dy, sy*dy, dy]);
+  }
+  const h = solveHomogeneous(A);
+  return [
+    [h[0], h[1], h[2]],
+    [h[3], h[4], h[5]],
+    [h[6], h[7], h[8]],
+  ];
+}
+
+function applyMatrix(M, x, y) {
+  const w = M[2][0]*x + M[2][1]*y + M[2][2];
+  return {
+    x: (M[0][0]*x + M[0][1]*y + M[0][2]) / w,
+    y: (M[1][0]*x + M[1][1]*y + M[1][2]) / w,
+  };
+}
+
+// SVD-free: solve Ah=0 via Gaussian elimination + back-substitution
+function solveHomogeneous(A) {
+  // 8 equations, 9 unknowns → set h[8]=1, solve 8x8
+  const n = 8;
+  const B = A.map(row => row.slice(0, n).map((v, j) => v - row[8] * (j === 8 ? 1 : 0)));
+  const b = A.map(row => -row[8]);
+
+  // Gaussian elimination
+  for (let col = 0; col < n; col++) {
+    // Find pivot
+    let maxRow = col;
+    for (let r = col+1; r < n; r++) {
+      if (Math.abs(B[r][col]) > Math.abs(B[maxRow][col])) maxRow = r;
+    }
+    [B[col], B[maxRow]] = [B[maxRow], B[col]];
+    [b[col], b[maxRow]] = [b[maxRow], b[col]];
+
+    for (let r = col+1; r < n; r++) {
+      const factor = B[r][col] / (B[col][col] || 1e-12);
+      for (let c = col; c < n; c++) B[r][c] -= factor * B[col][c];
+      b[r] -= factor * b[col];
+    }
+  }
+  // Back-substitution
+  const x = new Array(n).fill(0);
+  for (let i = n-1; i >= 0; i--) {
+    x[i] = b[i];
+    for (let j = i+1; j < n; j++) x[i] -= B[i][j] * x[j];
+    x[i] /= (B[i][i] || 1e-12);
+  }
+  return [...x, 1];
+}
+
+function rotateEdit(deg) {
+  templateRotDeg = ((templateRotDeg || 0) + deg + 360) % 360;
+  const src = editImg;
+  const c = document.createElement('canvas');
+  const rad = deg * Math.PI / 180;
+  const absCos = Math.abs(Math.cos(rad));
+  const absSin = Math.abs(Math.sin(rad));
+  c.width  = Math.round(src.width  * absCos + src.height * absSin);
+  c.height = Math.round(src.width  * absSin + src.height * absCos);
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+
+  // Update editImg from rotated canvas
+  const rotatedUrl = c.toDataURL('image/jpeg', 0.95);
+  loadImage(rotatedUrl).then(img => {
+    editImg = img;
+    if (editIdx >= 0) items[editIdx].img = img;
+    drawEditCanvas(img);  // drawEditCanvas already sets origPixels
+    document.getElementById('resultWrap').style.display = 'none';
+    // reset filters visually
+    document.getElementById('sBright').value = 0;
+    document.getElementById('sCont').value   = 0;
+    document.getElementById('vBright').textContent = '0';
+    document.getElementById('vCont').textContent   = '0';
+  });
+}
+
+function resetEdit() {
+  if (!editIdx < 0) return;
+  // Reload from original dataUrl
+  const item = items[editIdx];
+  loadImage(item.dataUrl).then(img => {
+    editImg = img;
+    items[editIdx].img = img;
+    document.getElementById('sBright').value = 0;
+    document.getElementById('sCont').value   = 0;
+    document.getElementById('vBright').textContent = '0';
+    document.getElementById('vCont').textContent   = '0';
+    document.getElementById('resultWrap').style.display = 'none';
+    document.getElementById('editHint').textContent = '꼭짓점 4개를 드래그해서 문서 영역을 맞춰주세요';
+    drawEditCanvas(img);
+  });
+}
+
+function reEdit() {
+  document.getElementById('resultWrap').style.display = 'none';
+  document.getElementById('editHint').textContent = '꼭짓점 4개를 드래그해서 문서 영역을 맞춰주세요';
+}
+
+// ══════════════════════════════════════════
+//  CONFIRM PAGE
+// ══════════════════════════════════════════
+function confirmPage() {
+  const result = document.getElementById('resultCanvas');
+  const dataUrl = result.toDataURL('image/jpeg', 0.92);
+  if (editIdx >= 0) items[editIdx].correctedUrl = dataUrl;
+
+  // Add to pages (avoid duplicate)
+  const existing = pages.findIndex((_, i) => i === editIdx);
+  if (existing >= 0) pages[existing] = dataUrl;
+  else pages.push(dataUrl);
+
+  toast('페이지 추가됨', 'ok');
+  goHome();
+}
+
+// ══════════════════════════════════════════
+//  PDF SCREEN
+// ══════════════════════════════════════════
+function showPdfScreen() {
+  if (!pages.length) { toast('보정된 페이지가 없습니다', 'er'); return; }
+  renderPdfGrid();
+  show('sPdf');
+}
+
+function renderPdfGrid() {
+  const grid = document.getElementById('pdfGrid');
+  document.getElementById('pdfCount').textContent = `(${pages.length})`;
+  grid.innerHTML = pages.map((url, i) => `
+    <div class="pgthumb">
+      <img src="${url}">
+      <div class="pgnum">${i+1}</div>
+      <button class="pgthumb-del" onclick="removePage(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removePage(i) {
+  pages.splice(i, 1);
+  if (!pages.length) { goHome(); return; }
+  renderPdfGrid();
+}
+
+async function savePDF() {
+  if (!pages.length) { toast('페이지 없음', 'er'); return; }
+
+  const useOCR = document.getElementById('ocrCheck').checked;
+  const btn = document.getElementById('savePdfBtn2');
+  btn.disabled = true;
+
+  try {
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const doc = await PDFDocument.create();
+
+    // OCR 텍스트 수집
+    let ocrTexts = [];
+    if (useOCR) {
+      document.getElementById('ocrSaveProgress').style.display = 'block';
+      // Tesseract 스크립트 동적 로드 (아직 안 로드된 경우)
+      if (!window.Tesseract) {
+        await loadScript('https://unpkg.com/tesseract.js@5/dist/tesseract.min.js');
+      }
+      for (let i = 0; i < pages.length; i++) {
+        document.getElementById('ocrSaveLbl').textContent = `OCR ${i+1}/${pages.length} 페이지 처리 중...`;
+        document.getElementById('ocrSaveFill').style.width = (i / pages.length * 100) + '%';
+        document.getElementById('ocrSavePct').textContent = Math.round(i / pages.length * 100) + '%';
+
+        try {
+          const worker = await Tesseract.createWorker('kor+eng', 1, {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                const overall = (i + m.progress) / pages.length * 100;
+                document.getElementById('ocrSaveFill').style.width = overall + '%';
+                document.getElementById('ocrSavePct').textContent = Math.round(overall) + '%';
+              }
+            }
+          });
+          const { data } = await worker.recognize(pages[i]);
+          await worker.terminate();
+          ocrTexts.push(data);
+        } catch(e) {
+          ocrTexts.push(null);
+        }
+        await sleep(10);
+      }
+      document.getElementById('ocrSaveFill').style.width = '100%';
+      document.getElementById('ocrSavePct').textContent = '100%';
+      document.getElementById('ocrSaveLbl').textContent = 'PDF 생성 중...';
+    }
+
+    // PDF 페이지 생성
+    for (let i = 0; i < pages.length; i++) {
+      const url  = pages[i];
+      const b64  = url.split(',')[1];
+      const mime = url.split(';')[0].split(':')[1];
+      const img  = mime === 'image/png' ? await doc.embedPng(b64) : await doc.embedJpg(b64);
+
+      const MAX_W = 595.28, MAX_H = 841.89;
+      const scale = Math.min(MAX_W / img.width, MAX_H / img.height, 1);
+      const pgW = img.width * scale;
+      const pgH = img.height * scale;
+      const pg = doc.addPage([pgW, pgH]);
+
+      // 이미지 그리기
+      pg.drawImage(img, { x:0, y:0, width:pgW, height:pgH });
+
+      // OCR 텍스트 레이어 (투명 텍스트 — 검색용)
+      if (useOCR && ocrTexts[i] && ocrTexts[i].words) {
+        const words = ocrTexts[i].words;
+        const font  = await doc.embedFont(StandardFonts.Helvetica);
+        const imgW  = img.width, imgH = img.height;
+
+        for (const word of words) {
+          if (!word.text.trim()) continue;
+          const bbox = word.bbox; // {x0,y0,x1,y1} in image pixels
+          // Scale bbox to PDF points
+          const x  = (bbox.x0 / imgW) * pgW;
+          const y  = pgH - (bbox.y1 / imgH) * pgH; // PDF y is bottom-up
+          const bw = ((bbox.x1 - bbox.x0) / imgW) * pgW;
+          const bh = ((bbox.y1 - bbox.y0) / imgH) * pgH;
+          const fontSize = Math.max(1, bh * 0.85);
+          const textW = font.widthOfTextAtSize(word.text, fontSize);
+          const scaleX = textW > 0 ? bw / textW : 1;
+
+          pg.drawText(word.text, {
+            x, y,
+            size: fontSize,
+            font,
+            color: rgb(0, 0, 0),
+            opacity: 0,           // 완전 투명 — 보이지 않지만 검색됨
+            lineHeight: fontSize,
+          });
+        }
+      }
+    }
+
+    const bytes = await doc.save();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([bytes], { type:'application/pdf' }));
+    a.download = `scan_${fmtDate()}.pdf`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    document.getElementById('ocrSaveProgress').style.display = 'none';
+    btn.disabled = false;
+    toast(`PDF 저장 완료 (${pages.length}p${useOCR?' · OCR 포함':''})`, 'ok');
+  } catch(e) {
+    document.getElementById('ocrSaveProgress').style.display = 'none';
+    btn.disabled = false;
+    toast('PDF 오류: ' + e.message, 'er');
+  }
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ══════════════════════════════════════════
+//  TEMPLATE (매크로) 기능
+// ══════════════════════════════════════════
+// template: { cornersRatio[{rx,ry}x4], rotateDeg, bright, contrast }
+let template = null;
+let templateRotDeg = 0; // 현재 편집 중 누적 회전각 추적
+
+// 회전 시 누적각 추적
+const _origRotateEdit = rotateEdit;
+
+function saveTemplate() {
+  const canvas = document.getElementById('editCanvas');
+  // 꼭짓점을 비율로 저장 (0~1)
+  const cornersRatio = corners.map(c => ({
+    rx: c.x / canvas.width,
+    ry: c.y / canvas.height,
+  }));
+  template = {
+    cornersRatio,
+    rotateDeg: templateRotDeg,
+    bright: +document.getElementById('sBright').value,
+    contrast: +document.getElementById('sCont').value,
+  };
+
+  // UI 업데이트
+  const desc = `꼭짓점 저장됨 · 회전 ${templateRotDeg}° · 밝기${template.bright} · 대비${template.contrast}`;
+  document.getElementById('tplDesc').textContent = desc;
+  document.getElementById('applyTplBtn').disabled = false;
+  toast('템플릿 저장됨', 'ok');
+}
+
+async function applyTemplateAll() {
+  if (!template) { toast('저장된 템플릿 없음', 'er'); return; }
+
+  const targets = items.filter((_, i) => i !== editIdx);
+  if (!targets.length) { toast('적용할 다른 페이지 없음', 'wa'); return; }
+
+  const btn = document.getElementById('applyTplBtn');
+  btn.disabled = true;
+  btn.textContent = '처리 중...';
+
+  let done = 0;
+  for (let i = 0; i < items.length; i++) {
+    if (i === editIdx) continue; // 현재 편집 중인 것은 건너뜀
+
+    try {
+      const result = await applyTemplateToItem(i);
+      items[i].correctedUrl = result;
+
+      // pages 배열에도 추가/교체
+      const existing = pages.findIndex((_, pi) => pi === i);
+      if (existing >= 0) pages[existing] = result;
+      else pages.push(result);
+
+      done++;
+    } catch(e) {
+      console.warn(`페이지 ${i+1} 적용 실패:`, e);
+    }
+    toast(`${done}/${targets.length} 적용 중...`, 'ok');
+    await sleep(30);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⚡ 전체 적용';
+  renderHomeList();
+  toast(`${done}개 페이지 일괄 적용 완료`, 'ok');
+}
+
+async function applyTemplateToItem(idx) {
+  const item = items[idx];
+
+  // 1. 원본 이미지 로드
+  let img = await loadImage(item.dataUrl);
+
+  // 2. 회전 적용
+  if (template.rotateDeg !== 0) {
+    const c = document.createElement('canvas');
+    const rad = template.rotateDeg * Math.PI / 180;
+    const absCos = Math.abs(Math.cos(rad));
+    const absSin = Math.abs(Math.sin(rad));
+    c.width  = Math.round(img.width  * absCos + img.height * absSin);
+    c.height = Math.round(img.width  * absSin + img.height * absCos);
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width/2, c.height/2);
+    ctx.rotate(rad);
+    ctx.drawImage(img, -img.width/2, -img.height/2);
+    img = await loadImage(c.toDataURL('image/jpeg', 0.95));
+  }
+
+  // 3. 비율 → 실제 좌표 변환
+  const fullCorners = template.cornersRatio.map(r => ({
+    x: r.rx * img.width,
+    y: r.ry * img.height,
+  }));
+
+  // 4. 출력 크기 계산
+  const w1 = Math.hypot(fullCorners[1].x-fullCorners[0].x, fullCorners[1].y-fullCorners[0].y);
+  const w2 = Math.hypot(fullCorners[2].x-fullCorners[3].x, fullCorners[2].y-fullCorners[3].y);
+  const h1 = Math.hypot(fullCorners[3].x-fullCorners[0].x, fullCorners[3].y-fullCorners[0].y);
+  const h2 = Math.hypot(fullCorners[2].x-fullCorners[1].x, fullCorners[2].y-fullCorners[1].y);
+  const OUT_W = Math.round((w1+w2)/2);
+  const OUT_H = Math.round((h1+h2)/2);
+
+  // 5. 원근 보정
+  const srcFull = document.createElement('canvas');
+  srcFull.width=img.width; srcFull.height=img.height;
+  srcFull.getContext('2d').drawImage(img, 0, 0);
+  const srcData = srcFull.getContext('2d').getImageData(0, 0, img.width, img.height);
+  const SW=img.width, SH=img.height;
+
+  const dstC = [{x:0,y:0},{x:OUT_W,y:0},{x:OUT_W,y:OUT_H},{x:0,y:OUT_H}];
+  const M = getPerspectiveTransform(dstC, fullCorners);
+
+  const dst = document.createElement('canvas');
+  dst.width=OUT_W; dst.height=OUT_H;
+  const ctx = dst.getContext('2d');
+  const outData = ctx.createImageData(OUT_W, OUT_H);
+  const outPx = outData.data;
+
+  for (let dy=0; dy<OUT_H; dy++) {
+    for (let dx=0; dx<OUT_W; dx++) {
+      const pt=applyMatrix(M,dx,dy);
+      const fx=pt.x,fy=pt.y;
+      const x0=Math.floor(fx),y0=Math.floor(fy);
+      const x1=x0+1,y1=y0+1;
+      const wx=fx-x0,wy=fy-y0;
+      const dIdx=(dy*OUT_W+dx)*4;
+      if (x0>=0&&x1<SW&&y0>=0&&y1<SH) {
+        const i00=(y0*SW+x0)*4,i10=(y0*SW+x1)*4;
+        const i01=(y1*SW+x0)*4,i11=(y1*SW+x1)*4;
+        for (let ch=0;ch<3;ch++) {
+          outPx[dIdx+ch]=Math.round(
+            srcData.data[i00+ch]*(1-wx)*(1-wy)+srcData.data[i10+ch]*wx*(1-wy)+
+            srcData.data[i01+ch]*(1-wx)*wy    +srcData.data[i11+ch]*wx*wy
+          );
+        }
+        outPx[dIdx+3]=255;
+      } else if (x0>=0&&x0<SW&&y0>=0&&y0<SH) {
+        const i=(y0*SW+x0)*4;
+        outPx[dIdx]=srcData.data[i];outPx[dIdx+1]=srcData.data[i+1];
+        outPx[dIdx+2]=srcData.data[i+2];outPx[dIdx+3]=255;
+      } else { outPx[dIdx+3]=0; }
+    }
+  }
+  ctx.putImageData(outData,0,0);
+
+  // 6. 자동 밝기 보정
+  autoEnhance(dst);
+
+  // 7. 밝기/대비 슬라이더 값 적용
+  if (template.bright !== 0 || template.contrast !== 0) {
+    const id2 = ctx.getImageData(0,0,OUT_W,OUT_H);
+    const d=id2.data;
+    const br=template.bright, co=template.contrast;
+    const f=(259*(co+255))/(255*(259-co));
+    for (let i=0;i<d.length;i+=4) {
+      for (let ch=0;ch<3;ch++) d[i+ch]=cl(f*(d[i+ch]-128)+128+br);
+    }
+    ctx.putImageData(id2,0,0);
+  }
+
+  return dst.toDataURL('image/jpeg', 0.92);
+}
+
+function fmtDate() {
+  const d = new Date();
+  return [d.getFullYear(), d.getMonth()+1, d.getDate()].map(n=>String(n).padStart(2,'0')).join('') + '_' +
+         [d.getHours(), d.getMinutes(), d.getSeconds()].map(n=>String(n).padStart(2,'0')).join('');
+}
+
+// ══════════════════════════════════════════
+//  CAMERA
+// ══════════════════════════════════════════
+async function startCam() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal:'environment' }, width: { ideal:1920 } }
+    });
+    document.getElementById('camVideo').srcObject = camStream;
+  } catch(e) {
+    toast('카메라 권한이 필요합니다', 'er');
+    setTab('file');
+  }
+}
+function stopCam() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+}
+async function captureCam() {
+  const v = document.getElementById('camVideo');
+  if (!v.videoWidth) { toast('카메라 준비 중...', 'wa'); return; }
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const dataUrl = c.toDataURL('image/jpeg', 0.93);
+  // Camera frames don't have EXIF, just load
+  const img = await loadImage(dataUrl);
+  items.push({ name: `photo_${Date.now()}.jpg`, dataUrl, img, correctedUrl: null });
+  toast('촬영 완료', 'ok');
+  setTab('file');
+  renderHomeList();
+}
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast on ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), 2400);
+}
+
+// ══════════════════════════════════════════
+//  RESIZE: keep SVG in sync when window resizes
+// ══════════════════════════════════════════
+window.addEventListener('resize', () => {
+  if (document.getElementById('sEdit').classList.contains('on') && corners.length) {
+    updateSVG();
+  }
+});
+</script>
+</body>
+</html>
