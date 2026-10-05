@@ -73,7 +73,12 @@ body[data-tool=erase] .ink{cursor:cell}
 .hit.u{background:none;border:0;outline:2px solid #ff3d00;outline-offset:1px}
 .empty{color:var(--sub);text-align:center;margin-top:12vh;line-height:1.9}
 .empty b{color:var(--txt)}
-#find{width:340px;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#find{width:340px;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:relative;flex:none}
+#findRs{position:absolute;left:-5px;top:0;bottom:0;width:9px;cursor:col-resize;z-index:6;touch-action:none}
+#findRs::after{content:"";position:absolute;left:4px;top:0;bottom:0;width:1px}
+#findRs:hover::after,body.resizing #findRs::after{width:3px;left:3px;background:var(--acc)}
+body.resizing{cursor:col-resize;user-select:none}
+body.resizing #view,body.resizing iframe{pointer-events:none}
 .tabs{display:flex;border-bottom:1px solid var(--line)}
 .tabs button{flex:1;border:0;border-radius:0;padding:8px 4px;color:var(--sub)}
 .tabs button.on{color:var(--acc);box-shadow:inset 0 -2px 0 var(--acc);font-weight:700}
@@ -170,6 +175,7 @@ footer a{color:var(--sub)}
   </section>
 
   <aside id="find">
+    <div id="findRs" title="끌어서 검색창 폭 조절 · 두 번 클릭하면 기본 폭"></div>
     <div class="tabs"><button data-m="doc" class="on">현재 탭에서</button><button data-m="lib">폴더·여러 파일에서</button></div>
     <div id="libBar" hidden>
       <button id="libDir" title="폴더 안의 PDF를 모두 검색 대상으로">폴더 선택</button>
@@ -819,7 +825,7 @@ function matchUnit(T,a,b,terms,ign){
   return occ;
 }
 function snippet(text,a,b,occ){
-  let s=a,e=b;const MAX=160;
+  let s=a,e=b;const MAX=320;
   if(e-s>MAX){const f=Math.min(...occ.map(o=>o[0]));s=Math.max(a,f-50);e=Math.min(b,s+MAX)}
   let h=s>a?'…':'',pos=s;
   for(const [x,y] of [...occ].sort((p,q)=>p[0]-q[0])){
@@ -1221,6 +1227,25 @@ document.addEventListener('keydown',e=>{
 });
 window.addEventListener('beforeunload',e=>{if(TABS.list.some(t=>{const w=wsOf(t);return w.dirty&&w.pages.length})){e.preventDefault();e.returnValue=''}});
 
+
+/* ---------- 오른쪽 검색창 폭 조절 (끌기 · 두 번 클릭=기본 폭 · 폭 기억) ---------- */
+(()=>{
+  const f=$('#find'),h=$('#findRs'),KEY='multifind_findW';
+  const clampW=w=>Math.round(Math.max(240,Math.min(w,window.innerWidth*0.75)));
+  const set=w=>{w=clampW(w);f.style.width=w+'px';return w};
+  try{const w=+localStorage.getItem(KEY);if(w>0)set(w)}catch(e){}
+  h.addEventListener('pointerdown',e=>{
+    if(e.button>0)return;e.preventDefault();h.setPointerCapture(e.pointerId);
+    const x0=e.clientX,w0=f.getBoundingClientRect().width;let w=w0;
+    document.body.classList.add('resizing');
+    const mv=ev=>{w=set(w0+(x0-ev.clientX))};
+    const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);
+      document.body.classList.remove('resizing');try{localStorage.setItem(KEY,w)}catch(e){}};
+    h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);
+  });
+  h.addEventListener('dblclick',()=>{f.style.width='';try{localStorage.removeItem(KEY)}catch(e){}});
+  window.addEventListener('resize',()=>{if(f.style.width)set(parseFloat(f.style.width))});
+})();
 setTool('hand');updBtns();renderPages();
 </script>
 </body>
