@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>webutil · zzizik</title>
+<meta name="description" content="브라우저에서 바로 쓰는 작은 웹 도구 모음 — PDF 검색, 문서 스캔, OCR, 특수문자, 정렬, 패스워드, 음악, 변환, D-day">
+<style>
+  :root{
+    --bg-1:#fafaf9; --bg-2:#f1f0ee;
+    --text:#1c1b1a; --sub:#8a8784; --ink-soft:#9a9794;
+    --accent:#3f3d3b; --panel:#ffffff; --line:#e6e4e1;
+    --pill:rgba(125,122,118,.12); --pill-h:rgba(125,122,118,.22);
+    --net:#b08628;
+  }
+  html.dark{
+    --bg-1:#161514; --bg-2:#0c0b0b;
+    --text:#f2f1ef; --sub:#8a8784; --ink-soft:#6f6c69;
+    --accent:#cbc9c6; --panel:#222120; --line:#34322f;
+    --net:#d6b05a;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--bg-2)}
+  body{margin:0;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+    color:var(--text);min-height:100vh;background:radial-gradient(120% 120% at 50% 0%,var(--bg-1) 0%,var(--bg-2) 100%) no-repeat;
+    -webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+  .wrap{position:relative;max-width:880px;margin:0 auto;padding:40px 16px 24px}
+  button{border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;
+    color:var(--sub);background:var(--pill);transition:background .15s,color .15s}
+  button:hover{background:var(--pill-h);color:var(--accent)}
+  .dm{position:absolute;top:24px;right:16px}
+
+  header{margin-bottom:28px}
+  h1{font-size:clamp(30px,6vw,44px);font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.1}
+  .lead{margin:10px 0 0;font-size:15px;color:var(--sub);line-height:1.6}
+
+  section{margin-top:26px}
+  h2{font-size:12px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em;margin:0 0 10px 2px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+
+  .tool{position:relative;display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:16px;transition:border-color .15s,transform .15s,box-shadow .15s}
+  .tool:hover{border-color:var(--ink-soft);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  .tool:focus-within{border-color:var(--accent)}
+  .ico{flex:none;width:42px;height:42px;border-radius:11px;background:var(--pill);color:var(--accent);
+    display:flex;align-items:center;justify-content:center}
+  .ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .body{flex:1;min-width:0}
+  .name{font-size:16px;font-weight:700;margin:1px 0 4px;color:var(--text);text-decoration:none}
+  .name::after{content:"";position:absolute;inset:0;border-radius:14px}  /* 카드 전체 클릭 */
+  .name:focus{outline:none}
+  .desc{font-size:13px;color:var(--sub);line-height:1.55;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+  .chip{font-size:11px;font-weight:600;color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .chip.net{color:var(--net);border-color:color-mix(in srgb,var(--net) 40%,transparent)}
+  .file{font-size:11px;color:var(--ink-soft);font-family:Consolas,monospace}
+  .info{position:absolute;top:12px;right:12px;z-index:1;width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;text-decoration:none;
+    color:var(--sub);background:var(--pill);transition:background .15s,color .15s}
+  .info:hover{background:var(--pill-h);color:var(--accent)}
+
+  .note{margin-top:30px;font-size:12px;color:var(--sub);line-height:1.8}
+  .credit{margin-top:22px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25);font-size:11px;color:var(--ink-soft);line-height:1.8;text-align:center}
+  .credit a{color:inherit;text-decoration:underline;font-weight:600}
+  @media (max-width:480px){.dm{position:static;margin-bottom:14px}.wrap{padding-top:20px}}
+</style>
+<script>
+  // 다크 모드 (countdown.html과 동일한 html.dark 방식, 다른 도구와 설정 공유)
+  (function(){
+    try{ if(localStorage.getItem('zz_dark')==='1') document.documentElement.classList.add('dark'); }catch(e){}
+    document.addEventListener('DOMContentLoaded',function(){
+      var b=document.getElementById('dmBtn'); if(!b) return;
+      var sync=function(){ b.textContent=document.documentElement.classList.contains('dark')?'라이트 모드':'다크 모드'; };
+      sync();
+      b.addEventListener('click',function(){
+        var on=document.documentElement.classList.toggle('dark');
+        try{ localStorage.setItem('zz_dark',on?'1':'0'); }catch(e){}
+        sync();
+      });
+    });
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <button class="dm" id="dmBtn">다크 모드</button>
+
+  <header>
+    <h1>webutil</h1>
+    <p class="lead">설치 없이 브라우저에서 바로 쓰는 작은 도구들입니다.<br>파일은 모두 내 컴퓨터(브라우저) 안에서 처리되고 서버로 올라가지 않습니다.</p>
+  </header>
+
+  <section>
+    <h2>문서 · PDF</h2>
+    <div class="grid">
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"/><path d="M14 3v5h5"/><path d="M14 3l5 5v3"/><circle cx="16.5" cy="16.5" r="3"/><path d="M18.7 18.7 21 21"/></svg></div>
+        <div class="body">
+          <a class="name" href="multifind_pdf.html">MultiFind PDF</a>
+          <p class="desc">여러 PDF에서 여러 단어를 한 번에 찾는 조합검색. 탭·병합·하이라이트 편집까지.</p>
+          <div class="meta"><span class="chip net">인터넷 필요</span><span class="file">multifind_pdf.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <a class="info" href="https://blog.naver.com/zzizik/224406775448" target="_blank" rel="noopener noreferrer" title="DocScan 소개 글">ℹ</a>
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3"/><path d="M16 4h3a1 1 0 0 1 1 1v3"/><path d="M20 16v3a1 1 0 0 1-1 1h-3"/><path d="M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 9h8M8 12h8M8 15h5"/></svg></div>
+        <div class="body">
+          <a class="name" href="docscannerf.html">DocScan</a>
+          <p class="desc">사진 찍은 문서를 반듯하게 원근 보정해 PDF로 저장. 카메라 촬영, 검색용 OCR 포함.</p>
+          <div class="meta"><span class="chip net">인터넷 필요</span><span class="file">docscannerf.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h7"/><path d="M9 21h6"/></svg></div>
+        <div class="body">
+          <a class="name" href="screen_ocr.html">화면 캡처 OCR</a>
+          <p class="desc">Win+Shift+S로 캡처한 화면을 Ctrl+V 하면 글자를 뽑아 바로 복사.</p>
+          <div class="meta"><span class="chip net">첫 실행 인터넷</span><span class="file">screen_ocr.html</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>텍스트 · 입력</h2>
+    <div class="grid">
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></div>
+        <div class="body">
+          <a class="name" href="SC-Tool.html">특수문자 툴바</a>
+          <p class="desc">단위·그리스 문자·원문자·수식 스니펫을 클릭 한 번에 복사. 항상 위 작은 창 지원.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="file">SC-Tool.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h9M4 12h6M4 18h3"/><path d="M17 4v16M14 17l3 3 3-3"/></svg></div>
+        <div class="body">
+          <a class="name" href="sorting_numbers.html">리스트 정렬</a>
+          <p class="desc">콤마나 줄바꿈으로 구분된 목록을 오름차순으로 정렬. 한글·영어·숫자 지원.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="file">sorting_numbers.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/></svg></div>
+        <div class="body">
+          <a class="name" href="password_generator.html">패스워드 생성기</a>
+          <p class="desc">무작위 비밀번호 생성과, 단어·숫자로 만드는 기억형 비밀번호 추천.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="file">password_generator.html</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>오디오</h2>
+    <div class="grid">
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div class="body">
+          <a class="name" href="M.html">음악 플레이어</a>
+          <p class="desc">내 음악 파일로 재생목록 만들기. 가사 보기, 미니 플레이어, 목록 기억.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="file">M.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 10v4M7 7v10M11 4v16"/><path d="M14 12h7M18 9l3 3-3 3"/></svg></div>
+        <div class="body">
+          <a class="name" href="opus2mp3.html">opus2mp3</a>
+          <p class="desc">.opus 음성 파일을 .mp3(192kbps)로 여러 개 한꺼번에 변환.</p>
+          <div class="meta"><span class="chip net">인터넷 필요</span><span class="file">opus2mp3.html</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>시간</h2>
+    <div class="grid">
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M10 15h4"/></svg></div>
+        <div class="body">
+          <a class="name" href="countdown.html">D-day 카운터</a>
+          <p class="desc">시험일까지 남은 날·시간을 크게 표시. 설정이 주소에 저장돼 즐겨찾기로 보관.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="file">countdown.html</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="note">
+    · <b>오프라인</b> 표시 도구는 파일만 있으면 인터넷 없이도 동작합니다.<br>
+    · <b>인터넷 필요</b> 표시 도구는 PDF·변환·인식 라이브러리를 인터넷에서 불러옵니다. 파일 자체는 업로드되지 않습니다.
+  </p>
+
+  <div class="credit">
+    Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer">zzizik</a>, with Claude AI.
+  </div>
+</div>
+</body>
+</html>
