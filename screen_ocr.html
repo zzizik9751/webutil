@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화면 캡처 OCR</title>
+<style>
+  :root{
+    --bg-1:#fafaf9; --bg-2:#f1f0ee;
+    --text:#1c1b1a; --sub:#8a8784; --ink-soft:#9a9794;
+    --accent:#3f3d3b; --panel:#ffffff; --line:#e6e4e1;
+    --pill:rgba(125,122,118,.12); --pill-h:rgba(125,122,118,.22);
+    --weak:#b4533f; --fair:#b08628; --good:#6b8f5a; --strong:#4e7a44; --err:#b4533f;
+  }
+  html.dark{
+    --bg-1:#161514; --bg-2:#0c0b0b;
+    --text:#f2f1ef; --sub:#8a8784; --ink-soft:#6f6c69;
+    --accent:#cbc9c6; --panel:#222120; --line:#34322f;
+    --weak:#df7f6a; --fair:#d6b05a; --good:#8fb57d; --strong:#9fcb8b; --err:#df7f6a;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--bg-2)}
+  body{margin:0;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+    color:var(--text);min-height:100vh;background:radial-gradient(120% 120% at 50% 0%,var(--bg-1) 0%,var(--bg-2) 100%) no-repeat;
+    -webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+  .wrap{position:relative}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.01em;margin:0 0 6px;color:var(--text)}
+  .desc{color:var(--sub);font-size:13px;margin:0 0 20px}
+  .dm{position:absolute;top:24px;right:16px}
+  label{font-size:14px;cursor:pointer;user-select:none}
+  input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--accent)}
+  input[type=checkbox]{width:16px;height:16px}
+  input[type=text],input[type=number],select,textarea{font-family:inherit;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:9px}
+  input[type=text]:focus,input[type=number]:focus,select:focus,textarea:focus{outline:none;border-color:var(--ink-soft)}
+  select{padding:6px 10px;font-size:14px}
+  select option{background:var(--panel);color:var(--text)}
+  button{border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;
+    color:var(--sub);background:var(--pill);transition:background .15s,color .15s}
+  button:hover:not(:disabled){background:var(--pill-h);color:var(--accent)}
+  button:disabled{opacity:.45;cursor:default}
+  button.primary{background:var(--accent);color:var(--bg-1);font-size:15px;padding:11px 18px}
+  button.primary:hover:not(:disabled){background:var(--accent);color:var(--bg-1);opacity:.88}
+  .note{font-size:12px;color:var(--sub);line-height:1.7;margin:16px 0 0}
+  code{font-family:Consolas,monospace;font-size:.95em}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--accent);color:var(--bg-1);padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.on{opacity:.95}
+  .credit{margin-top:28px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25);font-size:11px;color:var(--ink-soft);line-height:1.8;text-align:center}
+  .credit a{color:inherit;text-decoration:underline;font-weight:600}
+
+  .wrap{max-width:820px;margin:0 auto;padding:28px 16px 20px}
+  .drop{background:var(--panel);border:2px dashed var(--line);border-radius:14px;padding:30px 16px;text-align:center;cursor:pointer;transition:border-color .15s}
+  .drop:hover,.drop.over{border-color:var(--ink-soft)}
+  .drop .big{font-size:17px;font-weight:700;margin:0 0 6px}
+  .drop .small{font-size:13px;color:var(--sub);margin:0}
+  kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:12px;font-family:inherit;color:var(--text)}
+  .opts{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:14px 0;font-size:14px}
+  .opts label{display:flex;align-items:center;gap:6px;color:var(--text)}
+  .status{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub);min-height:22px;margin-bottom:8px}
+  .prog{flex:1;height:5px;border-radius:3px;background:var(--line);overflow:hidden;max-width:260px;display:none}
+  .prog>div{height:100%;width:0;background:var(--accent);transition:width .2s}
+  .status.err{color:var(--err)}
+  .panes{display:grid;grid-template-columns:1fr 1.3fr;gap:14px}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+  .pane h2{font-size:12px;color:var(--sub);margin:0 0 8px;font-weight:600;display:flex;justify-content:space-between}
+  .preview{max-height:360px;overflow:auto;text-align:center}
+  .preview img{max-width:100%;display:block;margin:0 auto;border-radius:6px}
+  .preview .empty{color:var(--sub);font-size:13px;padding:40px 0}
+  textarea{width:100%;min-height:300px;border:none!important;outline:none;resize:vertical;font-size:14.5px;line-height:1.6}
+  .btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
+  @media (max-width:680px){.panes{grid-template-columns:1fr}}
+  @media (max-width:440px){.dm{position:static;margin-bottom:10px}}
+</style>
+<script>
+  // 다크 모드 (countdown.html과 동일한 html.dark 방식)
+  (function(){
+    try{ if(localStorage.getItem('zz_dark')==='1') document.documentElement.classList.add('dark'); }catch(e){}
+    document.addEventListener('DOMContentLoaded',function(){
+      var b=document.getElementById('dmBtn'); if(!b) return;
+      var sync=function(){ b.textContent=document.documentElement.classList.contains('dark')?'라이트 모드':'다크 모드'; };
+      sync();
+      b.addEventListener('click',function(){
+        var on=document.documentElement.classList.toggle('dark');
+        try{ localStorage.setItem('zz_dark',on?'1':'0'); }catch(e){}
+        sync();
+      });
+    });
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <button class="dm" id="dmBtn">다크 모드</button>
+  <h1>화면 캡처 OCR</h1>
+  <p class="desc">캡처한 화면에서 글자를 뽑아냅니다. 이미지는 내 컴퓨터(브라우저) 안에서만 처리되고 외부로 보내지 않습니다.</p>
+
+  <div class="drop" id="drop" tabindex="0">
+    <p class="big"><kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> 로 캡처 → 여기서 <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
+    <p class="small">또는 이미지를 끌어다 놓거나, 클릭해서 파일을 선택하세요 (PNG · JPG · BMP · WEBP)</p>
+    <input type="file" id="file" accept="image/*" hidden>
+  </div>
+
+  <div class="opts">
+    <label>언어
+      <select id="lang">
+        <option value="kor+eng" selected>한국어 + 영어</option>
+        <option value="kor">한국어</option>
+        <option value="eng">영어</option>
+      </select>
+    </label>
+    <label title="화면 캡처는 글자가 작아서 확대하면 인식률이 올라갑니다">확대
+      <select id="scale">
+        <option value="auto" selected>자동</option>
+        <option value="1">1배</option>
+        <option value="2">2배</option>
+        <option value="3">3배</option>
+      </select>
+    </label>
+    <label title="어두운 배경(다크 모드) 화면을 흰 바탕으로 뒤집어 인식">어두운 배경 반전
+      <select id="invert">
+        <option value="auto" selected>자동</option>
+        <option value="on">항상</option>
+        <option value="off">끔</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="autoCopy" checked> 인식 후 자동 복사</label>
+    <label><input type="checkbox" id="append"> 결과 이어붙이기</label>
+    <button id="rerun" disabled title="옵션을 바꾼 뒤 같은 이미지로 다시 인식">↻ 다시 인식</button>
+  </div>
+
+  <div class="status" id="status"><span id="statusText">준비됨. 첫 실행 때는 인식 엔진과 언어 데이터(약 8MB)를 내려받습니다.</span><div class="prog" id="prog"><div id="progFill"></div></div></div>
+
+  <div class="panes">
+    <div class="pane">
+      <h2><span>이미지</span><span id="imgInfo"></span></h2>
+      <div class="preview" id="preview"><div class="empty">붙여넣은 이미지가 여기에 표시됩니다</div></div>
+    </div>
+    <div class="pane">
+      <h2><span>인식 결과 (직접 수정 가능)</span><span id="conf"></span></h2>
+      <textarea id="out" placeholder="추출된 텍스트가 여기에 나옵니다"></textarea>
+      <div class="btns">
+        <button id="copyBtn">복사</button>
+        <button id="joinBtn" title="문단 안의 줄바꿈을 합쳐 한 줄로 이어줍니다 (빈 줄은 문단 구분으로 유지)">줄바꿈 합치기</button>
+        <button id="trimBtn" title="연속 공백과 앞뒤 공백을 정리합니다">공백 정리</button>
+        <button id="saveBtn">TXT 저장</button>
+        <button id="clearBtn">지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">
+    · 인식 엔진은 오픈소스 Tesseract.js입니다. 처음 한 번은 인터넷 연결이 필요하고, 받은 데이터는 브라우저에 저장되어 다음부터는 빨리 시작합니다.<br>
+    · 인쇄체나 화면 글자는 잘 읽지만, 손글씨·흐린 이미지·표 안의 작은 글자는 틀릴 수 있으니 결과를 꼭 확인하세요.<br>
+    · 한글과 영문이 붙어 있는 단어(예: KERI에서)나 ±, ² 같은 기호는 잘못 읽히는 경우가 많습니다. 영문 위주 화면이면 언어를 「영어」로 바꿔 다시 인식하세요.<br>
+    · 인식이 잘 안 되면 확대 배율을 바꾸고 「다시 인식」을 눌러 보세요.
+  </p>
+
+  <div class="credit">
+    Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer">zzizik</a>, with Claude AI.
+  </div>
+</div>
+<div class="toast" id="toast">복사됨</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let worker = null, workerLang = null, workerPromise = null;
+  let lastImage = null;   // HTMLImageElement
+  let busy = false, queued = null;
+
+  const STATUS_KO = {
+    'loading tesseract core': '인식 엔진 불러오는 중',
+    'initializing tesseract': '엔진 초기화 중',
+    'initialized tesseract': '엔진 준비 완료',
+    'loading language traineddata': '언어 데이터 불러오는 중',
+    'loading language traineddata (from cache)': '언어 데이터 불러오는 중(캐시)',
+    'initializing api': '인식기 준비 중',
+    'initialized api': '인식기 준비 완료',
+    'recognizing text': '글자 인식 중'
+  };
+
+  // 설정 기억 (실패해도 무시)
+  const PREF_KEY = 'screen_ocr_prefs';
+  try {
+    const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+    ['lang', 'scale', 'invert'].forEach(k => { if (p[k]) $(k).value = p[k]; });
+    if (typeof p.autoCopy === 'boolean') $('autoCopy').checked = p.autoCopy;
+    if (typeof p.append === 'boolean') $('append').checked = p.append;
+  } catch (e) {}
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREF_KEY, JSON.stringify({
+        lang: $('lang').value, scale: $('scale').value, invert: $('invert').value,
+        autoCopy: $('autoCopy').checked, append: $('append').checked
+      }));
+    } catch (e) {}
+  }
+
+  function setStatus(text, progress, isErr) {
+    $('statusText').textContent = text;
+    $('status').classList.toggle('err', !!isErr);
+    const prog = $('prog');
+    if (progress == null) { prog.style.display = 'none'; }
+    else { prog.style.display = 'block'; $('progFill').style.width = Math.round(progress * 100) + '%'; }
+  }
+
+  async function getWorker(lang) {
+    if (worker && workerLang === lang) return worker;
+    if (workerPromise && workerLang === lang) return workerPromise;
+    if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
+    workerLang = lang;
+    workerPromise = (async () => {
+      const w = await Tesseract.createWorker(lang, 1, {
+        logger: m => {
+          if (!busy) return;
+          const label = STATUS_KO[m.status] || m.status;
+          setStatus(label + (m.progress ? ` ${Math.round(m.progress * 100)}%` : ''), m.progress || 0);
+        },
+        errorHandler: e => console.error(e)
+      });
+      await w.setParameters({ preserve_interword_spaces: '1' });
+      if (workerLang !== lang) { w.terminate(); return getWorker(workerLang); } // 준비 중 언어가 바뀐 경우
+      worker = w;
+      return w;
+    })();
+    try { return await workerPromise; }
+    catch (e) { workerLang = null; worker = null; throw e; }
+    finally { workerPromise = null; }
+  }
+
+  // 전처리: 확대 + 흑백 + (필요시) 반전
+  function preprocess(img) {
+    const w0 = img.naturalWidth, h0 = img.naturalHeight;
+    let scale = $('scale').value;
+    if (scale === 'auto') {
+      const maxSide = Math.max(w0, h0);
+      // 화면 글자는 캡처 크기와 무관하게 작으므로 기본 2배, 작은 캡처는 3배
+      scale = maxSide < 1200 ? 3 : 2;
+    } else scale = parseInt(scale, 10);
+    // 너무 큰 캔버스 방지
+    const maxPixels = 16e6;
+    while (scale > 1 && w0 * h0 * scale * scale > maxPixels) scale--;
+
+    const c = document.createElement('canvas');
+    c.width = Math.round(w0 * scale); c.height = Math.round(h0 * scale);
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); // 투명 PNG 대비
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+
+    const data = ctx.getImageData(0, 0, c.width, c.height);
+    const d = data.data;
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const y = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      d[i] = d[i + 1] = d[i + 2] = y;
+      sum += y;
+    }
+    const mean = sum / (d.length / 4);
+    const inv = $('invert').value;
+    const doInvert = inv === 'on' || (inv === 'auto' && mean < 110);
+    if (doInvert) for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 255 - d[i];
+    ctx.putImageData(data, 0, 0);
+    return { canvas: c, scale, inverted: doInvert };
+  }
+
+  function loadImage(blob) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('이미지를 열 수 없습니다')); };
+      img.src = url;
+    });
+  }
+
+  async function handleBlob(blob) {
+    if (!blob || !blob.type.startsWith('image/')) { setStatus('이미지 파일이 아닙니다.', null, true); return; }
+    try {
+      const img = await loadImage(blob);
+      if (lastImage && lastImage.src.startsWith('blob:')) URL.revokeObjectURL(lastImage.src);
+      lastImage = img;
+      const pv = $('preview'); pv.innerHTML = '';
+      const shown = new Image(); shown.src = img.src; pv.appendChild(shown);
+      $('imgInfo').textContent = `${img.naturalWidth}×${img.naturalHeight}`;
+      $('rerun').disabled = false;
+      run();
+    } catch (e) { setStatus(e.message, null, true); }
+  }
+
+  async function run() {
+    if (!lastImage) return;
+    if (busy) { queued = true; return; }
+    if (typeof Tesseract === 'undefined') {
+      setStatus('인식 엔진을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.', null, true);
+      return;
+    }
+    busy = true; $('rerun').disabled = true;
+    const t0 = performance.now();
+    try {
+      setStatus('준비 중…', 0);
+      const { canvas, scale, inverted } = preprocess(lastImage);
+      const w = await getWorker($('lang').value);
+      setStatus('글자 인식 중…', 0);
+      const { data } = await w.recognize(canvas);
+      const text = cleanText(data.text || '');
+      const out = $('out');
+      if ($('append').checked && out.value.trim()) out.value = out.value.replace(/\s+$/, '') + '\n\n' + text;
+      else out.value = text;
+      const sec = ((performance.now() - t0) / 1000).toFixed(1);
+      $('conf').textContent = text ? `신뢰도 ${Math.round(data.confidence)}%` : '';
+      let msg = text ? `완료 (${sec}초 · 확대 ${scale}배${inverted ? ' · 반전' : ''})` : '글자를 찾지 못했습니다. 확대 배율을 바꿔 다시 인식해 보세요.';
+      if (text && $('autoCopy').checked) {
+        const ok = await copy(out.value, true);
+        msg += ok ? ' · 클립보드에 복사됨' : ' · 자동 복사 실패(복사 버튼을 누르세요)';
+      }
+      setStatus(msg, null, !text);
+    } catch (e) {
+      console.error(e);
+      setStatus('오류: ' + (e && e.message ? e.message : e) + ' — 인터넷 연결(첫 실행)을 확인하세요.', null, true);
+    } finally {
+      busy = false; $('rerun').disabled = !lastImage;
+      if (queued) { queued = false; run(); }
+    }
+  }
+
+  // Tesseract 출력 정리: 줄 끝 공백 제거, 3줄 이상 빈 줄 축소
+  function cleanText(t) {
+    return t.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  async function copy(text, silent) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      ta.remove();
+    }
+    if (ok) {
+      const t = $('toast'); t.textContent = '복사됨'; t.classList.add('on');
+      clearTimeout(copy._t); copy._t = setTimeout(() => t.classList.remove('on'), 1200);
+    }
+    return ok;
+  }
+
+  // 입력: 붙여넣기 / 드래그 / 파일 선택
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData ? Array.from(e.clipboardData.items) : [];
+    const it = items.find(i => i.kind === 'file' && i.type.startsWith('image/'));
+    if (it) { e.preventDefault(); handleBlob(it.getAsFile()); }
+  });
+  const drop = $('drop');
+  drop.addEventListener('click', () => $('file').click());
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
+  $('file').addEventListener('change', e => { if (e.target.files[0]) handleBlob(e.target.files[0]); e.target.value = ''; });
+  ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); if (ev === 'drop' || e.target === document.documentElement) drop.classList.remove('over'); }));
+  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) handleBlob(f); });
+
+  // 옵션
+  ['lang', 'scale', 'invert', 'autoCopy', 'append'].forEach(id => $(id).addEventListener('change', savePrefs));
+  $('rerun').addEventListener('click', run);
+
+  // 결과 버튼
+  $('copyBtn').addEventListener('click', () => { if ($('out').value) copy($('out').value); });
+  $('joinBtn').addEventListener('click', () => {
+    const out = $('out');
+    out.value = out.value.split(/\n\s*\n/).map(p => {
+      const lines = p.split('\n').map(s => s.trim()).filter(Boolean);
+      return lines.reduce((acc, line) => {
+        if (!acc) return line;
+        if (/-$/.test(acc) && /^[a-z]/.test(line)) return acc.slice(0, -1) + line; // 영어 하이픈 줄바꿈
+        return acc + ' ' + line;
+      }, '');
+    }).join('\n\n');
+  });
+  $('trimBtn').addEventListener('click', () => {
+    const out = $('out');
+    out.value = out.value.split('\n').map(l => l.replace(/[ \t ]{2,}/g, ' ').trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  });
+  $('saveBtn').addEventListener('click', () => {
+    const text = $('out').value;
+    if (!text) return;
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const name = `OCR_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.txt`;
+    const blob = new Blob(['﻿' + text.replace(/\n/g, '\r\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $('clearBtn').addEventListener('click', () => {
+    $('out').value = ''; $('conf').textContent = '';
+    if (lastImage && lastImage.src.startsWith('blob:')) URL.revokeObjectURL(lastImage.src);
+    lastImage = null; $('rerun').disabled = true;
+    $('preview').innerHTML = '<div class="empty">붙여넣은 이미지가 여기에 표시됩니다</div>';
+    $('imgInfo').textContent = '';
+    setStatus('준비됨.', null);
+  });
+
+  // 엔진 미리 준비 (첫 붙여넣기 대기시간 단축)
+  window.addEventListener('load', () => {
+    if (typeof Tesseract === 'undefined') {
+      setStatus('인식 엔진을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.', null, true);
+      return;
+    }
+    getWorker($('lang').value).then(() => { if (!busy) setStatus('준비됨. 캡처한 화면을 Ctrl+V 하세요.', null); })
+      .catch(() => { if (!busy) setStatus('엔진 준비 실패 — 인터넷 연결을 확인하세요.', null, true); });
+  });
+})();
+</script>
+</body>
+</html>
