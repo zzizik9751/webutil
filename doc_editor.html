@@ -34,6 +34,21 @@
     border:1px solid var(--line); border-radius:5px; padding:4px 8px; cursor:pointer; white-space:nowrap; line-height:1.2;
   }
   .toolbar button{min-width:30px; padding:4px 7px}
+  .tlab{font-size:11px; color:var(--muted); margin-right:1px}
+  .brk{flex-basis:100%; height:0}
+  #sFont{width:118px} #sSize{width:62px} #sLh{width:100px} #sQuote,#sHr{width:96px}
+  .vw{display:inline-flex; align-items:center; gap:3px; font-size:12px; color:var(--muted)}
+  .vw input{width:62px; font:inherit; font-size:13px; color:var(--fg); background:transparent; border:1px solid var(--line); border-radius:5px; padding:3px 4px}
+  .editor.dev{overflow:auto; justify-content:center; padding:14px 12px}
+  .editor.dev #paper{flex:0 0 auto; width:var(--dw); background:#fff; box-shadow:0 0 0 1px var(--line), 0 3px 14px rgba(0,0,0,.10)}
+  #styleDlg .pop{width:480px}
+  #styleDlg .fr .lb{min-width:64px}
+  #seNow{color:var(--fg)}
+  .fcb{color:var(--c) !important; font-weight:700; border-bottom:3px solid var(--c) !important}
+  .hlb{box-shadow:inset 0 -9px 0 var(--h); color:#1f2328 !important}
+  .cpick{display:flex; align-items:center; gap:3px; border:1px solid var(--line); border-radius:5px; padding:1px 6px 1px 2px; font-size:12px; cursor:pointer}
+  .cpick:hover{border-color:var(--accent); color:var(--accent)}
+  .cpick input{width:22px; height:22px; border:0; padding:0; background:none; cursor:pointer}
   button:hover,select:hover{border-color:var(--accent); color:var(--accent)}
   button.on{border-color:var(--accent); color:var(--accent); box-shadow:inset 0 0 0 99px var(--on)}
   button:disabled,select:disabled{opacity:.4; pointer-events:none}
@@ -128,6 +143,11 @@
     <button id="bSaveAs" class="hide-sm" title="다른 이름으로 저장 (Ctrl+Shift+S)">다른 이름</button>
     <button id="bPrint" class="hide-sm" title="인쇄 (Ctrl+P)">인쇄</button>
     <button id="bPage" title="용지·여백·인쇄 배율 설정">페이지 설정</button>
+    <select id="sView" title="보기 모드 — 화면 폭 (인쇄에는 영향 없음)">
+      <option value="paper">보기: 용지(인쇄)</option><option value="pc">보기: PC</option>
+      <option value="tablet">보기: 태블릿</option><option value="mobile">보기: 모바일</option>
+    </select>
+    <span id="viewWBox" class="vw" title="이 보기 모드의 화면 폭"><input type="number" id="viewW" min="200" max="3000" step="1"><span id="viewU">mm</span></span>
     <label class="chk" id="sepLbl" title="체크하면 저장할 때 스타일을 별도 .css 파일로 분리합니다 (기본: 문서 안 &lt;style&gt;에 모아 저장)"><input type="checkbox" id="cSep">CSS 별도 파일<span id="cssNameLbl" class="hide-sm" style="color:var(--muted)"></span></label>
   </div>
   <span class="spacer"></span>
@@ -155,6 +175,22 @@
     <option value="pre">코드</option>
     <option value="" hidden>—</option>
   </select>
+  <button id="bStyleEd" title="스타일 편집 — 본문·제목 1~3·인용의 글꼴·크기·줄간격 등을 바꾸면 문서 전체에 반영">✎</button>
+  <select id="sFont" title="글꼴 — 글자를 선택하면 선택한 부분, 아니면 문단 전체에 적용">
+      <option value="" hidden>글꼴</option><option value="basic">기본 글꼴</option>
+      <option value="malgun">맑은 고딕</option><option value="batang">바탕</option>
+      <option value="nanumgothic">나눔고딕</option><option value="nanummyeongjo">나눔명조</option><option value="maruburi">마루부리</option>
+      <option value="notosans">본고딕 (Noto Sans KR)</option><option value="notoserif">본명조 (Noto Serif KR)</option>
+      <option value="pretendard">프리텐다드</option><option value="gowundodum">고운돋움</option>
+  </select>
+  <select id="sSize" title="글자 크기 (pt) — 선택한 글자 또는 문단">
+      <option value="" hidden id="sizeCur">크기</option>
+      <option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="19">19</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="40">40</option>
+  </select>
+  <select id="sLh" title="줄 간격 — 커서가 있는 문단(들)">
+      <option value="" hidden>줄간격</option><option value="basic">기본 간격</option>
+      <option value="1.2">1.2</option><option value="1.4">1.4</option><option value="1.6">1.6</option><option value="1.8">1.8</option><option value="2.0">2.0</option><option value="2.5">2.5</option><option value="3">3</option><option value="5">5</option>
+  </select>
   <span class="sep"></span>
   <div class="grp">
     <button data-cmd="bold" class="b" title="굵게 (Ctrl+B)">B</button>
@@ -162,15 +198,28 @@
     <button data-cmd="underline" class="u" title="밑줄 (Ctrl+U)">U</button>
     <button data-cmd="strikeThrough" class="s" title="취소선">S</button>
   </div>
-  <select id="sMark" title="강조 (CSS 클래스로 적용)">
-    <option value="">강조…</option>
-    <option value="mark">형광펜</option>
-    <option value="span.red">빨간 글씨</option>
-    <option value="span.blue">파란 글씨</option>
-    <option value="small">작은 글씨</option>
-    <option value="sup">위 첨자</option>
-    <option value="sub">아래 첨자</option>
-  </select>
+  <div class="grp" title="글자색 — 글자를 선택하고 누르세요">
+    <span class="tlab">글자</span>
+    <button data-fc="black" class="fcb" style="--c:#111" title="검정 (색 되돌리기)">가</button>
+    <button data-fc="red" class="fcb" style="--c:#cf222e" title="빨강">가</button>
+    <button data-fc="blue" class="fcb" style="--c:#0969da" title="파랑">가</button>
+    <label class="cpick" title="다른 색 고르기"><input type="color" id="fcPick" value="#8250df"><span>색상</span></label>
+  </div>
+  <span class="sep"></span>
+  <div class="grp" title="형광펜 — 글자를 선택하고 누르세요">
+    <span class="tlab">형광</span>
+    <button data-hl="y" class="hlb" style="--h:#fff3a3" title="노랑">노</button>
+    <button data-hl="g" class="hlb" style="--h:#c6f6c0" title="초록">초</button>
+    <button data-hl="b" class="hlb" style="--h:#cde4ff" title="파랑">파</button>
+    <button data-hl="o" class="hlb" style="--h:#ffd8a8" title="주황">주</button>
+    <button data-hl="" title="형광 지우기">지우기</button>
+  </div>
+  <span class="sep"></span>
+  <div class="grp">
+    <button data-cmd="superscript" title="윗첨자">x²</button>
+    <button data-cmd="subscript" title="아랫첨자">x₂</button>
+  </div>
+  <div class="brk"></div>
   <span class="sep"></span>
   <div class="grp">
     <button data-align="left" title="왼쪽 정렬"><svg viewBox="0 0 16 16"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8"/></svg></button>
@@ -182,6 +231,14 @@
   <div class="grp">
     <button data-cmd="insertUnorderedList" title="글머리 목록">• 목록</button>
     <button data-cmd="insertOrderedList" title="번호 목록">1. 목록</button>
+    <select id="sList" title="목록 모양 — 커서가 있는 목록에 적용 (목록 밖이면 새로 만듦)">
+      <option value="" hidden>목록 모양</option>
+      <option value="basic">● 기본</option>
+      <option value="dash">- 대시</option>
+      <option value="middle-dot">· 가운뎃점</option>
+      <option value="circle-number">➀ 원숫자</option>
+      <option value="circle-txt">㉠ 원한글</option>
+    </select>
     <button id="bOut" title="내어쓰기 (Shift+Tab)">⇤</button>
     <button id="bIn" title="들여쓰기 (Tab)">⇥</button>
   </div>
@@ -191,7 +248,16 @@
     <button id="bImg" title="그림 넣기 (붙여넣기·끌어놓기도 가능)">그림</button>
     <button id="bTable" title="표 넣기">표</button>
     <button id="bMath" title="수식 넣기 (LaTeX · MathJax) — 넣은 수식은 더블클릭해서 수정">수식</button>
-    <button data-cmd="insertHorizontalRule" title="구분선">―</button>
+    <select id="sQuote" title="인용구 — 커서가 있는 문단을 인용구로 (인용구 안이면 모양 바꾸기)">
+      <option value="" hidden>인용구</option>
+      <option value="q-line">┃ 라인</option><option value="q-quote">“ ” 따옴표</option><option value="q-box">▢ 박스</option>
+      <option value="q-note">▤ 포스트잇</option><option value="q-bubble">◟ 말풍선</option><option value="none">인용 해제</option>
+    </select>
+    <select id="sHr" title="가로줄 넣기 — 커서가 있는 문단 아래에">
+      <option value="" hidden>가로줄</option>
+      <option value="hr-solid">──── 실선</option><option value="hr-bold">━━━━ 굵은 실선</option><option value="hr-dotted">┈┈┈┈ 점선</option>
+      <option value="hr-dashed">- - - - 파선</option><option value="hr-double">════ 이중선</option><option value="hr-short">— 짧은 가운데선</option>
+    </select>
     <button id="bBreak" title="강제 쪽 나누기 (Ctrl+Enter) — 인쇄 시 여기서 다음 쪽으로 넘어감">쪽 나누기</button>
     <button id="bClear" title="서식 지우기">서식 지우기</button>
   </div>
@@ -229,6 +295,7 @@
           <option value="simple">간결</option>
         </select>
         <button id="bCssLoad" title="기존 .css 파일 불러오기">CSS 불러오기</button>
+        <button id="bListCss" title="목록 모양 스타일 묶음(대시·가운뎃점·원숫자·원한글)을 CSS에 넣습니다">목록 스타일 넣기</button>
         <button id="bGather" title="본문 곳곳의 style=&quot;…&quot; 를 클래스로 바꿔 이 CSS에 모읍니다">인라인 스타일 모으기</button>
       </div>
     </div>
@@ -237,7 +304,8 @@
       편집하면 문서에 바로 반영됩니다. 편집기 기능이 쓰는 클래스:<br>
       <code>.al-center .al-right .al-justify</code> 정렬 · <code>.ind-1~3</code> 들여쓰기 ·
       <code>.red .blue</code> 글자색 · <code>mark</code> 형광펜 · <code>table.tbl</code> 표 ·
-      <code>.page-break</code> 쪽 나누기 · <code>.math .math-block</code> 수식
+      <code>.page-break</code> 쪽 나누기 · <code>.math .math-block</code> 수식 ·
+      <code>.dash .middle-dot .circle-number .circle-txt</code> 목록 모양
     </div>
   </aside>
 </div>
@@ -281,6 +349,29 @@
   <div class="note">ⓘ 웹페이지는 프린터에 설정된 여백을 직접 읽을 수 없습니다. 쓰는 프린터·인쇄 대화상자의 여백 값을 넣어 두세요.
     '설정을 문서에 저장'이 켜져 있으면 인쇄 대화상자에서 <b>여백: 기본</b>을 고를 때 이 값이 적용됩니다.</div>
   <div class="btns"><button id="pClose">닫기</button><button id="pPrint" class="primary">인쇄…</button></div>
+</div>
+
+<div class="modal" id="styleDlg">
+  <div class="pop" role="dialog" aria-label="스타일 편집">
+    <h3>스타일 편집 <span style="font-weight:400; color:var(--muted); font-size:12px">바꾸면 문서 전체의 같은 스타일에 바로 반영됩니다</span></h3>
+    <div class="fr"><span class="lb">스타일</span>
+      <select id="seWhich"><option value="body">본문</option><option value="h1">제목 1</option><option value="h2">제목 2</option><option value="h3">제목 3</option><option value="blockquote">인용</option></select>
+    </div>
+    <div class="fr"><span class="lb">글꼴</span><select id="seFont"><option value="">기본 (문서 스타일)</option>
+      <option value="malgun">맑은 고딕</option><option value="batang">바탕</option>
+      <option value="nanumgothic">나눔고딕</option><option value="nanummyeongjo">나눔명조</option><option value="maruburi">마루부리</option>
+      <option value="notosans">본고딕 (Noto Sans KR)</option><option value="notoserif">본명조 (Noto Serif KR)</option>
+      <option value="pretendard">프리텐다드</option><option value="gowundodum">고운돋움</option></select></div>
+    <div class="fr"><span class="lb">크기</span><input type="number" id="seSize" step="0.5" min="6" max="96"><span class="lb" style="min-width:0">pt</span>
+      <span class="lb" style="min-width:0; margin-left:12px">줄 간격</span><input type="number" id="seLh" step="0.1" min="0.8" max="5"></div>
+    <div class="fr"><span class="lb">굵기</span><select id="seFw"><option value="">기본</option><option value="700">굵게</option><option value="400">보통</option></select>
+      <span class="lb" style="min-width:0; margin-left:12px">정렬</span><select id="seAlign"><option value="">기본</option><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option><option value="justify">양쪽</option></select></div>
+    <div class="fr"><span class="lb">글자색</span><label class="chk"><input type="checkbox" id="seColorOn">지정</label><input type="color" id="seColor" value="#222222"></div>
+    <div class="fr"><span class="lb">위 여백</span><input type="number" id="seMt" step="1" min="0" max="120"><span class="lb" style="min-width:0">pt</span>
+      <span class="lb" style="min-width:0; margin-left:12px">아래 여백</span><input type="number" id="seMb" step="1" min="0" max="120"><span class="lb" style="min-width:0">pt</span></div>
+    <div class="note">빈 칸은 원래 문서 스타일을 따릅니다.<br>현재 적용 값: <span id="seNow"></span></div>
+    <div class="btns"><button id="seReset">이 스타일 초기화</button><button id="seClose" class="primary">닫기</button></div>
+  </div>
 </div>
 
 <div class="modal" id="mathDlg">
@@ -569,9 +660,293 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
     sel().removeAllRanges(); sel().addRange(r2);
     changed();
   }
+  /* ===== 글자색·형광펜: 선택한 부분만 정확히 바꾸기 ===== */
+  const CAT = {color: 'span.fc,span.red,span.blue,span.black,font[color]', hl: 'mark', font: 'span[class*="ff-"]', size: 'span[class*="fs-"]'};
+  const INLINE_BLOCK = 'p,h1,h2,h3,h4,h5,h6,li,td,th,pre,blockquote,div,section,article,header,footer,figcaption,caption,dd,dt';
+  function makeWrap(cat, v){
+    if (cat === 'font' || cat === 'size'){ const sp = doc.createElement('span'); sp.className = (cat === 'font' ? 'ff-' : 'fs-') + v; return sp; }
+    if (cat === 'color'){
+      const sp = doc.createElement('span');
+      if (/^(red|blue|black)$/.test(v)) sp.className = v; else { sp.className = 'fc'; sp.style.color = v; }
+      return sp;
+    }
+    const m = doc.createElement('mark'); if (v && v !== 'y') m.className = 'hl-' + v; return m;
+  }
+  const isDark = el => { const c = (frame.contentWindow.getComputedStyle(el).color.match(/\d+/g) || [0,0,0]).map(Number); return c[0] < 80 && c[1] < 80 && c[2] < 80; };
+  const elOf = n => n.nodeType === 1 ? n : n.parentElement;
+  function selectNodes(first, last){
+    if (!first) return;
+    const r = doc.createRange(); r.setStartBefore(first); r.setEndAfter(last);
+    sel().removeAllRanges(); sel().addRange(r);
+  }
+  function applyInline(cat, v){
+    focusDoc();
+    const r = range();
+    if (!r || r.collapsed){ toast('먼저 글자를 선택하세요'); return; }
+    const csel = CAT[cat];
+    const probe = doc.createElement('div'); probe.appendChild(r.cloneContents());
+    if (probe.querySelector(INLINE_BLOCK + ',ul,ol,table,tr,tbody,thead')){ applyInlineMulti(cat, v, r); return; }
+
+    const ca = elOf(r.commonAncestorContainer);
+    const blk = ca.closest(INLINE_BLOCK) || body;
+    let A = null;                                               // 선택을 감싸고 있는 같은 종류(색/형광) 요소 중 가장 바깥 것
+    for (let e = ca; e && e !== blk && e !== body; e = e.parentElement) if (e.matches(csel)) A = e;
+    const chain = [];                                           // A와 선택 사이의 굵게·기울임 등 (나눌 때 유지)
+    if (A) for (let e = ca; e && e !== A; e = e.parentElement) if (!e.matches(csel)) chain.push(e);
+    const par = A ? A.parentElement : elOf(r.startContainer);
+    if (cat === 'color' && v === 'black' && isDark(A ? A.parentElement : par)) v = null;   // 원래 검은 글씨면 색만 없앰
+
+    const frag = r.extractContents();
+    frag.querySelectorAll(csel).forEach(unwrap);
+    let content = frag;
+    for (const e of chain){ const c = e.cloneNode(false); c.appendChild(content); content = c; }
+    let node = content;
+    if (v !== null){ const w = makeWrap(cat, v); w.appendChild(content); node = w; }
+    let first, last;
+    if (node.nodeType === 11){ first = node.firstChild; last = node.lastChild; } else first = last = node;
+
+    if (A){
+      const tail = doc.createRange(); tail.setStart(r.startContainer, r.startOffset); tail.setEndAfter(A);
+      const tf = tail.extractContents();
+      const tailEl = tf.firstElementChild;
+      A.after(tf);
+      A.after(node);
+      [A, tailEl].forEach(x => { if (x && x.isConnected && !x.textContent && !x.querySelector('img,svg')) x.remove(); });
+    } else {
+      r.insertNode(node);
+    }
+    selectNodes(first, last);
+    changed(); updateUI();
+  }
+  function applyInlineMulti(cat, v, r){                        // 여러 문단에 걸친 선택: 글자 조각마다 적용
+    const csel = CAT[cat];
+    let sc = r.startContainer, so = r.startOffset, ec = r.endContainer, eo = r.endOffset;
+    if (ec.nodeType === 3 && eo < ec.length) ec.splitText(eo);
+    if (sc.nodeType === 3 && so > 0){ const n = sc.splitText(so); if (ec === sc) ec = n; sc = n; }
+    const r2 = doc.createRange();
+    sc.nodeType === 3 ? r2.setStart(sc, 0) : r2.setStart(sc, so);
+    ec.nodeType === 3 ? r2.setEnd(ec, ec.length) : r2.setEnd(ec, eo);
+    const root = r2.commonAncestorContainer.nodeType === 1 ? r2.commonAncestorContainer : r2.commonAncestorContainer.parentNode;
+    const w = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT), texts = [];
+    for (let t; (t = w.nextNode());) if (r2.intersectsNode(t) && t.data.trim()) texts.push(t);
+    const unwrapList = new Set(); const wraps = [];
+    texts.forEach(t => {
+      const blk = t.parentElement.closest(INLINE_BLOCK) || body;
+      for (let e = t.parentElement; e && e !== blk; e = e.parentElement){
+        if (e.matches(csel)){
+          const er = doc.createRange(); er.selectNodeContents(e);
+          if (r2.compareBoundaryPoints(Range.START_TO_START, er) <= 0 && r2.compareBoundaryPoints(Range.END_TO_END, er) >= 0) unwrapList.add(e);
+        }
+      }
+      let vv = v;
+      if (cat === 'color' && v === 'black' && isDark(t.parentElement)) vv = null;
+      if (vv !== null){ const x = makeWrap(cat, vv); t.before(x); x.appendChild(t); wraps.push(x); }
+    });
+    unwrapList.forEach(e => { if (e.isConnected) unwrap(e); });
+    if (wraps.length) selectNodes(wraps[0], wraps[wraps.length - 1]);
+    changed(); updateUI();
+  }
+
+
+  /* ===== 1단계: 글꼴 · 크기 · 줄 간격 ===== */
+  const FONTS = {
+    malgun:        {name:'맑은 고딕', css:'"Malgun Gothic", "맑은 고딕", sans-serif'},
+    batang:        {name:'바탕', css:'"Batang", "바탕", serif'},
+    nanumgothic:   {name:'나눔고딕', css:'"Nanum Gothic", sans-serif', url:'https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap'},
+    nanummyeongjo: {name:'나눔명조', css:'"Nanum Myeongjo", serif', url:'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap'},
+    maruburi:      {name:'마루부리', css:'"MaruBuri", serif', url:'https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css'},
+    notosans:      {name:'본고딕', css:'"Noto Sans KR", sans-serif', url:'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap'},
+    notoserif:     {name:'본명조', css:'"Noto Serif KR", serif', url:'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap'},
+    pretendard:    {name:'프리텐다드', css:'"Pretendard", sans-serif', url:'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css'},
+    gowundodum:    {name:'고운돋움', css:'"Gowun Dodum", sans-serif', url:'https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap'}
+  };
+  const lhClass = v => 'lh-' + String(+v).replace('.', '');
+  const lhValue = c => { const d = c.slice(3); return d.length > 1 ? +(d[0] + '.' + d.slice(1)) : +d; };
+  const QUOTE_CSS = {
+    'q-line':  'blockquote.q-line { margin: 14px 0; padding: 2px 0 2px 14px; border: 0; border-left: 4px solid #444; background: none; color: inherit; font-style: normal; }',
+    'q-quote': 'blockquote.q-quote { position: relative; margin: 20px 0; padding: 14px 48px; border: 0; background: none; text-align: center; color: inherit; font-style: normal; }\nblockquote.q-quote::before, blockquote.q-quote::after { position: absolute; font: 700 44px/1 Georgia, serif; color: #bbb; }\nblockquote.q-quote::before { content: "\\201C"; left: 8px; top: 4px; }\nblockquote.q-quote::after { content: "\\201D"; right: 8px; bottom: -14px; }',
+    'q-box':   'blockquote.q-box { margin: 14px 0; padding: 12px 16px; border: 1px solid #aaa; background: none; color: inherit; font-style: normal; }',
+    'q-note':  'blockquote.q-note { margin: 14px 0; padding: 12px 16px; border: 0; background: #fff6bf; box-shadow: 3px 3px 0 #e8dc8f; color: inherit; font-style: normal; }',
+    'q-bubble':'blockquote.q-bubble { position: relative; margin: 14px 0 24px; padding: 12px 16px; border: 1px solid #999; border-radius: 12px; background: #fff; color: inherit; font-style: normal; }\nblockquote.q-bubble::after { content: ""; position: absolute; left: 28px; bottom: -8px; width: 14px; height: 14px; background: #fff; border-right: 1px solid #999; border-bottom: 1px solid #999; transform: rotate(45deg); }'
+  };
+  const HR_CSS = {
+    'hr-solid':  'hr.hr-solid { border: 0; border-top: 1px solid #999; margin: 20px 0; }',
+    'hr-bold':   'hr.hr-bold { border: 0; border-top: 3px solid #333; margin: 20px 0; }',
+    'hr-dotted': 'hr.hr-dotted { border: 0; border-top: 2px dotted #888; margin: 20px 0; }',
+    'hr-dashed': 'hr.hr-dashed { border: 0; border-top: 1px dashed #888; margin: 20px 0; }',
+    'hr-double': 'hr.hr-double { border: 0; border-top: 3px double #888; margin: 20px 0; }',
+    'hr-short':  'hr.hr-short { border: 0; border-top: 2px solid #333; width: 60px; margin: 26px auto; }'
+  };
+  function ruleFor(c){
+    if (c.startsWith('ff-')){ const f = FONTS[c.slice(3)]; return f ? `.${c} { font-family: ${f.css}; }` : ''; }
+    if (c.startsWith('fs-')) return `.${c} { font-size: ${c.slice(3)}pt; }`;
+    if (c.startsWith('lh-')) return `.${c} { line-height: ${lhValue(c)}; }`;
+    return QUOTE_CSS[c] || HR_CSS[c] || '';
+  }
+  // 쓰인 웹 글꼴은 문서 head에 글꼴 링크를 넣음 (저장 파일에도 포함)
+  function ensureFonts(){
+    const keys = new Set();
+    body.querySelectorAll('[class*="ff-"]').forEach(el => el.classList.forEach(c => { if (c.startsWith('ff-')) keys.add(c.slice(3)); }));
+    Object.values(para).forEach(o => { if (o && o.ff) keys.add(o.ff); });
+    let added = false;
+    keys.forEach(k => {
+      const f = FONTS[k]; if (!f || !f.url) return;
+      const href = f.url.replace(/&/g, '&amp;');
+      if (meta.head.includes(href) || meta.head.includes(f.url)) return;
+      meta.head = (meta.head ? meta.head + '\n' : '') + `<link rel="stylesheet" href="${href}">`;
+      added = true;
+    });
+    if (added) applyMeta();
+  }
+  function blockClass(prefix, v){                              // 선택한 문단들의 클래스 교체
+    selectedBlocks().forEach(b => {
+      [...b.classList].filter(c => c.startsWith(prefix)).forEach(c => b.classList.remove(c));
+      if (v) b.classList.add(v);
+      if (!b.classList.length) b.removeAttribute('class');
+    });
+  }
+  function applyFontSize(cat, v){
+    focusDoc();
+    const r = range();
+    if (r && !r.collapsed) applyInline(cat, v);
+    else { blockClass(cat === 'font' ? 'ff-' : 'fs-', v ? (cat === 'font' ? 'ff-' : 'fs-') + v : null); changed(); updateUI(); }
+  }
+  function applyLh(v){ focusDoc(); blockClass('lh-', v === 'basic' ? null : lhClass(v)); changed(); updateUI(); }
+
+  /* ===== 3단계: 인용구 · 가로줄 ===== */
+  function applyQuote(v){
+    focusDoc();
+    let bq = closestSel('blockquote');
+    if (v === 'none'){
+      if (!bq) return;
+      [...bq.classList].filter(c => c.startsWith('q-')).forEach(c => bq.classList.remove(c));
+      if ([...bq.children].some(k => /^(P|H[1-6]|UL|OL|TABLE|DIV|PRE)$/.test(k.tagName))) unwrap(bq);
+      else { const np = rename(bq, 'p'); if (!np.classList.length) np.removeAttribute('class'); caretTo(np, true); }
+    } else {
+      if (!bq){ exec('formatBlock', '<blockquote>'); bq = closestSel('blockquote'); }
+      if (!bq) return;
+      [...bq.classList].filter(c => c.startsWith('q-')).forEach(c => bq.classList.remove(c));
+      bq.classList.add(v);
+    }
+    changed(); updateUI();
+  }
+  function insertHr(v){ const hr = doc.createElement('hr'); hr.className = v; insertBlockAtCaret(hr); }
+
+  /* ===== 4단계: 스타일 편집 (본문·제목·인용) ===== */
+  let para = {};
+  const PARA_RE = /\/\* @para-styles:start[\s\S]*?@para-styles:end \*\//;
+  const PARA_SEL = {body:'body', h1:'h1', h2:'h2', h3:'h3', blockquote:'blockquote'};
+  function parsePara(){
+    para = {};
+    const m = /\/\* @para-styles:start (\{[\s\S]*?\}) \*\//.exec(cssEd.value);
+    if (m){ try { para = JSON.parse(m[1]); } catch(e){ para = {}; } }
+  }
+  function paraCss(){
+    const out = [];
+    for (const [k, o] of Object.entries(para)){
+      if (!o) continue;
+      const font = [], box = [];
+      if (o.ff && FONTS[o.ff]) font.push(`font-family: ${FONTS[o.ff].css}`);
+      if (o.fs) font.push(`font-size: ${o.fs}pt`);
+      if (o.lh) font.push(`line-height: ${o.lh}`);
+      if (o.fw) font.push(`font-weight: ${o.fw}`);
+      if (o.color) font.push(`color: ${o.color}`);
+      if (o.mt !== undefined && o.mt !== '') box.push(`margin-top: ${o.mt}pt`);
+      if (o.mb !== undefined && o.mb !== '') box.push(`margin-bottom: ${o.mb}pt`);
+      if (o.al) box.push(`text-align: ${o.al}`);
+      if (k === 'body'){
+        if (font.length) out.push(`body { ${font.join('; ')}; }`);
+        if (box.length) out.push(`p { ${box.join('; ')}; }`);
+      } else {
+        const all = font.concat(box);
+        if (all.length) out.push(`${PARA_SEL[k]} { ${all.join('; ')}; }`);
+      }
+    }
+    return out.length ? `/* @para-styles:start ${JSON.stringify(para)} */\n/* 스타일 편집(본문·제목·인용) 설정 */\n${out.join('\n')}\n/* @para-styles:end */` : '';
+  }
+  function updateParaBlock(){
+    let css = cssEd.value.replace(PARA_RE, '').replace(/\s+$/, '');
+    const pc = paraCss();
+    cssEd.value = (pc ? (css ? css + '\n\n' : '') + pc : css) + '\n';
+    applyCss(); ensureFonts(); changed();
+  }
+  function sampleEl(k){
+    if (k === 'body') return {el: body.querySelector('p') || body, tmp: false};
+    const ex = body.querySelector(k); if (ex) return {el: ex, tmp: false};
+    const t = doc.createElement(k); t.textContent = '가'; t.style.cssText = 'position:absolute;visibility:hidden;left:-9999px';
+    body.appendChild(t); return {el: t, tmp: true};
+  }
+  function computedOf(k){
+    const {el, tmp} = sampleEl(k), cs = frame.contentWindow.getComputedStyle(el);
+    const fsPx = parseFloat(cs.fontSize), lhPx = parseFloat(cs.lineHeight);
+    const v = {
+      family: cs.fontFamily.split(',')[0].replace(/["']/g, '').trim(),
+      fs: Math.round(fsPx * 0.75 * 2) / 2,
+      lh: isNaN(lhPx) ? '보통' : Math.round(lhPx / fsPx * 100) / 100,
+      fw: cs.fontWeight, mt: Math.round(parseFloat(cs.marginTop) * 0.75), mb: Math.round(parseFloat(cs.marginBottom) * 0.75)
+    };
+    if (tmp) el.remove();
+    return v;
+  }
+  function loadStyleFields(){
+    const k = $('seWhich').value, o = para[k] || {}, c = computedOf(k);
+    $('seFont').value = o.ff || '';
+    $('seSize').value = o.fs || ''; $('seSize').placeholder = c.fs;
+    $('seLh').value = o.lh || ''; $('seLh').placeholder = c.lh;
+    $('seFw').value = o.fw || '';
+    $('seAlign').value = o.al || '';
+    $('seColorOn').checked = !!o.color; if (o.color) $('seColor').value = o.color;
+    $('seMt').value = o.mt ?? ''; $('seMt').placeholder = c.mt;
+    $('seMb').value = o.mb ?? ''; $('seMb').placeholder = c.mb;
+    $('seNow').textContent = `${c.family} · ${c.fs}pt · 줄간격 ${c.lh} · 굵기 ${c.fw} · 여백 ${c.mt}/${c.mb}pt`;
+  }
+  function readStyleFields(){
+    const k = $('seWhich').value, o = {};
+    const num = id => { const v = $(id).value.trim(); return v === '' ? '' : +v; };
+    if ($('seFont').value) o.ff = $('seFont').value;
+    if (num('seSize') !== '') o.fs = num('seSize');
+    if (num('seLh') !== '') o.lh = num('seLh');
+    if ($('seFw').value) o.fw = $('seFw').value;
+    if ($('seAlign').value) o.al = $('seAlign').value;
+    if ($('seColorOn').checked) o.color = $('seColor').value;
+    if (num('seMt') !== '') o.mt = num('seMt');
+    if (num('seMb') !== '') o.mb = num('seMb');
+    if (Object.keys(o).length) para[k] = o; else delete para[k];
+    updateParaBlock();
+    setTimeout(() => { const c = computedOf(k); $('seNow').textContent = `${c.family} · ${c.fs}pt · 줄간격 ${c.lh} · 굵기 ${c.fw} · 여백 ${c.mt}/${c.mb}pt`; }, 50);
+  }
+  function openStyleEd(){
+    parsePara();
+    const b = closestSel('h1,h2,h3,blockquote');
+    $('seWhich').value = b ? b.tagName.toLowerCase() : 'body';
+    loadStyleFields();
+    $('styleDlg').classList.add('show');
+  }
+
+  /* ===== 2단계: 보기 모드 ===== */
+  let views = {pc:{w:420, u:'mm'}, tablet:{w:210, u:'mm'}, mobile:{w:400, u:'px'}};
+  try { Object.assign(views, JSON.parse(store.get('views', '{}'))); } catch(e){}
+  let view = 'paper';
+  function applyViewW(){
+    const o = views[view]; if (!o) return;
+    $('editor').style.setProperty('--dw', (o.u === 'mm' ? o.w * MM : o.w).toFixed(1) + 'px');
+  }
+  function setView(v){
+    view = views[v] || v === 'paper' ? v : 'paper';
+    store.set('view', view);
+    $('sView').value = view;
+    if (view === 'paper'){ $('editor').classList.remove('dev'); $('viewWBox').style.display = 'none'; togglePage(true); }
+    else {
+      togglePage(false); $('editor').classList.add('dev');
+      $('viewWBox').style.display = ''; $('viewW').value = views[view].w; $('viewU').textContent = views[view].u;
+      applyViewW();
+      $('pgInfo').textContent = `보기: ${$('sView').selectedOptions[0].textContent.replace('보기: ', '')} ${views[view].w}${views[view].u} (화면용 · 인쇄는 페이지 설정 기준)`;
+    }
+  }
+
   // 크롬이 붙여넣기·병합 때 끼워넣는 style 속성 span/font 정리
   function tidy(root){
-    root.querySelectorAll('span[style],font').forEach(s => {
+    root.querySelectorAll('span[style]:not(.fc),font').forEach(s => {
       if (s.tagName === 'FONT' || s.classList.length === 0 && s.attributes.length === 1) unwrap(s);
       else s.removeAttribute('style');
     });
@@ -582,6 +957,7 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
     exec('removeFormat');
     const r2 = range() || r;
     [...body.querySelectorAll('mark,span,small,font,sub,sup')].forEach(el => { if (r2.intersectsNode(el)) unwrap(el); });
+    selectedBlocks().forEach(b => { [...b.classList].filter(c => /^(ff|fs|lh)-/.test(c)).forEach(c => b.classList.remove(c)); if (!b.classList.length) b.removeAttribute('class'); });
     changed();
   }
 
@@ -807,7 +1183,7 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
     c.querySelectorAll('[style]').forEach(el => {
       const ta = el.style.textAlign;
       if (ta){ el.style.textAlign = ''; el.classList.add('al-' + (ta === 'start' ? 'left' : ta === 'end' ? 'right' : ta)); }
-      if (el.tagName === 'SPAN') el.removeAttribute('style');            // 크롬이 붙이는 임시 서식 제거
+      if (el.tagName === 'SPAN' && !el.classList.contains('fc')) el.removeAttribute('style');   // 크롬이 붙이는 임시 서식 제거 (색상 선택 글자는 유지)
       if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
     });
     c.querySelectorAll('font').forEach(unwrap);
@@ -1213,13 +1589,131 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
     ['al-center','.al-center { text-align: center; }'], ['al-right','.al-right { text-align: right; }'],
     ['al-justify','.al-justify { text-align: justify; }'],
     ['ind-1','.ind-1 { margin-left: 2em; }'], ['ind-2','.ind-2 { margin-left: 4em; }'], ['ind-3','.ind-3 { margin-left: 6em; }'],
-    ['red','.red { color: #cf222e; }'], ['blue','.blue { color: #0969da; }'],
+    ['red','.red { color: #cf222e; }'], ['blue','.blue { color: #0969da; }'], ['black','.black { color: #111; }'],
+    ['hl-g','mark.hl-g { background: #c6f6c0; }'], ['hl-b','mark.hl-b { background: #cde4ff; }'], ['hl-o','mark.hl-o { background: #ffd8a8; }'],
     ['page-break','.page-break { height: 0; }\n@media print { .page-break { break-after: page; page-break-after: always; } }'],
     ['math-block','.math-block { text-align: center; margin: 10px 0; }'],
     ['tbl','table.tbl { border-collapse: collapse; width: 100%; margin: 10px 0; }\ntable.tbl th, table.tbl td { border: 1px solid #999; padding: 6px 8px; vertical-align: top; }']
   ];
+  /* 크롬이 <p> 안에 목록을 만드는 문제 정리: <p><ol>…</ol></p> → <ol>…</ol> (커서 유지) */
+  function fixLists(){
+    if (!body || !body.querySelector('p > ul, p > ol, p > p')) return;
+    const s = sel(), a = s && s.anchorNode, ao = s && s.anchorOffset, f = s && s.focusNode, fo = s && s.focusOffset;
+    let guard = 0, pp;
+    while ((pp = body.querySelector('p > ul, p > ol, p > p')) && guard++ < 200){
+      const outer = pp.parentElement;
+      // 목록/문단 앞뒤의 글자는 각각 문단으로 남기고 바깥 <p>는 풂
+      const kids = [...outer.childNodes]; let run = null;
+      kids.forEach(k => {
+        if (k.nodeType === 1 && /^(UL|OL|P|DIV|TABLE|BLOCKQUOTE|PRE|H[1-6])$/.test(k.tagName)){ run = null; outer.before(k); }
+        else if (k.nodeType === 3 && !k.data.trim()){ k.remove(); }
+        else { if (!run){ run = doc.createElement('p'); outer.before(run); } run.appendChild(k); }
+      });
+      outer.remove();
+    }
+    try { if (a && a.isConnected && f && f.isConnected) s.setBaseAndExtent(a, ao, f, fo); } catch(e){}
+  }
+
+  /* ===== 목록 모양 스타일 묶음 (사용자 지정) ===== */
+  const LIST_CSS = `/* @list-styles:start — 목록 모양 (대시·가운뎃점·원숫자·원한글) */
+/* 기본 ul, ol 스타일 설정 */
+ul, ol {
+  padding-left: 20px;
+  line-height: 1.6;
+  margin-left: 10px;
+}
+
+/* 기본 li 스타일 설정 */
+li {
+  line-height: 1.6;
+}
+
+ol {
+  list-style-type: circle-num;
+}
+
+/* 1. 대시 목록 */
+.dash {
+  list-style-type: "- ";
+  padding-left: 2px;  /* 하위 ul의 들여쓰기 폭을 살짝 줄여서 정렬 개선 */
+  margin-left: 0;     /* 부모 요소와 시작 위치를 깔끔하게 맞춤 */
+}
+
+/* 2. 가운뎃점 목록 */
+.middle-dot {
+  list-style-type: "· ";
+}
+
+/* 3. 원숫자 목록 */
+@counter-style circle-num {
+  system: fixed;
+  symbols: ➀ ➁ ➂ ➃ ➄ ➅ ➆ ➇ ➈ ➉;
+  suffix: " ";
+}
+.circle-number {
+  list-style-type: circle-num;
+}
+
+/* 4. 원한글 목록 */
+@counter-style circle-txt {
+  system: fixed;
+  symbols: ㉠ ㉡ ㉢ ㉣ ㉤ ㉥ ㉦ ㉧ ㉨ ㉩ ㉪ ㉫ ㉬ ㉭;
+  suffix: " ";
+}
+.circle-txt {
+  list-style-type: circle-txt;
+}
+
+/* 5. 기존 type="circle" 속성을 가진 ul을 대시(-)로 강제 전환 */
+ul[type="circle"] {
+  list-style-type: "- ";
+}
+/* @list-styles:end */`;
+  const LIST_CLS = ['dash', 'middle-dot', 'circle-number', 'circle-txt'];
+  function ensureListCss(){
+    if (/@list-styles:start/.test(cssEd.value)) return false;
+    cssEd.value = cssEd.value.replace(/\s+$/, '') + (cssEd.value.trim() ? '\n\n' : '') + LIST_CSS + '\n';
+    applyCss(); return true;
+  }
+  function setListStyle(v){
+    focusDoc();
+    let lists = [];
+    const r = range();
+    if (r && !r.collapsed){
+      lists = [...body.querySelectorAll('ul,ol')].filter(l => r.intersectsNode(l));
+      lists = lists.filter(l => !lists.some(o => o !== l && l.contains(o) && [...o.querySelectorAll('li')].length));   // 가장 안쪽 목록
+    }
+    if (!lists.length){ const l = closestSel('ul,ol'); if (l) lists = [l]; }
+    if (!lists.length){                                        // 목록 밖이면 새로 만들기
+      if (v === 'basic') return;
+      const before = new Set(body.querySelectorAll('li'));
+      exec(/circle/.test(v) ? 'insertOrderedList' : 'insertUnorderedList');
+      fixLists();
+      const li = closestSel('li'), l = li && li.parentElement; if (!l) return;
+      if ([...l.children].some(x => x !== li && before.has(x))){       // 앞뒤 목록과 합쳐졌으면 새 항목만 분리
+        const after = []; for (let n = li.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
+        const nl = doc.createElement(l.tagName); l.after(nl); nl.appendChild(li);
+        if (after.length){ const l2 = l.cloneNode(false); nl.after(l2); after.forEach(x => l2.appendChild(x)); }
+        caretTo(li, true); lists = [nl];
+      } else lists = [l];
+    }
+    lists.forEach(l => {
+      l.classList.remove(...LIST_CLS);
+      if (l.getAttribute('type') === 'circle' && v !== 'dash') l.removeAttribute('type');
+      if (v !== 'basic') l.classList.add(v);
+      if (!l.classList.length) l.removeAttribute('class');
+    });
+    if (v !== 'basic' && ensureListCss()) toast('목록 스타일 묶음을 문서 CSS에 넣었습니다');
+    changed(); updateUI();
+  }
+
   function ensureHelpers(){
+    if (LIST_CLS.some(c => body.querySelector('.' + c))) ensureListCss();
     const add = HELPERS.filter(([c]) => body.querySelector('.' + c) && !new RegExp('\\.' + c + '(?![\\w-])').test(cssEd.value)).map(h => h[1]);
+    const dyn = new Set();
+    body.querySelectorAll('[class]').forEach(el => el.classList.forEach(c => { if (/^(ff|fs|lh|q|hr)-/.test(c)) dyn.add(c); }));
+    dyn.forEach(c => { if (!new RegExp('\\.' + c + '(?![\\w-])').test(cssEd.value)){ const r = ruleFor(c); if (r) add.push(r); } });
+    ensureFonts();
     if (!add.length) return;
     cssEd.value = cssEd.value.replace(/\s+$/, '') + (cssEd.value.trim() ? '\n\n' : '') + '/* 편집기 기능용 클래스 */\n' + add.join('\n') + '\n';
     applyCss();
@@ -1228,7 +1722,7 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
   /* ================= 변경 감지·화면 갱신 ================= */
   let saveTimer = 0, cntTimer = 0;
   function changed(){
-    if (body) ensureHelpers();
+    if (body){ fixLists(); ensureHelpers(); }
     dirty = true; $('dirty').textContent = '●';
     clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 800);
     clearTimeout(cntTimer); cntTimer = setTimeout(count, 300);
@@ -1246,9 +1740,24 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
   }
   function updateUI(){
     if (!doc) return;
+    { const s = sel(), n = s && s.anchorNode, el = n && body.contains(n) ? (n.nodeType === 1 ? n : n.parentElement) : null;
+      if (el){
+        let fk = '';
+        for (let e = el; e && e !== doc.documentElement; e = e.parentElement){ const c = [...e.classList].find(c => c.startsWith('ff-')); if (c){ fk = c.slice(3); break; } }
+        $('sFont').value = fk && FONTS[fk] ? fk : 'basic';
+        const pt = Math.round(parseFloat(frame.contentWindow.getComputedStyle(el).fontSize) * 0.75 * 2) / 2;
+        if ([...$('sSize').options].some(o => o.value === String(pt))) $('sSize').value = String(pt);
+        else { $('sizeCur').textContent = pt; $('sSize').value = ''; }
+        const lb = closestSel(BLOCK_SEL), lc = lb && [...lb.classList].find(c => c.startsWith('lh-'));
+        $('sLh').value = lc ? (String(lhValue(lc)).length === 1 && lhValue(lc) === 2 ? '2.0' : String(lhValue(lc))) : 'basic';
+        if (lc && !$('sLh').value) $('sLh').value = 'basic';
+      }
+    }
+    const lst = closestSel('ul,ol');
+    $('sList').value = lst ? (LIST_CLS.find(c => lst.classList.contains(c)) || 'basic') : '';
     const blk = closestSel('p,h1,h2,h3,blockquote,pre');
     $('sBlock').value = blk ? blk.tagName.toLowerCase() : (closestSel('li,td,th') ? '' : 'p');
-    ['bold','italic','underline','strikeThrough','insertUnorderedList','insertOrderedList'].forEach(c => {
+    ['bold','italic','underline','strikeThrough','superscript','subscript','insertUnorderedList','insertOrderedList'].forEach(c => {
       let on = false; try { on = doc.queryCommandState(c); } catch(e){}
       const b = document.querySelector(`[data-cmd="${c}"]`); if (b) b.classList.toggle('on', on);
     });
@@ -1306,7 +1815,7 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
     else { cssEd.value = ''; setMode('embed'); msg += ' — 스타일이 없는 문서입니다 (스타일 패널에서 프리셋 적용 가능)'; }
     if (nScript) msg += ` · 스크립트 ${nScript}개는 편집 중엔 실행되지 않고 저장 시 그대로 보존`;
     else if (removed) msg += ` · 이벤트 속성 ${removed}개 제외`;
-    lockAtoms(); applyMeta(); applyCss(); updCssLabel();
+    lockAtoms(); applyMeta(); parsePara(); applyCss(); updCssLabel();
     dirty = false; $('dirty').textContent = '';
     autosave(); count(); updateUI();
     frame.contentWindow.scrollTo(0, 0);
@@ -1456,12 +1965,14 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
   tb.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.cmd) exec(b.dataset.cmd);
+    else if (b.dataset.fc) applyInline('color', b.dataset.fc);
+    else if (b.dataset.hl !== undefined) applyInline('hl', b.dataset.hl || null);
     else if (b.dataset.align) align(b.dataset.align);
     else if (b.dataset.tbl) tableOp(b.dataset.tbl);
     updateUI();
   });
   $('sBlock').onchange = e => { if (e.target.value) setBlock(e.target.value); };
-  $('sMark').onchange = e => { const v = e.target.value; e.target.value = ''; if (v) wrapInline(v); updateUI(); };
+  $('fcPick').addEventListener('change', e => applyInline('color', e.target.value));
   $('bIn').onclick = () => indent(1);
   $('bOut').onclick = () => indent(-1);
   $('bLink').onclick = makeLink;
@@ -1491,7 +2002,7 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
   $('bPage').onclick = () => showPagePop();
   $('pClose').onclick = () => showPagePop(false);
   $('pPrint').onclick = () => { showPagePop(false); frame.contentWindow.print(); };
-  $('pView').onchange = e => togglePage(e.target.checked);
+  $('pView').onchange = e => setView(e.target.checked ? 'paper' : 'pc');
   $('bBreak').onclick = insertPageBreak;
   $('tColW').addEventListener('change', setColPct);
   $('tColW').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); setColPct(); } });
@@ -1505,11 +2016,31 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
   $('bPanel').onclick = () => showPanel();
   $('bCssLoad').onclick = loadCssDialog;
   $('bGather').onclick = gatherInline;
+  $('sFont').onchange = e => { const v = e.target.value; if (v) applyFontSize('font', v === 'basic' ? null : v); };
+  $('sSize').onchange = e => { const v = e.target.value; if (v) applyFontSize('size', v); };
+  $('sLh').onchange = e => { const v = e.target.value; if (v) applyLh(v); };
+  $('sQuote').onchange = e => { const v = e.target.value; e.target.value = ''; if (v) applyQuote(v); };
+  $('sHr').onchange = e => { const v = e.target.value; e.target.value = ''; if (v) insertHr(v); };
+  $('sView').onchange = e => setView(e.target.value);
+  $('viewW').addEventListener('change', () => {
+    const v = parseFloat($('viewW').value); if (!v || !views[view]) return;
+    views[view].w = v; store.set('views', JSON.stringify(views)); setView(view);
+  });
+  $('bStyleEd').onclick = openStyleEd;
+  $('seWhich').onchange = loadStyleFields;
+  ['seFont','seSize','seLh','seFw','seAlign','seColorOn','seMt','seMb'].forEach(id => $(id).addEventListener('change', readStyleFields));
+  $('seColor').addEventListener('input', () => { $('seColorOn').checked = true; readStyleFields(); });
+  $('seReset').onclick = () => { delete para[$('seWhich').value]; updateParaBlock(); loadStyleFields(); };
+  $('seClose').onclick = () => { $('styleDlg').classList.remove('show'); focusDoc(); };
+  $('styleDlg').addEventListener('mousedown', e => { if (e.target.id === 'styleDlg') $('seClose').click(); });
+  $('styleDlg').addEventListener('keydown', e => { if (e.key === 'Escape') $('seClose').click(); });
+  $('bListCss').onclick = () => toast(ensureListCss() ? '목록 스타일 묶음을 CSS에 넣었습니다' : '이미 들어 있습니다');
+  $('sList').onchange = e => { const v = e.target.value; if (v) setListStyle(v); };
   $('fname').addEventListener('change', () => { fixName(); changed(); });
   $('fname').addEventListener('keydown', e => { if (e.key === 'Enter'){ fixName(); focusDoc(); } });
   $('docTitle').addEventListener('input', changed);
   $('cSep').onchange = () => { store.set('mode', mode()); updCssLabel(); changed(); };
-  cssEd.addEventListener('input', () => { applyCss(); changed(); });
+  cssEd.addEventListener('input', () => { applyCss(); parsePara(); changed(); });
   cssEd.addEventListener('keydown', e => {
     if (e.key === 'Tab'){ e.preventDefault(); document.execCommand('insertText', false, '  '); }
   });
@@ -1564,7 +2095,8 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
       const cd = e.clipboardData; if (!cd) return;
       const imgs = [...cd.files].filter(f => f.type.startsWith('image/'));
       const html = cd.getData('text/html');
-      if (imgs.length && !html){ e.preventDefault(); insertImages(imgs); return; }
+      const onlyImg = html && /^<img\b[^>]*>$/i.test(html.replace(/<!-{2}[\s\S]*?-{2}>/g, '').replace(/<\/?(html|body|meta)[^>]*>/gi, '').trim());
+      if (imgs.length && (!html || onlyImg)){ e.preventDefault(); insertImages(imgs); return; }
       if (html && $('cPaste').checked){ e.preventDefault(); exec('insertHTML', sanitize(html)); tidy(body); }
     });
     doc.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
@@ -1598,7 +2130,8 @@ hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
     doc.addEventListener('load', schedulePageCheck, true);      // 그림이 늦게 뜨면 다시 계산
     frame.contentWindow.addEventListener('resize', schedulePageCheck);
     syncPgUI(); applyMeta();
-    togglePage(store.get('pv', '1') === '1');
+    setView(store.get('view', store.get('pv', '1') === '1' ? 'paper' : 'pc'));
+    parsePara();
     applyCss(); updCssLabel(); count(); updateUI();
     if (saved) toast('지난 작업 내용을 불러왔습니다');
     focusDoc();
