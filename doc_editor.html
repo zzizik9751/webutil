@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML 문서 편집기 (베타)</title>
+<style>
+  :root{
+    --fg:#1f2328; --muted:#8c959f; --line:#d0d7de; --accent:#0969da; --bg:#ffffff; --on:rgba(9,105,218,.12);
+    --mono:Consolas,"D2Coding","Cascadia Mono","Courier New",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --fg:#e6edf3; --muted:#7d8590; --line:#30363d; --accent:#4493f8; --bg:#0d1117; --on:rgba(68,147,248,.2); }
+  }
+  :root[data-theme="dark"]{ --fg:#e6edf3; --muted:#7d8590; --line:#30363d; --accent:#4493f8; --bg:#0d1117; --on:rgba(68,147,248,.2); }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font:14px/1.4 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden;
+  }
+  header,.toolbar{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:6px 12px; border-bottom:1px solid var(--line)}
+  .brand{font-weight:700; font-size:15px; margin-right:4px; white-space:nowrap}
+  .beta{font-size:10px; font-weight:700; letter-spacing:.5px; color:var(--accent); border:1px solid var(--accent); border-radius:4px; padding:0 4px; vertical-align:2px; margin-left:2px}
+  #fname{font:inherit; color:inherit; background:transparent; border:1px solid transparent; border-radius:4px; padding:3px 6px; width:230px}
+  #fname:hover,#fname:focus{border-color:var(--line); outline:none}
+  #dirty{color:var(--accent); font-weight:700; width:10px}
+  .grp{display:flex; align-items:center; gap:3px}
+  .sep{width:1px; height:20px; background:var(--line); margin:0 2px}
+  .spacer{flex:1}
+  button,select{
+    font:inherit; font-size:13px; color:inherit; background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:4px 8px; cursor:pointer; white-space:nowrap; line-height:1.2;
+  }
+  .toolbar button{min-width:30px; padding:4px 7px}
+  button:hover,select:hover{border-color:var(--accent); color:var(--accent)}
+  button.on{border-color:var(--accent); color:var(--accent); box-shadow:inset 0 0 0 99px var(--on)}
+  button:disabled,select:disabled{opacity:.4; pointer-events:none}
+  select option{color:#1f2328}
+  button svg{width:15px; height:15px; vertical-align:-3px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round}
+  .b{font-weight:800} .i{font-style:italic; font-family:Georgia,serif} .u{text-decoration:underline} .s{text-decoration:line-through}
+  #tblTools{display:flex} #tblTools.off button, #tblTools.off input{opacity:.35; pointer-events:none}
+  label.chk{display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer; white-space:nowrap}
+
+  .work{flex:1; display:flex; min-height:0}
+  .editor{flex:1; position:relative; min-width:0; display:flex}
+  #frame{flex:1; width:100%; border:0; display:block}
+  #srcView{
+    flex:1; display:none; border:0; outline:none; resize:none; padding:16px 20px;
+    font-family:var(--mono); font-size:13px; line-height:1.55; tab-size:2; color:var(--fg); background:transparent; white-space:pre;
+  }
+  .editor.src #paper{display:none} .editor.src #srcView{display:block}
+  #paper{flex:1; display:flex; min-width:0}
+  .editor.pv{overflow:auto; justify-content:center; padding:14px 12px}
+  .editor.pv #paper{flex:0 0 auto; width:var(--pw); padding:0 var(--pr) 0 var(--pl); background:#fff; box-shadow:0 0 0 1px var(--line), 0 3px 14px rgba(0,0,0,.10)}
+  /* 팝업(페이지 설정) · 대화상자(수식) */
+  .pop{position:fixed; z-index:50; display:none; width:360px; max-width:calc(100vw - 16px); background:var(--bg); color:var(--fg);
+       border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.18); padding:14px 16px}
+  .pop.show{display:block}
+  .pop h3{margin:0 0 10px; font-size:14px}
+  .pop .fr{display:flex; align-items:center; gap:8px; margin:8px 0; flex-wrap:wrap}
+  .pop .lb{font-size:12px; color:var(--muted); min-width:52px}
+  .pop input[type=number]{width:62px; font:inherit; font-size:13px; color:inherit; background:transparent; border:1px solid var(--line); border-radius:5px; padding:3px 5px}
+  .pop .mg{display:grid; grid-template-columns:auto 70px auto 70px; gap:6px 8px; align-items:center; margin:6px 0 4px 60px}
+  .pop .mg span{font-size:12px; color:var(--muted); text-align:right}
+  .pop .note{font-size:11.5px; color:var(--muted); line-height:1.55; margin-top:10px; border-top:1px solid var(--line); padding-top:8px}
+  .pop .btns{display:flex; justify-content:flex-end; gap:6px; margin-top:12px}
+  button.primary{border-color:var(--accent); color:var(--accent); font-weight:600}
+  #pgInfoPop{font-size:12px; color:var(--muted); margin-top:6px} #pgInfoPop b, #pgInfo b{color:#cf222e}
+  .modal{position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.28)}
+  .modal.show{display:flex}
+  .modal .pop{position:static; display:block; width:560px}
+  .mq{display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px}
+  .mq button{font-size:12px; padding:3px 7px; min-width:28px}
+  .mq select{font-size:12px; padding:3px 4px}
+  .mq .lbl{font-size:11px; color:var(--muted); align-self:center; margin-right:2px}
+  .mq.fmt{padding-top:6px; border-top:1px dashed var(--line)}
+  .mhelp{font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.6}
+  .mhelp code{font-family:var(--mono); font-size:11px}
+  #mathTex{width:100%; min-height:70px; resize:vertical; font-family:var(--mono); font-size:14px; line-height:1.5; padding:8px 10px;
+           color:var(--fg); background:transparent; border:1px solid var(--line); border-radius:5px; outline:none}
+  #mathTex:focus{border-color:var(--accent)}
+  .mprev{min-height:56px; margin-top:8px; padding:10px; border:1px dashed var(--line); border-radius:5px; display:flex; align-items:center; justify-content:center; overflow:auto; background:#fff; color:#111}
+  .mprev.err{color:#cf222e; font-size:12.5px}
+  #pgInfo{font-size:12px; color:var(--muted)} #pgInfo b{color:#cf222e}
+  .editor.drop{outline:2px dashed var(--accent); outline-offset:-6px}
+
+  aside{
+    width:380px; border-left:1px solid var(--line); display:none; flex-direction:column; min-height:0; padding:12px 14px; gap:10px; overflow:auto;
+  }
+  aside.show{display:flex}
+  aside h3{margin:0; font-size:14px}
+  aside .row{display:flex; flex-direction:column; gap:4px; font-size:13px}
+  aside .row > span{color:var(--muted); font-size:12px}
+  aside input[type=text]{font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:5px; padding:5px 8px}
+  aside .radio{display:flex; gap:14px; flex-wrap:wrap}
+  aside .line{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+  #cssEd{
+    flex:1; min-height:260px; resize:none; outline:none; border:1px solid var(--line); border-radius:5px; padding:8px 10px;
+    font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--fg); background:transparent; tab-size:2; white-space:pre;
+  }
+  #cssEd:focus{border-color:var(--accent)}
+  .hint{font-size:12px; color:var(--muted); line-height:1.6}
+  .hint code{font-family:var(--mono); font-size:11.5px}
+
+  .status{display:flex; gap:14px; align-items:center; padding:4px 12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted)}
+  .status a{color:inherit}
+  #toast{transition:opacity .3s}
+
+  @media (max-width:760px){
+    aside{position:absolute; right:0; top:0; bottom:0; width:min(380px,100%); background:var(--bg); z-index:5}
+    .work{position:relative}
+    .hide-sm{display:none}
+    #fname{width:120px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">HTML 문서 편집기 <span class="beta" title="베타 버전 v0.9 — 사용해 보시고 의견 주세요">BETA</span></span>
+  <input id="fname" value="문서.html" title="파일 이름" spellcheck="false"><span id="dirty" title="저장되지 않은 변경"></span>
+  <div class="grp">
+    <button id="bNew">새 문서</button>
+    <button id="bOpen" title="열기 (Ctrl+O) — HTML과 CSS를 함께 선택할 수 있습니다">열기</button>
+    <button id="bSave" title="저장 (Ctrl+S)">저장</button>
+    <button id="bSaveAs" class="hide-sm" title="다른 이름으로 저장 (Ctrl+Shift+S)">다른 이름</button>
+    <button id="bPrint" class="hide-sm" title="인쇄 (Ctrl+P)">인쇄</button>
+    <button id="bPage" title="용지·여백·인쇄 배율 설정">페이지 설정</button>
+    <label class="chk" id="sepLbl" title="체크하면 저장할 때 스타일을 별도 .css 파일로 분리합니다 (기본: 문서 안 &lt;style&gt;에 모아 저장)"><input type="checkbox" id="cSep">CSS 별도 파일<span id="cssNameLbl" class="hide-sm" style="color:var(--muted)"></span></label>
+  </div>
+  <span class="spacer"></span>
+  <div class="grp">
+    <button id="bSrc" title="HTML 소스 보기/편집">HTML 보기</button>
+    <button id="bPanel" title="문서 스타일(CSS) 편집">스타일</button>
+  </div>
+  <input type="file" id="fileIn" accept=".html,.htm,.css,text/html,text/css" multiple hidden>
+  <input type="file" id="cssIn" accept=".css,text/css" hidden>
+  <input type="file" id="imgIn" accept="image/*" hidden>
+</header>
+
+<div class="toolbar" id="tb">
+  <div class="grp">
+    <button data-cmd="undo" title="실행 취소 (Ctrl+Z)">↶</button>
+    <button data-cmd="redo" title="다시 실행 (Ctrl+Y)">↷</button>
+  </div>
+  <span class="sep"></span>
+  <select id="sBlock" title="문단 스타일 (Ctrl+0~3)">
+    <option value="p">본문</option>
+    <option value="h1">제목 1</option>
+    <option value="h2">제목 2</option>
+    <option value="h3">제목 3</option>
+    <option value="blockquote">인용</option>
+    <option value="pre">코드</option>
+    <option value="" hidden>—</option>
+  </select>
+  <span class="sep"></span>
+  <div class="grp">
+    <button data-cmd="bold" class="b" title="굵게 (Ctrl+B)">B</button>
+    <button data-cmd="italic" class="i" title="기울임 (Ctrl+I)">I</button>
+    <button data-cmd="underline" class="u" title="밑줄 (Ctrl+U)">U</button>
+    <button data-cmd="strikeThrough" class="s" title="취소선">S</button>
+  </div>
+  <select id="sMark" title="강조 (CSS 클래스로 적용)">
+    <option value="">강조…</option>
+    <option value="mark">형광펜</option>
+    <option value="span.red">빨간 글씨</option>
+    <option value="span.blue">파란 글씨</option>
+    <option value="small">작은 글씨</option>
+    <option value="sup">위 첨자</option>
+    <option value="sub">아래 첨자</option>
+  </select>
+  <span class="sep"></span>
+  <div class="grp">
+    <button data-align="left" title="왼쪽 정렬"><svg viewBox="0 0 16 16"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8"/></svg></button>
+    <button data-align="center" title="가운데 정렬"><svg viewBox="0 0 16 16"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8"/></svg></button>
+    <button data-align="right" title="오른쪽 정렬"><svg viewBox="0 0 16 16"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8"/></svg></button>
+    <button data-align="justify" title="양쪽 정렬"><svg viewBox="0 0 16 16"><path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12"/></svg></button>
+  </div>
+  <span class="sep"></span>
+  <div class="grp">
+    <button data-cmd="insertUnorderedList" title="글머리 목록">• 목록</button>
+    <button data-cmd="insertOrderedList" title="번호 목록">1. 목록</button>
+    <button id="bOut" title="내어쓰기 (Shift+Tab)">⇤</button>
+    <button id="bIn" title="들여쓰기 (Tab)">⇥</button>
+  </div>
+  <span class="sep"></span>
+  <div class="grp">
+    <button id="bLink" title="링크 (Ctrl+K)">링크</button>
+    <button id="bImg" title="그림 넣기 (붙여넣기·끌어놓기도 가능)">그림</button>
+    <button id="bTable" title="표 넣기">표</button>
+    <button id="bMath" title="수식 넣기 (LaTeX · MathJax) — 넣은 수식은 더블클릭해서 수정">수식</button>
+    <button data-cmd="insertHorizontalRule" title="구분선">―</button>
+    <button id="bBreak" title="강제 쪽 나누기 (Ctrl+Enter) — 인쇄 시 여기서 다음 쪽으로 넘어감">쪽 나누기</button>
+    <button id="bClear" title="서식 지우기">서식 지우기</button>
+  </div>
+  <div class="grp off" id="tblTools" title="표 안에 커서를 두면 쓸 수 있습니다">
+    <span class="sep"></span>
+    <button data-tbl="row" title="아래에 행 추가">+행</button>
+    <button data-tbl="col" title="오른쪽에 열 추가">+열</button>
+    <button data-tbl="delrow" title="행 삭제">−행</button>
+    <button data-tbl="delcol" title="열 삭제">−열</button>
+    <button data-tbl="del" title="표 삭제">표 삭제</button>
+    <span class="sep"></span>
+    <span style="font-size:12px; color:var(--muted)" title="셀 경계선을 마우스로 끌어도 조정됩니다">열 폭</span>
+    <input type="number" id="tColW" min="2" max="96" step="1" title="현재 열의 폭 (표 전체 대비 %)" style="width:52px; font:inherit; font-size:13px; color:inherit; background:transparent; border:1px solid var(--line); border-radius:5px; padding:3px 4px"><span style="font-size:12px; color:var(--muted)">%</span>
+    <button data-tbl="even" title="모든 열 폭을 같게">열 폭 같게</button>
+    <button data-tbl="auto" title="지정한 열 폭을 없애고 내용에 맞춤">자동</button>
+  </div>
+  <span class="spacer"></span>
+  <label class="chk hide-sm" title="다른 곳에서 붙여넣을 때 글꼴·색 등 인라인 서식을 제거"><input type="checkbox" id="cPaste" checked>붙여넣기 서식 정리</label>
+</div>
+
+<div class="work">
+  <div class="editor" id="editor">
+    <div id="paper"><iframe id="frame" title="문서"></iframe></div>
+    <textarea id="srcView" spellcheck="false" wrap="off" aria-label="HTML 소스"></textarea>
+  </div>
+  <aside id="panel">
+    <h3>문서 스타일</h3>
+    <label class="row"><span>문서 제목 (&lt;title&gt;, 비우면 첫 제목 사용)</span><input type="text" id="docTitle"></label>
+    <div class="row"><span>스타일 프리셋 / 파일</span>
+      <div class="line">
+        <select id="sPreset">
+          <option value="">프리셋 선택…</option>
+          <option value="basic">기본 (맑은 고딕)</option>
+          <option value="myeongjo">명조 (보고서)</option>
+          <option value="simple">간결</option>
+        </select>
+        <button id="bCssLoad" title="기존 .css 파일 불러오기">CSS 불러오기</button>
+        <button id="bGather" title="본문 곳곳의 style=&quot;…&quot; 를 클래스로 바꿔 이 CSS에 모읍니다">인라인 스타일 모으기</button>
+      </div>
+    </div>
+    <textarea id="cssEd" spellcheck="false" wrap="off" aria-label="CSS"></textarea>
+    <div class="hint">
+      편집하면 문서에 바로 반영됩니다. 편집기 기능이 쓰는 클래스:<br>
+      <code>.al-center .al-right .al-justify</code> 정렬 · <code>.ind-1~3</code> 들여쓰기 ·
+      <code>.red .blue</code> 글자색 · <code>mark</code> 형광펜 · <code>table.tbl</code> 표 ·
+      <code>.page-break</code> 쪽 나누기 · <code>.math .math-block</code> 수식
+    </div>
+  </aside>
+</div>
+
+<div class="pop" id="pagePop" role="dialog" aria-label="페이지 설정">
+  <h3>페이지 설정</h3>
+  <div class="fr"><span class="lb">용지</span>
+    <select id="pPaper">
+      <option value="A4">A4 (210×297)</option><option value="A3">A3 (297×420)</option>
+      <option value="B4">B4 (257×364)</option><option value="B5">B5 (182×257)</option>
+      <option value="Letter">Letter</option><option value="Legal">Legal</option>
+    </select>
+    <select id="pOrient"><option value="portrait">세로</option><option value="landscape">가로</option></select>
+  </div>
+  <div class="fr"><span class="lb">여백(mm)</span>
+    <select id="pMarPreset" title="여백 빠른 선택">
+      <option value="">직접 입력</option>
+      <option value="10">브라우저 기본 (약 10)</option>
+      <option value="6.35">좁게 (6.35)</option>
+      <option value="15">보통 (15)</option>
+      <option value="20">20</option>
+      <option value="25.4">넓게 (25.4)</option>
+    </select>
+  </div>
+  <div class="mg">
+    <span>위</span><input type="number" id="pMt" min="0" max="60" step="0.5">
+    <span>아래</span><input type="number" id="pMb" min="0" max="60" step="0.5">
+    <span>왼쪽</span><input type="number" id="pMl" min="0" max="60" step="0.5">
+    <span>오른쪽</span><input type="number" id="pMr" min="0" max="60" step="0.5">
+  </div>
+  <div class="fr"><span class="lb">인쇄 배율</span>
+    <input type="number" id="pScale" min="30" max="100" step="1"><span class="lb" style="min-width:0">%</span>
+    <button id="bFit" title="내용이 용지 폭에 들어가도록 배율 자동 계산">폭 맞춤</button>
+  </div>
+  <div class="fr" style="flex-direction:column; align-items:flex-start; gap:6px; margin-top:12px">
+    <label class="chk"><input type="checkbox" id="pView">용지 모양으로 보기 (쪽 경계·넘침 표시)</label>
+    <label class="chk" title="인쇄할 때 잘림·배경색 누락·표 머리글 끊김을 막는 규칙을 추가"><input type="checkbox" id="pSafe">잘림 방지 규칙 넣기</label>
+    <label class="chk" title="용지·여백·배율을 문서의 @page 규칙으로 저장"><input type="checkbox" id="pSave">설정을 문서에 저장 (인쇄 시 자동 적용)</label>
+  </div>
+  <div id="pgInfoPop"></div>
+  <div class="note">ⓘ 웹페이지는 프린터에 설정된 여백을 직접 읽을 수 없습니다. 쓰는 프린터·인쇄 대화상자의 여백 값을 넣어 두세요.
+    '설정을 문서에 저장'이 켜져 있으면 인쇄 대화상자에서 <b>여백: 기본</b>을 고를 때 이 값이 적용됩니다.</div>
+  <div class="btns"><button id="pClose">닫기</button><button id="pPrint" class="primary">인쇄…</button></div>
+</div>
+
+<div class="modal" id="mathDlg">
+  <div class="pop" role="dialog" aria-label="수식 넣기">
+    <h3>수식 넣기 <span style="font-weight:400; color:var(--muted); font-size:12px">LaTeX 문법 · MathJax로 그림(SVG) 변환</span></h3>
+    <div class="mq" id="mathQuick">
+      <button data-ins="\frac{a}{b}" title="분수">a/b</button>
+      <button data-ins="\sqrt{x}" title="제곱근">√</button>
+      <button data-ins="^{2}" title="위첨자">x²</button>
+      <button data-ins="_{i}" title="아래첨자">xᵢ</button>
+      <button data-ins="\sum_{i=1}^{n} " title="합">Σ</button>
+      <button data-ins="\int_{a}^{b} " title="적분">∫</button>
+      <button data-ins="\theta ">θ</button>
+      <button data-ins="\phi ">φ</button>
+      <button data-ins="\omega ">ω</button>
+      <button data-ins="\Omega ">Ω</button>
+      <button data-ins="\pi ">π</button>
+      <button data-ins="\Delta ">Δ</button>
+      <button data-ins="\mu ">μ</button>
+      <button data-ins="\times ">×</button>
+      <button data-ins="\pm ">±</button>
+      <button data-ins="\le ">≤</button>
+      <button data-ins="\ge ">≥</button>
+      <button data-ins="\approx ">≈</button>
+      <button data-ins="\rightarrow ">→</button>
+      <button data-ins="\angle ">∠</button>
+      <button data-ins="\vec{V}" title="벡터">벡터</button>
+      <button data-ins="\mathrm{[kV]}" title="단위(정체)">[kV]</button>
+      <button data-ins="\begin{bmatrix} a & b \\ c & d \end{bmatrix}" title="행렬">[행렬]</button>
+    </div>
+    <div class="mq fmt" id="mathFmt" title="글자를 선택한 뒤 누르면 선택한 부분만 감쌉니다">
+      <span class="lbl">서식</span>
+      <button data-tpl="\displaystyle #" title="\displaystyle — 분수·Σ 등을 큰(디스플레이) 크기로">\displaystyle</button>
+      <select data-sel="size" title="글자 크기">
+        <option value="">크기…</option>
+        <option value="tiny">\tiny</option><option value="scriptsize">\scriptsize</option><option value="small">\small</option>
+        <option value="normalsize">\normalsize</option><option value="large">\large</option><option value="Large">\Large</option>
+        <option value="LARGE">\LARGE</option><option value="huge">\huge</option>
+      </select>
+      <select data-sel="color" title="글자 색 (\color)">
+        <option value="">색…</option>
+        <option value="red" style="color:#d00">빨강 red</option><option value="blue" style="color:#00c">파랑 blue</option>
+        <option value="green" style="color:#080">초록 green</option><option value="orange" style="color:#d80">주황 orange</option>
+        <option value="purple" style="color:#808">보라 purple</option><option value="gray" style="color:#777">회색 gray</option>
+      </select>
+      <button data-tpl="\text{#}" title="\text{ } — 일반 글자(한글 가능)">\text{ }</button>
+      <button data-tpl="\mathrm{#}" title="\mathrm{ } — 정체(단위·기호)">\mathrm</button>
+      <button data-tpl="\boldsymbol{#}" title="\boldsymbol{ } — 굵게">굵게</button>
+      <button data-tpl="\overline{#}" title="\overline{ } — 윗줄">윗줄</button>
+      <button data-tpl="\cancel{#}" title="\cancel{ } — 약분 취소선">취소선</button>
+      <button data-tpl="\left( # \right)" title="\left( \right) — 내용 크기에 맞는 괄호">( 자동 )</button>
+      <button data-tpl="\begin{aligned} # &= \\  &= \end{aligned}" title="여러 줄 수식 (= 위치 맞춤, \\ 로 줄바꿈)">여러 줄</button>
+      <button data-tpl="# \quad " title="\quad — 넓은 간격">간격</button>
+    </div>
+    <div class="mhelp">예) <code>{\color{red} 30.8}</code> · <code>{\small \text{단, } L: \text{길이[m]}}</code> · <code>\displaystyle \sum_{i=1}^{n} P_i</code> — 글자를 선택하고 서식을 누르면 감싸집니다.</div>
+    <textarea id="mathTex" spellcheck="false" placeholder="예: P = \sqrt{3}\, V I \cos\theta \; \mathrm{[W]}"></textarea>
+    <div class="mprev" id="mathPrev">미리보기</div>
+    <div class="fr" style="justify-content:space-between">
+      <label class="chk"><input type="checkbox" id="mathDisp">가운데 별도 줄로 (디스플레이 수식)</label>
+      <span class="lb" style="min-width:0">Ctrl+Enter = 넣기</span>
+    </div>
+    <div class="btns"><button id="mathCancel">취소</button><button id="mathOk" class="primary">넣기</button></div>
+  </div>
+</div>
+
+<div class="status">
+  <span id="cnt">글자 0</span>
+  <span id="pgInfo"></span>
+  <span id="toast"></span>
+  <span class="spacer"></span>
+  <span>Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener">zzizik</a>, with Claude AI.</span>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const frame = $('frame'), cssEd = $('cssEd'), srcView = $('srcView');
+
+  /* ================= 스타일 프리셋 ================= */
+  const COMMON = `
+/* ── 편집기 기능용 클래스 ── */
+.al-left { text-align: left; }
+.al-center { text-align: center; }
+.al-right { text-align: right; }
+.al-justify { text-align: justify; }
+.ind-1 { margin-left: 2em; }
+.ind-2 { margin-left: 4em; }
+.ind-3 { margin-left: 6em; }
+.red { color: #cf222e; }
+.blue { color: #0969da; }
+mark { background: #fff3a3; }
+small { font-size: 85%; }
+img { max-width: 100%; height: auto; }
+table.tbl { border-collapse: collapse; width: 100%; margin: 10px 0; }
+table.tbl th, table.tbl td { border: 1px solid #999; padding: 6px 8px; vertical-align: top; }
+table.tbl th { font-weight: 700; }
+
+@media print {
+  body { margin: 0; max-width: none; }
+}`;
+  const PRESETS = {
+    basic: `/* 문서 기본 스타일 */
+body {
+  font-family: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+  font-size: 11pt;
+  line-height: 1.75;
+  color: #222;
+  max-width: 820px;
+  margin: 40px auto;
+  padding: 0 24px;
+}
+h1 { font-size: 20pt; line-height: 1.3; margin: 0 0 18px; padding-bottom: 8px; border-bottom: 2px solid #222; }
+h2 { font-size: 15pt; line-height: 1.35; margin: 28px 0 10px; }
+h3 { font-size: 12.5pt; margin: 20px 0 8px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 10px; padding-left: 26px; }
+blockquote { margin: 12px 0; padding: 4px 14px; border-left: 4px solid #bbb; color: #555; }
+pre { font-family: Consolas, monospace; font-size: 10pt; padding: 10px 12px; border: 1px solid #ddd; white-space: pre-wrap; }
+a { color: #0969da; }
+hr { border: 0; border-top: 1px solid #ccc; margin: 22px 0; }
+` + COMMON,
+    myeongjo: `/* 명조 보고서 스타일 */
+body {
+  font-family: "Batang", "바탕", "Nanum Myeongjo", serif;
+  font-size: 11.5pt;
+  line-height: 1.8;
+  color: #111;
+  max-width: 760px;
+  margin: 50px auto;
+  padding: 0 24px;
+}
+h1 { font-size: 20pt; text-align: center; margin: 0 0 30px; letter-spacing: 2px; }
+h2 { font-size: 14pt; margin: 30px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #444; }
+h3 { font-size: 12pt; margin: 20px 0 8px; }
+p { margin: 0 0 10px; text-align: justify; }
+ul, ol { margin: 0 0 10px; padding-left: 28px; }
+blockquote { margin: 14px 24px; color: #444; font-style: italic; }
+pre { font-family: Consolas, monospace; font-size: 10pt; padding: 10px 12px; border: 1px solid #ccc; white-space: pre-wrap; }
+a { color: #1a4fa0; }
+hr { border: 0; border-top: 1px solid #888; margin: 24px 0; }
+` + COMMON,
+    simple: `/* 간결 스타일 */
+body {
+  font-family: system-ui, "Malgun Gothic", sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #333;
+  max-width: 720px;
+  margin: 48px auto;
+  padding: 0 20px;
+}
+h1 { font-size: 28px; line-height: 1.25; margin: 0 0 20px; }
+h2 { font-size: 21px; margin: 32px 0 10px; }
+h3 { font-size: 17px; margin: 22px 0 8px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 24px; }
+blockquote { margin: 16px 0; padding-left: 14px; border-left: 3px solid #ddd; color: #666; }
+pre { font-family: Consolas, monospace; font-size: 14px; padding: 12px; border: 1px solid #eee; white-space: pre-wrap; }
+a { color: #0969da; }
+hr { border: 0; border-top: 1px solid #eee; margin: 28px 0; }
+` + COMMON
+  };
+
+  const WELCOME = `<h1>HTML 문서 편집기 사용법 <small>(베타)</small></h1>
+<p>AI가 만들어 준 HTML 보고서나 직접 쓴 문서를 <strong>워드처럼 바로 고치고</strong>, <strong>용지에 맞춰 잘림 없이 인쇄</strong>하는 도구입니다. 저장은 HTML 파일 하나로 되고, 스타일은 문서 머리의 &lt;style&gt; 한 곳에 모입니다.</p>
+<h2>이렇게 쓰세요</h2>
+<ol><li><strong>열기</strong>로 HTML 파일을 엽니다. (파일을 화면에 끌어다 놓아도 됩니다)</li><li>글자를 바로 고칩니다. 도구막대로 제목·굵게·<mark>형광펜</mark>·<span class="red">글자색</span>·정렬·목록·표·그림·수식을 넣습니다.</li><li><strong>페이지 설정</strong>에서 용지·여백을 맞춥니다. 용지 폭을 넘는 부분은 빨간 상자로 보이고, <strong>폭 맞춤</strong>을 누르면 인쇄 배율이 자동으로 맞춰집니다.</li><li><strong>저장</strong>(Ctrl+S) 후 <strong>인쇄</strong>합니다. 인쇄 대화상자의 여백은 '기본'으로 두세요.</li></ol>
+<h2>단축키</h2>
+<table class="tbl"><thead><tr><th>키</th><th>기능</th></tr></thead><tbody><tr><td>Ctrl+S / Ctrl+O / Ctrl+P</td><td>저장 / 열기 / 인쇄</td></tr><tr><td>Ctrl+1, 2, 3 / Ctrl+0</td><td>제목 1~3 / 본문</td></tr><tr><td>Ctrl+Enter</td><td>쪽 나누기</td></tr><tr><td>Ctrl+K</td><td>링크</td></tr><tr><td>Tab / Shift+Tab</td><td>목록 들여쓰기 · 표 셀 이동</td></tr><tr><td>표 경계선 끌기</td><td>열 폭 조정</td></tr><tr><td>수식 더블클릭</td><td>수식 수정</td></tr></tbody></table>
+<p class="al-right"><small>이 안내문은 지우고 바로 쓰시면 됩니다.</small></p>`;
+
+  /* ================= 저장소 ================= */
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem('wp.' + k); return v === null ? d : v; } catch(e){ return d; } },
+    set(k, v){ try { localStorage.setItem('wp.' + k, v); } catch(e){} }
+  };
+
+  /* ================= 상태 ================= */
+  let doc, body, docCss;
+  let htmlHandle = null, cssHandle = null;   // 열었던/저장한 파일 핸들 (덮어쓰기용)
+  let linkedCss = '';                        // 문서가 연결하고 있는 CSS 파일 이름
+  let dirty = false;
+
+  const FRAME = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'
+    + '<style>html{background:#fff}body{outline:none}@media screen{body{min-height:70vh}}td:empty::after,th:empty::after{content:"\\00a0"}img{cursor:default}'
+    + '#__pg{position:absolute;left:0;top:0;width:100%;height:0;pointer-events:none;z-index:2147483647}'
+    + '.__pl{position:absolute;left:0;right:0;border-top:1.5px dashed #e5534b}'
+    + '.__pl span{position:absolute;right:4px;top:-17px;font:11px/1.4 sans-serif;color:#e5534b;background:#fff;padding:0 3px}'
+    + '.__ob{position:absolute;outline:2px solid rgba(229,83,75,.85);outline-offset:-1px}'
+    + 'html.__pv{scrollbar-width:none}html.__pv::-webkit-scrollbar{display:none}'
+    + '@media screen{.page-break{display:block!important;height:0!important;border:0!important;border-top:2px dashed #8c959f!important;margin:22px 0!important;position:relative;cursor:default}'
+    + '.page-break::after{content:"쪽 나누기";position:absolute;right:0;top:-9px;font:11px/1.4 sans-serif;color:#8c959f;background:#fff;padding:0 4px}'
+    + '.math,.math-block{cursor:pointer}.math:hover,.math-block:hover{outline:1px dashed #0969da;outline-offset:2px}}'
+    + 'html.__colrs,html.__colrs *{cursor:col-resize!important}'
+    + '@media print{#__pg{display:none}}</style>'
+    + '<style id="doc-css"></style></head><body contenteditable="true" spellcheck="false"></body></html>';
+
+  /* ================= 공통 도구 ================= */
+  const escH = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const escA = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  let toastTimer = 0;
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.style.opacity = 1;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 3000);
+  }
+  function unwrap(el){ const p = el.parentNode; while (el.firstChild) p.insertBefore(el.firstChild, el); p.removeChild(el); }
+  function rename(el, tag){
+    const n = el.ownerDocument.createElement(tag);
+    for (const a of el.attributes) n.setAttribute(a.name, a.value);
+    while (el.firstChild) n.appendChild(el.firstChild);
+    el.replaceWith(n); return n;
+  }
+  const baseName = n => n.replace(/\.[^.]+$/, '');
+  const cssNameFor = htmlName => linkedCss || (baseName(htmlName) + '.css');
+  const mode = () => $('cSep').checked ? 'sep' : 'embed';
+  function setMode(m){ $('cSep').checked = m === 'sep'; store.set('mode', m); updCssLabel(); }
+
+  /* ================= 편집 명령 ================= */
+  function focusDoc(){ frame.contentWindow.focus(); }
+  function exec(cmd, val){ focusDoc(); doc.execCommand(cmd, false, val === undefined ? null : val); changed(); }
+  const sel = () => doc.getSelection();
+  function range(){ const s = sel(); return s && s.rangeCount ? s.getRangeAt(0) : null; }
+  function closestSel(selector){
+    const s = sel(); if (!s || !s.anchorNode) return null;
+    let n = s.anchorNode; if (n.nodeType !== 1) n = n.parentElement;
+    const el = n && n.closest(selector);
+    return el && body.contains(el) && el !== body ? el : null;
+  }
+  const BLOCK_SEL = 'p,h1,h2,h3,h4,h5,h6,li,pre,blockquote,td,th,div';
+  function selectedBlocks(){
+    let r = range(); if (!r) return [];
+    const pick = () => {
+      const all = [...body.querySelectorAll(BLOCK_SEL)].filter(el => r.intersectsNode(el));
+      return all.filter(el => !all.some(o => o !== el && el.contains(o)));
+    };
+    let b = pick();
+    if (!b.length){ exec('formatBlock', '<p>'); r = range(); b = r ? pick() : []; }
+    return b;
+  }
+
+  function setBlock(tag){ exec('formatBlock', '<' + tag + '>'); updateUI(); }
+
+  function align(a){
+    const blocks = selectedBlocks(); if (!blocks.length) return;
+    const all = blocks.every(b => b.classList.contains('al-' + a));
+    blocks.forEach(b => {
+      b.classList.remove('al-left','al-center','al-right','al-justify');
+      b.style.textAlign = '';
+      if (!all && a !== 'left') b.classList.add('al-' + a);
+      if (!b.getAttribute('style')) b.removeAttribute('style');
+      if (!b.classList.length) b.removeAttribute('class');
+    });
+    changed(); updateUI();
+  }
+
+  function indent(dir){
+    if (closestSel('li')){ exec(dir > 0 ? 'indent' : 'outdent'); return; }
+    selectedBlocks().forEach(b => {
+      if (b.matches('td,th')) return;
+      const m = /(?:^|\s)ind-(\d)/.exec(b.className); let lv = m ? +m[1] : 0;
+      lv = Math.min(3, Math.max(0, lv + dir));
+      b.classList.remove('ind-1','ind-2','ind-3');
+      if (lv) b.classList.add('ind-' + lv);
+      if (!b.classList.length) b.removeAttribute('class');
+    });
+    changed();
+  }
+
+  function wrapInline(spec){
+    const [tag, cls] = spec.split('.');
+    focusDoc();
+    const r = range(); if (!r) return;
+    const match = el => el.tagName.toLowerCase() === tag && (!cls || el.classList.contains(cls));
+    // 이미 같은 강조 안에 있으면 해제
+    let n = r.commonAncestorContainer; if (n.nodeType !== 1) n = n.parentElement;
+    while (n && n !== body){ if (match(n)){ unwrap(n); changed(); return; } n = n.parentElement; }
+    if (r.collapsed){ toast('강조할 글자를 먼저 선택하세요'); return; }
+    const box = doc.createElement('div'); box.appendChild(r.cloneContents());
+    if (box.querySelector(BLOCK_SEL + ',ul,ol,table')){ toast('강조는 한 문단 안에서 선택해 주세요'); return; }
+    // insertHTML은 크롬이 인라인 style로 바꿔버리므로 DOM으로 직접 감쌈
+    const el = doc.createElement(tag); if (cls) el.className = cls;
+    el.appendChild(r.extractContents());
+    r.insertNode(el);
+    const r2 = doc.createRange(); r2.selectNodeContents(el);
+    sel().removeAllRanges(); sel().addRange(r2);
+    changed();
+  }
+  // 크롬이 붙여넣기·병합 때 끼워넣는 style 속성 span/font 정리
+  function tidy(root){
+    root.querySelectorAll('span[style],font').forEach(s => {
+      if (s.tagName === 'FONT' || s.classList.length === 0 && s.attributes.length === 1) unwrap(s);
+      else s.removeAttribute('style');
+    });
+  }
+
+  function clearFormat(){
+    const r = range(); if (!r) return;
+    exec('removeFormat');
+    const r2 = range() || r;
+    [...body.querySelectorAll('mark,span,small,font,sub,sup')].forEach(el => { if (r2.intersectsNode(el)) unwrap(el); });
+    changed();
+  }
+
+  function makeLink(){
+    focusDoc();
+    const cur = closestSel('a');
+    const url = prompt('링크 주소 (비우면 링크 해제)', cur ? cur.getAttribute('href') : 'https://');
+    if (url === null) return;
+    if (!url.trim()){ if (cur){ const s = sel(); s.selectAllChildren(cur); } exec('unlink'); return; }
+    if (cur){ cur.setAttribute('href', url.trim()); changed(); return; }
+    const r = range();
+    if (!r || r.collapsed) exec('insertHTML', `<a href="${escA(url.trim())}">${escH(url.trim())}</a>`);
+    else exec('createLink', url.trim());
+  }
+
+  function readImage(file){
+    return new Promise(res => {
+      const fr = new FileReader();
+      fr.onload = () => {
+        const url = fr.result;
+        if (file.size < 400 * 1024 || /gif|svg/.test(file.type)) return res(url);
+        const img = new Image();
+        img.onload = () => {   // 큰 사진은 긴 변 1600px로 줄여서 넣음
+          const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res(c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', .85));
+        };
+        img.onerror = () => res(url);
+        img.src = url;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  async function insertImages(files){
+    for (const f of files) if (f.type.startsWith('image/')) exec('insertImage', await readImage(f));
+  }
+
+  function insertTable(){
+    focusDoc();
+    const v = prompt('표 크기 (행 x 열)', '3x3'); if (!v) return;
+    const m = /(\d+)\s*[x×*,\s]\s*(\d+)/i.exec(v); if (!m){ toast('예: 3x4'); return; }
+    const rows = Math.min(50, Math.max(1, +m[1])), cols = Math.min(20, Math.max(1, +m[2]));
+    let h = '<table class="tbl" data-new="1"><thead><tr>' + '<th><br></th>'.repeat(cols) + '</tr></thead><tbody>';
+    for (let i = 1; i < rows; i++) h += '<tr>' + '<td><br></td>'.repeat(cols) + '</tr>';
+    exec('insertHTML', h + '</tbody></table><p><br></p>');
+    const t = body.querySelector('table[data-new]');
+    if (t){
+      t.removeAttribute('data-new');
+      const r = doc.createRange(); r.selectNodeContents(t.rows[0].cells[0]); r.collapse(true);
+      sel().removeAllRanges(); sel().addRange(r); updateUI();
+    }
+  }
+
+  function tableOp(op){
+    const cell = closestSel('td,th'); if (!cell) return;
+    const tr = cell.parentElement, table = cell.closest('table'), idx = cell.cellIndex;
+    if (op === 'even'){ const {n} = tableCols(table); setColWidths(table, Array(n).fill(1)); changed(); updateUI(); return; }
+    if (op === 'auto'){ table.querySelectorAll(':scope > colgroup').forEach(c => c.remove()); table.style.width = ''; if (!table.getAttribute('style')) table.removeAttribute('style'); changed(); updateUI(); return; }
+    const hadCg = !!getColgroup(table);
+    const w0 = hadCg ? colPx(table) : null, ci = colIndex(cell);
+    const caret = el => { const r = doc.createRange(); r.selectNodeContents(el); r.collapse(true); const s = sel(); s.removeAllRanges(); s.addRange(r); };
+    if (op === 'row'){
+      const n = doc.createElement('tr');
+      for (let i = 0; i < tr.cells.length; i++){ const c = doc.createElement(tr.parentElement.tagName === 'THEAD' ? 'td' : tr.cells[i].tagName.toLowerCase()); c.innerHTML = '<br>'; n.appendChild(c); }
+      if (tr.parentElement.tagName === 'THEAD'){
+        let tb = table.tBodies[0]; if (!tb){ tb = doc.createElement('tbody'); table.appendChild(tb); }
+        tb.insertBefore(n, tb.firstChild);
+      } else tr.after(n);
+      caret(n.cells[Math.min(idx, n.cells.length - 1)]);
+    } else if (op === 'col'){
+      [...table.rows].forEach(r => {
+        const ref = r.cells[Math.min(idx, r.cells.length - 1)];
+        const c = doc.createElement(ref ? ref.tagName.toLowerCase() : 'td'); c.innerHTML = '<br>';
+        ref ? ref.after(c) : r.appendChild(c);
+      });
+    } else if (op === 'delrow'){
+      if (table.rows.length <= 1){ table.remove(); }
+      else { const next = tr.nextElementSibling || tr.previousElementSibling; tr.remove(); if (next && next.cells[0]) caret(next.cells[Math.min(idx, next.cells.length - 1)]); }
+    } else if (op === 'delcol'){
+      if (tr.cells.length <= 1){ table.remove(); }
+      else [...table.rows].forEach(r => { if (r.cells[idx]) r.cells[idx].remove(); });
+    } else if (op === 'del'){
+      table.remove();
+    }
+    if (hadCg && table.isConnected && (op === 'col' || op === 'delcol')){
+      if (op === 'col'){ const h = w0[ci] / 2; w0.splice(ci, 1, h, h); } else w0.splice(ci, 1);
+      table.querySelectorAll(':scope > colgroup').forEach(c => c.remove());
+      if (w0.length) setColWidths(table, w0);
+    }
+    changed(); updateUI();
+  }
+
+  /* ================= 표 열 폭 조정 ================= */
+  function colIndex(cell){ let i = 0; for (const c of cell.parentElement.cells){ if (c === cell) break; i += c.colSpan || 1; } return i; }
+  function tableCols(table){             // 열 개수와 각 열 경계의 x좌표
+    const rows = [...table.rows]; let n = 0;
+    rows.forEach(r => { let c = 0; for (const cell of r.cells) c += cell.colSpan || 1; n = Math.max(n, c); });
+    const full = rows.find(r => r.cells.length === n);
+    let xs;
+    if (full){ xs = [...full.cells].map(c => c.getBoundingClientRect().left); xs.push(full.cells[n - 1].getBoundingClientRect().right); }
+    else { const t = table.getBoundingClientRect(); xs = []; for (let i = 0; i <= n; i++) xs.push(t.left + t.width * i / n); }
+    return {n, xs};
+  }
+  const colPx = table => { const {xs} = tableCols(table); return xs.slice(1).map((x, i) => x - xs[i]); };
+  function getColgroup(table){ return [...table.children].find(c => c.tagName === 'COLGROUP') || null; }
+  function setColWidths(table, w){
+    const n = w.length;
+    let cg = getColgroup(table);
+    if (!cg || cg.querySelectorAll('col').length !== n || cg.querySelector('col[span]')){
+      table.querySelectorAll(':scope > colgroup').forEach(c => c.remove());
+      cg = doc.createElement('colgroup');
+      for (let i = 0; i < n; i++) cg.appendChild(doc.createElement('col'));
+      const cap = [...table.children].find(c => c.tagName === 'CAPTION');
+      cap ? cap.after(cg) : table.prepend(cg);
+    }
+    const tot = w.reduce((a, b) => a + b, 0) || 1;
+    [...cg.querySelectorAll('col')].forEach((c, i) => { c.removeAttribute('width'); c.style.width = (w[i] / tot * 100).toFixed(2) + '%'; });
+  }
+  const colRs = {hover:null, drag:null};
+  function colHover(e){
+    if (colRs.drag) return colDrag(e);
+    let hit = null;
+    const cell = e.target && e.target.closest && e.target.closest('td,th');
+    if (cell && body.contains(cell) && !srcMode){
+      const table = cell.closest('table'), {n, xs} = tableCols(table);
+      for (let k = 1; k <= n; k++) if (Math.abs(e.clientX - xs[k]) <= 4){ hit = {table, k, n, xs}; break; }
+    }
+    colRs.hover = hit;
+    doc.documentElement.classList.toggle('__colrs', !!hit);
+  }
+  function colStart(e){
+    if (!colRs.hover || e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const {table, k, n, xs} = colRs.hover;
+    const w = xs.slice(1).map((x, i) => x - xs[i]);
+    setColWidths(table, w);
+    colRs.drag = {table, k, n, w, x0: e.clientX, pw: table.parentElement.clientWidth || 1};
+    try { body.setPointerCapture(e.pointerId); } catch(_){}
+  }
+  function colDrag(e){
+    const d = colRs.drag, w = [...d.w], dx = e.clientX - d.x0, MIN = 18;
+    if (d.k < d.n){                        // 안쪽 경계: 옆 열과 주고받기 (표 전체 폭 유지)
+      const sum = w[d.k - 1] + w[d.k];
+      w[d.k - 1] = Math.max(MIN, Math.min(sum - MIN, w[d.k - 1] + dx)); w[d.k] = sum - w[d.k - 1];
+    } else {                               // 맨 오른쪽 경계: 표 전체 폭 조정
+      w[d.n - 1] = Math.max(MIN, w[d.n - 1] + dx);
+      d.table.style.width = Math.min(100, w.reduce((a, b) => a + b, 0) / d.pw * 100).toFixed(1) + '%';
+    }
+    setColWidths(d.table, w);
+    updColInput();
+  }
+  function colEnd(e){
+    if (!colRs.drag) return;
+    try { body.releasePointerCapture(e.pointerId); } catch(_){}
+    colRs.drag = null; changed(); updateUI();
+  }
+  function updColInput(){
+    const cell = closestSel('td,th'); if (!cell || document.activeElement === $('tColW')) return;
+    const table = cell.closest('table'), w = colPx(table), ci = colIndex(cell), tot = w.reduce((a, b) => a + b, 0) || 1;
+    $('tColW').value = w[ci] != null ? Math.round(w[ci] / tot * 100) : '';
+  }
+  function setColPct(){
+    const cell = closestSel('td,th'); if (!cell) return;
+    const table = cell.closest('table'), w = colPx(table), ci = colIndex(cell);
+    const v = Math.min(96, Math.max(2, parseFloat($('tColW').value) || 0)); if (!v || w.length < 2) return;
+    const tot = w.reduce((a, b) => a + b, 0), target = tot * v / 100, rest = tot - w[ci], newRest = tot - target;
+    const nw = w.map((x, i) => i === ci ? target : x * newRest / rest);
+    setColWidths(table, nw); changed(); focusDoc();
+  }
+
+  /* ================= 붙여넣기 정리 ================= */
+  const ALLOWED = {
+    P:[],BR:[],H1:[],H2:[],H3:[],H4:[],H5:[],H6:[],UL:[],OL:[],LI:[],BLOCKQUOTE:[],PRE:[],CODE:[],
+    STRONG:[],B:[],EM:[],I:[],U:[],S:[],STRIKE:[],DEL:[],SUB:[],SUP:[],MARK:[],SMALL:[],
+    A:['href'],IMG:['src','alt','width','height'],
+    TABLE:[],THEAD:[],TBODY:[],TFOOT:[],TR:[],TD:['colspan','rowspan'],TH:['colspan','rowspan'],CAPTION:[],HR:[]
+  };
+  const DROP = /^(SCRIPT|STYLE|META|LINK|TITLE|HEAD|NOSCRIPT|IFRAME|OBJECT|EMBED|SVG|BUTTON|INPUT|SELECT|TEXTAREA|FORM|TEMPLATE)$/;
+  function sanitize(html){
+    const d = new DOMParser().parseFromString(html, 'text/html');
+    (function walk(node){
+      for (const c of [...node.childNodes]){
+        if (c.nodeType === 8){ c.remove(); continue; }
+        if (c.nodeType !== 1) continue;
+        const tag = c.tagName.toUpperCase();
+        if (DROP.test(tag)){ c.remove(); continue; }
+        walk(c);
+        if (tag === 'DIV'){
+          if (c.querySelector('p,h1,h2,h3,h4,h5,h6,ul,ol,table,blockquote,pre,div')) unwrap(c);
+          else { const p = rename(c, 'p'); for (const a of [...p.attributes]) p.removeAttribute(a.name); }
+          continue;
+        }
+        if (!ALLOWED[tag]){
+          const st = c.getAttribute('style') || '';
+          let target = c;
+          if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(st)){ const s = d.createElement('strong'); c.before(s); s.appendChild(c); }
+          if (/font-style\s*:\s*italic/i.test(st)){ const s = d.createElement('em'); c.before(s); s.appendChild(c); }
+          unwrap(target);
+          continue;
+        }
+        for (const a of [...c.attributes]) if (!ALLOWED[tag].includes(a.name.toLowerCase())) c.removeAttribute(a.name);
+        if (tag === 'A' && /^\s*javascript:/i.test(c.getAttribute('href') || '')) c.removeAttribute('href');
+        if (tag === 'IMG' && !/^(data:image|https?:)/i.test(c.getAttribute('src') || '')) { c.remove(); continue; }
+        if (tag === 'TABLE') c.className = 'tbl';
+      }
+    })(d.body);
+    return d.body.innerHTML;
+  }
+  // 파일로 연 문서는 서식은 그대로 두고, 스크립트·이벤트만 제거
+  function stripActive(root){
+    let n = 0;
+    root.querySelectorAll('script,style,link,meta,title,noscript,iframe,object,embed').forEach(e => { if (e.tagName === 'SCRIPT') n++; e.remove(); });
+    root.querySelectorAll('*').forEach(el => { for (const a of [...el.attributes]) if (/^on/i.test(a.name)){ el.removeAttribute(a.name); n++; } });
+    return n;
+  }
+
+  /* ================= 저장용 HTML 만들기 ================= */
+  const BLOCKS = /^(P|H[1-6]|UL|OL|LI|TABLE|THEAD|TBODY|TFOOT|TR|TD|TH|BLOCKQUOTE|PRE|HR|DIV|SECTION|ARTICLE|FIGURE|FIGCAPTION|CAPTION|HEADER|FOOTER|NAV|MAIN|ASIDE|DL|DT|DD)$/;
+  function cleanBody(){
+    const c = body.cloneNode(true);
+    c.querySelectorAll('[style]').forEach(el => {
+      const ta = el.style.textAlign;
+      if (ta){ el.style.textAlign = ''; el.classList.add('al-' + (ta === 'start' ? 'left' : ta === 'end' ? 'right' : ta)); }
+      if (el.tagName === 'SPAN') el.removeAttribute('style');            // 크롬이 붙이는 임시 서식 제거
+      if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
+    });
+    c.querySelectorAll('font').forEach(unwrap);
+    c.querySelectorAll('span').forEach(s => { if (!s.attributes.length) unwrap(s); });
+    c.querySelectorAll('mark,span,small,strong,b,em,i,u,s,strike,sub,sup').forEach(el => {
+      if (!el.textContent && !el.querySelector('img,br,svg') && !el.matches('.math')) el.remove();      // 빈 서식 태그 제거
+    });
+    c.querySelectorAll('p:empty').forEach(el => el.remove());
+    c.querySelectorAll('.al-left').forEach(e => { e.classList.remove('al-left'); });
+    c.querySelectorAll('[class]').forEach(e => { if (!e.className.trim()) e.removeAttribute('class'); });
+    c.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
+    // 입력 중 생긴 &nbsp;(단독 공백)는 일반 공백으로 (pre 제외)
+    const w = doc.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    for (let t; (t = w.nextNode());){
+      if (t.parentElement.closest('pre')) continue;
+      if (t.data.includes(' ')) t.data = t.data.replace(/(^|[^\s ]) (?=[^\s ]|$)/g, '$1 ');
+    }
+    return c;
+  }
+  const attrs = el => [...el.attributes].map(a => ` ${a.name}="${escA(a.value)}"`).join('');
+  const hasBlockChild = el => [...el.children].some(k => BLOCKS.test(k.tagName));
+  function ser(parent, d){
+    const ind = '  '.repeat(d); let out = '', buf = '';
+    const flush = () => { if (buf.trim()) out += ind + buf.trim() + '\n'; buf = ''; };
+    for (const n of parent.childNodes){
+      if (n.nodeType === 1 && BLOCKS.test(n.tagName)){
+        flush();
+        const tag = n.tagName.toLowerCase();
+        if (tag !== 'pre' && hasBlockChild(n)) out += `${ind}<${tag}${attrs(n)}>\n${ser(n, d + 1)}${ind}</${tag}>\n`;
+        else out += ind + n.outerHTML + '\n';
+      } else if (n.nodeType === 3) buf += escH(n.data).replace(/\u00a0/g, '&nbsp;');
+      else if (n.nodeType === 1) buf += n.outerHTML;
+    }
+    flush(); return out;
+  }
+  function docTitle(){
+    const t = $('docTitle').value.trim(); if (t) return t;
+    const h = body.querySelector('h1,h2'); if (h && h.textContent.trim()) return h.textContent.trim();
+    return baseName($('fname').value);
+  }
+  const attrList = l => l.map(([n, v]) => ` ${n}="${escA(v)}"`).join('');
+  function fullCss(){ return cssEd.value.trim() + (pg.save ? '\n\n' + pageCss() : ''); }
+  function buildHTML(sep, cssName){
+    return `<!DOCTYPE html>\n<html${attrList(meta.htmlA) || ' lang="ko"'}>\n<head>\n<meta charset="UTF-8">\n`
+      + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+      + `<title>${escH(docTitle())}</title>\n`
+      + (meta.head ? meta.head + '\n' : '')
+      + (sep ? `<link rel="stylesheet" href="${escA(cssName)}">\n` : `<style>\n${fullCss()}\n</style>\n`)
+      + `</head>\n<body${attrList(meta.bodyA)}>\n` + ser(cleanBody(), 1)
+      + (meta.tail ? meta.tail + '\n' : '') + '</body>\n</html>\n';
+  }
+
+  /* ================= 페이지(용지·여백) 설정 ================= */
+  const PAPERS = {A4:[210,297], A3:[297,420], B4:[257,364], B5:[182,257], Letter:[215.9,279.4], Legal:[215.9,355.6]};
+  const MM = 96 / 25.4;
+  const PG_DEF = {paper:'A4', orient:'portrait', mt:10, mb:10, ml:10, mr:10, scale:100, safe:true, save:true};
+  let pg = {...PG_DEF};
+  try { Object.assign(pg, JSON.parse(store.get('page', '{}'))); } catch(e){}
+  let pageView = false;
+  const fmt = n => String(+(+n).toFixed(2));
+  function paperSize(){ const [w, h] = PAPERS[pg.paper] || PAPERS.A4; return pg.orient === 'landscape' ? [h, w] : [w, h]; }
+  const SAFE = `  html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  pre { white-space: pre-wrap !important; word-break: break-all; }
+  img, svg, canvas, video { max-width: 100% !important; height: auto; }
+  thead { display: table-header-group; }
+  tr, img, figure { break-inside: avoid; }
+  h1, h2, h3, h4 { break-after: avoid; }
+`;
+  function pageCss(){
+    const [w, h] = paperSize();
+    let s = `/* @page-settings:start (문서 편집기 인쇄 설정) */\n@page { size: ${fmt(w)}mm ${fmt(h)}mm; margin: ${fmt(pg.mt)}mm ${fmt(pg.mr)}mm ${fmt(pg.mb)}mm ${fmt(pg.ml)}mm; }\n`;
+    if (pg.safe || pg.scale !== 100){
+      s += '@media print {\n' + (pg.safe ? SAFE : '') + (pg.scale !== 100 ? `  body { zoom: ${pg.scale / 100}; }\n` : '') + '}\n';
+    }
+    return s + '/* @page-settings:end */';
+  }
+  const PG_RE = /\/\* @page-settings:start[\s\S]*?@page-settings:end \*\//;
+  function extractPageCss(css){       // 문서에 저장돼 있던 인쇄 설정을 읽어 화면에 반영하고 CSS 본문에서는 뺌
+    const m = PG_RE.exec(css); if (!m) return css;
+    const t = m[0];
+    const sz = /size:\s*([\d.]+)mm\s+([\d.]+)mm/.exec(t);
+    if (sz){
+      const w = +sz[1], h = +sz[2], land = w > h, a = land ? h : w, b = land ? w : h;
+      const f = Object.entries(PAPERS).find(([, [pw, ph]]) => Math.abs(pw - a) < 1 && Math.abs(ph - b) < 1);
+      if (f) pg.paper = f[0];
+      pg.orient = land ? 'landscape' : 'portrait';
+    }
+    const mg = /margin:\s*([\d.]+)mm\s+([\d.]+)mm\s+([\d.]+)mm\s+([\d.]+)mm/.exec(t);
+    if (mg){ pg.mt = +mg[1]; pg.mr = +mg[2]; pg.mb = +mg[3]; pg.ml = +mg[4]; }
+    const z = /zoom:\s*([\d.]+)/.exec(t); pg.scale = z ? Math.round(+z[1] * 100) : 100;
+    pg.safe = /print-color-adjust/.test(t); pg.save = true;
+    syncPgUI(); savePg();
+    return css.replace(PG_RE, '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  // 편집 화면에서 인쇄 모습을 흉내: print 규칙은 켜고 screen 규칙은 끔
+  function emulatePrint(css){
+    return css.replace(/@media\s+([^{]+)\{/gi, (m, q) => {
+      const ql = q.toLowerCase();
+      if (/\bprint\b/.test(ql) && !/\bnot\s+print\b/.test(ql)) return '@media ' + q.replace(/\bprint\b/gi, 'all') + '{';
+      if (/\bscreen\b/.test(ql)) return '@media not all {';
+      return m;
+    });
+  }
+  function syncPgUI(){
+    $('pPaper').value = pg.paper; $('pOrient').value = pg.orient;
+    $('pMt').value = pg.mt; $('pMb').value = pg.mb; $('pMl').value = pg.ml; $('pMr').value = pg.mr;
+    $('pScale').value = pg.scale; $('pSafe').checked = pg.safe; $('pSave').checked = pg.save;
+    const same = pg.mt === pg.mb && pg.mb === pg.ml && pg.ml === pg.mr;
+    $('pMarPreset').value = same && [...$('pMarPreset').options].some(o => o.value === String(pg.mt)) ? String(pg.mt) : '';
+  }
+  function savePg(){ store.set('page', JSON.stringify(pg)); }
+  function readPgUI(){
+    const num = (id, d, lo, hi) => { const v = parseFloat($(id).value); return isNaN(v) ? d : Math.min(hi, Math.max(lo, v)); };
+    pg.paper = $('pPaper').value; pg.orient = $('pOrient').value;
+    pg.mt = num('pMt', 10, 0, 60); pg.mb = num('pMb', 10, 0, 60); pg.ml = num('pMl', 10, 0, 60); pg.mr = num('pMr', 10, 0, 60);
+    pg.scale = Math.round(num('pScale', 100, 30, 100));
+    pg.safe = $('pSafe').checked; pg.save = $('pSave').checked;
+    savePg(); layoutPaper(); applyCss(); changed();
+  }
+  function layoutPaper(){
+    const ed = $('editor'), [w] = paperSize();
+    ed.style.setProperty('--pw', (w * MM).toFixed(1) + 'px');
+    ed.style.setProperty('--pl', (pg.ml * MM).toFixed(1) + 'px');
+    ed.style.setProperty('--pr', (pg.mr * MM).toFixed(1) + 'px');
+  }
+  function togglePage(on){
+    pageView = on === undefined ? !pageView : on;
+    $('editor').classList.toggle('pv', pageView);
+    $('pView').checked = pageView;
+    if (doc) doc.documentElement.classList.toggle('__pv', pageView);
+    store.set('pv', pageView ? '1' : '0');
+    layoutPaper(); applyCss(); schedulePageCheck();
+  }
+  let pcTimer = 0;
+  function schedulePageCheck(){ clearTimeout(pcTimer); pcTimer = setTimeout(pageCheck, 250); }
+  function pageCheck(){
+    if (!doc) return;
+    let ov = doc.getElementById('__pg');
+    if (!pageView){ if (ov) ov.remove(); $('pgInfo').textContent = $('pgInfoPop').textContent = ''; return; }
+    if (!ov){ ov = doc.createElement('div'); ov.id = '__pg'; doc.documentElement.appendChild(ov); }
+    const [, h] = paperSize(), H = (h - pg.mt - pg.mb) * MM;
+    const win = frame.contentWindow, W = doc.documentElement.clientWidth, sx = win.scrollX, sy = win.scrollY;
+    // 용지 폭을 넘는 요소 (가장 바깥 것만)
+    const offs = [];
+    for (const el of body.querySelectorAll('*')){
+      const r = el.getBoundingClientRect();
+      if (r.width && r.right + sx > W + 1) offs.push(el);
+    }
+    const outer = offs.filter(el => !offs.some(o => o !== el && o.contains(el)));
+    let html = '';
+    outer.slice(0, 50).forEach(el => {
+      const r = el.getBoundingClientRect();
+      html += `<div class="__ob" style="left:${(r.left + sx).toFixed(1)}px;top:${(r.top + sy).toFixed(1)}px;width:${r.width.toFixed(1)}px;height:${r.height.toFixed(1)}px"></div>`;
+    });
+    // 쪽 경계선 (강제 쪽 나누기 반영)
+    const total = doc.documentElement.scrollHeight;
+    const breaks = [...body.querySelectorAll('.page-break')].map(el => el.getBoundingClientRect().bottom + sy).sort((a, b) => a - b);
+    let start = 0, k = 1;
+    for (const bp of [...breaks, Infinity]){
+      const end = Math.min(bp, total);
+      while (start + H < end - 2){ start += H; html += `<div class="__pl" style="top:${start.toFixed(1)}px"><span>${k}쪽 끝 · ${k + 1}쪽</span></div>`; k++; }
+      if (bp >= total) break;
+      start = bp; k++;
+    }
+    const n = k;
+    ov.innerHTML = html;
+    const cw = Math.max(doc.documentElement.scrollWidth, body.scrollWidth);
+    $('pgInfo').innerHTML = $('pgInfoPop').innerHTML = `약 ${n}쪽 · ` + (outer.length
+      ? `<b>용지 폭 넘침 ${outer.length}곳</b> (내용 ${Math.round(cw)}px / 인쇄폭 ${Math.round(W)}px) → [폭 맞춤]으로 줄이거나 해당 부분 폭을 고치세요`
+      : '용지 폭 안에 들어옴') + (breaks.length ? ` · 쪽 나누기 ${breaks.length}개` : '');
+  }
+  function fitWidth(){
+    if (!pageView) togglePage(true);
+    pg.scale = 100; syncPgUI(); applyCss();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const W = doc.documentElement.clientWidth;
+      const cw = Math.max(doc.documentElement.scrollWidth, body.scrollWidth);
+      pg.scale = cw > W + 1 ? Math.max(30, Math.floor(W / cw * 100)) : 100;
+      syncPgUI(); savePg(); applyCss(); changed();
+      toast(pg.scale < 100 ? `인쇄 배율 ${pg.scale}%로 맞췄습니다` : '이미 용지 폭 안에 들어옵니다 (100%)');
+    }));
+  }
+
+  /* ================= 페이지 설정 팝업 ================= */
+  function showPagePop(on){
+    const pop = $('pagePop'), v = on === undefined ? !pop.classList.contains('show') : on;
+    if (v){
+      syncPgUI(); $('pView').checked = pageView;
+      const r = $('bPage').getBoundingClientRect();
+      pop.classList.add('show');
+      pop.style.top = (r.bottom + 6) + 'px';
+      pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + 'px';
+      schedulePageCheck();
+    } else pop.classList.remove('show');
+    $('bPage').classList.toggle('on', v);
+  }
+  document.addEventListener('mousedown', e => {
+    if ($('pagePop').classList.contains('show') && !e.target.closest('#pagePop,#bPage')) showPagePop(false);
+  });
+
+  /* ================= 강제 쪽 나누기 ================= */
+  // 커서가 있는 "실제 문단" 찾기 — 본문이 <div class="wrap"> 같은 상자에 싸여 있어도 그 안의 문단을 기준으로
+  const FLOW = /^(P|H[1-6]|UL|OL|DL|TABLE|BLOCKQUOTE|PRE|FIGURE|HR|IMG)$/;
+  const BOXES = /^(DIV|SECTION|ARTICLE|MAIN|HEADER|FOOTER|ASIDE|NAV)$/;
+  const hasFlowChild = el => [...el.children].some(c => FLOW.test(c.tagName) || BOXES.test(c.tagName));
+  function outermost(el, selector){
+    let o = el, up;
+    while (o.parentElement && (up = o.parentElement.closest(selector)) && body.contains(up) && up !== body) o = up;
+    return o;
+  }
+  function flowBlock(){
+    const r = range(); if (!r) return null;
+    let n = r.startContainer;
+    if (!body.contains(n) && n !== body) return null;
+    if (n.nodeType === 1 && n.childNodes.length && (n === body || BOXES.test(n.tagName))){
+      n = n.childNodes[Math.min(r.startOffset, n.childNodes.length - 1)];     // 상자 자체에 커서가 있으면 그 위치의 자식
+    }
+    let el = n.nodeType === 1 ? n : n.parentElement;
+    if (!el || el === body) return n && n !== body && n.parentNode ? n : null;
+    const tbl = el.closest('table'); if (tbl && body.contains(tbl)) el = outermost(tbl, 'table');
+    else { const lst = el.closest('ul,ol'); if (lst && body.contains(lst)) el = outermost(lst, 'ul,ol'); }
+    let found = null;
+    for (let e = el; e && e !== body; e = e.parentElement){
+      if (FLOW.test(e.tagName) || e.matches('.page-break,.math-block')){ found = e; break; }
+      if (BOXES.test(e.tagName) && !hasFlowChild(e)){ found = e; break; }  // 문단 없이 글이 바로 든 상자
+    }
+    if (!found) found = el !== body ? el : null;
+    // grid/flex 배치(카드 등) 안이면 그 배치 상자 바깥 기준으로 (안에 넣으면 쪽이 안 나뉨)
+    while (found && found.parentElement && found.parentElement !== body){
+      const d = frame.contentWindow.getComputedStyle(found.parentElement).display;
+      if (/flex|grid|table/.test(d)) found = found.parentElement; else break;
+    }
+    return found;
+  }
+  function caretTo(el, atEnd){
+    const r = doc.createRange(); r.selectNodeContents(el); r.collapse(!atEnd);
+    sel().removeAllRanges(); sel().addRange(r);
+  }
+  function insertBlockAtCaret(node){         // 현재 문단 뒤(문단 맨 앞이면 앞)에 블록 삽입
+    focusDoc();
+    const blk = flowBlock(), r = range();
+    let before = false;
+    if (blk && r){
+      const pre = doc.createRange(); pre.selectNodeContents(blk); pre.setEnd(r.startContainer, r.startOffset);
+      before = pre.toString().trim() === '' && blk.textContent.trim() !== '';
+    }
+    if (!blk){
+      if (r && body.contains(r.startContainer)){ r.collapse(true); r.insertNode(node); }   // 위치를 못 찾으면 커서 자리에
+      else body.appendChild(node);
+    }
+    else if (before) blk.before(node);
+    else blk.after(node);
+    let next = node.nextElementSibling;
+    if (!next){ next = doc.createElement('p'); next.innerHTML = '<br>'; node.after(next); }
+    caretTo(next, false);
+    changed(); updateUI();
+  }
+  function insertPageBreak(){
+    const d = doc.createElement('div'); d.className = 'page-break'; d.contentEditable = 'false';
+    insertBlockAtCaret(d); toast('쪽 나누기를 넣었습니다 (지우려면 점선 아래에서 Backspace)');
+  }
+  function lockAtoms(){ body.querySelectorAll('.page-break,.math,.math-block').forEach(e => e.contentEditable = 'false'); }
+
+  /* ================= 수식 (MathJax → SVG) ================= */
+  let mjReady = null, mathTarget = null, mathRange = null, mathTimer = 0;
+  function loadMathJax(){
+    if (mjReady) return mjReady;
+    mjReady = new Promise((res, rej) => {
+      window.MathJax = {
+        loader: {load: ['[tex]/ams', '[tex]/color', '[tex]/cancel', '[tex]/boldsymbol']},
+        tex: {packages: {'[+]': ['ams', 'color', 'cancel', 'boldsymbol']}},
+        svg: {fontCache: 'none'},
+        options: {enableMenu: false},
+        startup: {typeset: false, ready(){ MathJax.startup.defaultReady(); MathJax.startup.promise.then(res, rej); }}
+      };
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
+      sc.async = true;
+      sc.onerror = () => { mjReady = null; rej(new Error('MathJax 로드 실패')); };
+      document.head.appendChild(sc);
+    });
+    return mjReady;
+  }
+  function texToSvg(tex, display){
+    const node = MathJax.tex2svg(tex, {display});
+    const err = node.querySelector('[data-mjx-error]');
+    if (err) throw new Error(err.getAttribute('data-mjx-error'));
+    const svg = node.querySelector('svg');
+    svg.removeAttribute('focusable');
+    svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', tex);
+    return svg;
+  }
+  function renderPreview(){
+    const box = $('mathPrev'), tex = $('mathTex').value.trim();
+    box.classList.remove('err');
+    if (!tex){ box.textContent = '미리보기'; return; }
+    if (!window.MathJax || !MathJax.tex2svg){ box.textContent = 'MathJax 불러오는 중…'; return; }
+    try { box.innerHTML = ''; box.appendChild(texToSvg(tex, $('mathDisp').checked)); }
+    catch(e){ box.classList.add('err'); box.textContent = '수식 오류: ' + e.message; }
+  }
+  function openMath(target){
+    const r = range(); mathRange = r ? r.cloneRange() : null;
+    mathTarget = target || null;
+    $('mathTex').value = target ? (target.dataset.tex || '') : '';
+    $('mathDisp').checked = target ? target.classList.contains('math-block') : false;
+    $('mathOk').textContent = target ? '수정' : '넣기';
+    $('mathDlg').classList.add('show');
+    $('mathTex').focus();
+    $('mathPrev').classList.remove('err');
+    if (window.MathJax && MathJax.tex2svg) renderPreview();
+    else {
+      $('mathPrev').textContent = 'MathJax 불러오는 중… (인터넷 연결 필요)';
+      loadMathJax().then(renderPreview).catch(() => {
+        $('mathPrev').classList.add('err');
+        $('mathPrev').textContent = 'MathJax를 불러오지 못했습니다. 인터넷 연결을 확인하세요.';
+      });
+    }
+  }
+  function closeMath(){ $('mathDlg').classList.remove('show'); focusDoc(); }
+  function commitMath(){
+    const tex = $('mathTex').value.trim(), disp = $('mathDisp').checked;
+    if (!tex){ closeMath(); return; }
+    if (!window.MathJax || !MathJax.tex2svg){ toast('MathJax를 아직 불러오지 못했습니다'); return; }
+    let svg;
+    try { svg = texToSvg(tex, disp); } catch(e){ renderPreview(); return; }
+    const el = doc.createElement(disp ? 'div' : 'span');
+    el.className = disp ? 'math-block' : 'math';
+    el.dataset.tex = tex; el.contentEditable = 'false';
+    el.appendChild(doc.importNode(svg, true));
+    $('mathDlg').classList.remove('show');
+    focusDoc();
+    if (mathTarget){ mathTarget.replaceWith(el); }
+    else if (disp){
+      if (mathRange){ sel().removeAllRanges(); sel().addRange(mathRange); }
+      insertBlockAtCaret(el); return;
+    } else {
+      let r = mathRange;
+      if (!r || !body.contains(r.startContainer)){ r = doc.createRange(); r.selectNodeContents(body); r.collapse(false); }
+      r.deleteContents(); r.insertNode(el);
+      const sp = doc.createTextNode('\u00a0'); el.after(sp);
+      const r2 = doc.createRange(); r2.setStartAfter(sp); r2.collapse(true);
+      sel().removeAllRanges(); sel().addRange(r2);
+    }
+    changed(); updateUI();
+  }
+  $('bMath').onclick = () => openMath(null);
+  $('mathCancel').onclick = closeMath;
+  $('mathOk').onclick = commitMath;
+  $('mathDlg').addEventListener('mousedown', e => { if (e.target.id === 'mathDlg') closeMath(); });
+  $('mathTex').addEventListener('input', () => { clearTimeout(mathTimer); mathTimer = setTimeout(renderPreview, 200); });
+  $('mathDisp').onchange = renderPreview;
+  $('mathDlg').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); commitMath(); }
+    else if (e.key === 'Escape'){ e.preventDefault(); closeMath(); }
+  });
+  $('mathQuick').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const ta = $('mathTex'), t = b.dataset.ins;
+    ta.focus(); ta.setRangeText(t, ta.selectionStart, ta.selectionEnd, 'end');
+    const m = /\{([a-zA-Z0-9]+)\}/.exec(t);    // 첫 {} 안을 선택해 바로 고쳐 쓰게
+    if (m){ const at = ta.selectionStart - t.length + m.index + 1; ta.setSelectionRange(at, at + m[1].length); }
+    renderPreview();
+  });
+
+  // 서식 줄: '#' 자리에 선택한 글자를 넣어 감쌈 (선택이 없으면 그 자리에 커서)
+  function wrapTex(tpl){
+    const ta = $('mathTex'), a = ta.selectionStart, b = ta.selectionEnd, selTxt = ta.value.slice(a, b);
+    const k = tpl.indexOf('#'), out = tpl.replace('#', selTxt);
+    ta.focus(); ta.setRangeText(out, a, b, 'end');
+    if (!selTxt && k >= 0) ta.setSelectionRange(a + k, a + k);
+    renderPreview();
+  }
+  $('mathFmt').addEventListener('click', e => { const b = e.target.closest('button[data-tpl]'); if (b) wrapTex(b.dataset.tpl); });
+  $('mathFmt').addEventListener('change', e => {
+    const s = e.target.closest('select'); if (!s || !s.value) return;
+    const v = s.value; s.value = '';
+    wrapTex(s.dataset.sel === 'size' ? `{\\${v} #}` : `{\\color{${v}} #}`);
+  });
+
+  /* ================= 원본 문서의 head·스크립트·속성 보존 ================= */
+  let meta = {head:'', tail:'', htmlA:[], bodyA:[]};
+  let appliedA = {html:[], body:[]};
+  function applyMeta(){
+    if (!doc) return;
+    const root = doc.documentElement;
+    appliedA.html.forEach(n => root.removeAttribute(n));
+    appliedA.body.forEach(n => body.removeAttribute(n));
+    appliedA = {html:[], body:[]};
+    meta.htmlA.forEach(([n, v]) => { if (n !== 'class'){ try { root.setAttribute(n, v); appliedA.html.push(n); } catch(e){} } });
+    meta.bodyA.forEach(([n, v]) => { if (!/^(contenteditable|spellcheck)$/i.test(n)){ try { body.setAttribute(n, v); appliedA.body.push(n); } catch(e){} } });
+    // html class는 편집기용 __pv와 같이 써야 해서 따로 처리
+    root.className = [(meta.htmlA.find(a => a[0] === 'class') || [,''])[1], pageView ? '__pv' : ''].join(' ').trim();
+    doc.querySelectorAll('link[data-ext]').forEach(l => l.remove());
+    const tpl = doc.createElement('template'); tpl.innerHTML = meta.head;
+    tpl.content.querySelectorAll('link[rel~="stylesheet"]').forEach(l => {
+      const c = l.cloneNode(); c.setAttribute('data-ext', ''); doc.head.insertBefore(c, docCss);
+    });
+  }
+
+  /* 편집기 기능 클래스가 쓰였는데 CSS에 정의가 없으면 자동 추가 */
+  const HELPERS = [
+    ['al-center','.al-center { text-align: center; }'], ['al-right','.al-right { text-align: right; }'],
+    ['al-justify','.al-justify { text-align: justify; }'],
+    ['ind-1','.ind-1 { margin-left: 2em; }'], ['ind-2','.ind-2 { margin-left: 4em; }'], ['ind-3','.ind-3 { margin-left: 6em; }'],
+    ['red','.red { color: #cf222e; }'], ['blue','.blue { color: #0969da; }'],
+    ['page-break','.page-break { height: 0; }\n@media print { .page-break { break-after: page; page-break-after: always; } }'],
+    ['math-block','.math-block { text-align: center; margin: 10px 0; }'],
+    ['tbl','table.tbl { border-collapse: collapse; width: 100%; margin: 10px 0; }\ntable.tbl th, table.tbl td { border: 1px solid #999; padding: 6px 8px; vertical-align: top; }']
+  ];
+  function ensureHelpers(){
+    const add = HELPERS.filter(([c]) => body.querySelector('.' + c) && !new RegExp('\\.' + c + '(?![\\w-])').test(cssEd.value)).map(h => h[1]);
+    if (!add.length) return;
+    cssEd.value = cssEd.value.replace(/\s+$/, '') + (cssEd.value.trim() ? '\n\n' : '') + '/* 편집기 기능용 클래스 */\n' + add.join('\n') + '\n';
+    applyCss();
+  }
+
+  /* ================= 변경 감지·화면 갱신 ================= */
+  let saveTimer = 0, cntTimer = 0;
+  function changed(){
+    if (body) ensureHelpers();
+    dirty = true; $('dirty').textContent = '●';
+    clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 800);
+    clearTimeout(cntTimer); cntTimer = setTimeout(count, 300);
+    if (pageView) schedulePageCheck();
+  }
+  function autosave(){
+    store.set('body', body.innerHTML); store.set('css', cssEd.value);
+    store.set('title', $('docTitle').value); store.set('name', $('fname').value); store.set('linked', linkedCss);
+    store.set('meta', JSON.stringify(meta));
+  }
+  function count(){
+    const t = body.innerText || '';
+    const all = t.replace(/\n/g, '').length, ns = t.replace(/\s/g, '').length;
+    $('cnt').textContent = `글자 ${all.toLocaleString()} (공백 제외 ${ns.toLocaleString()})`;
+  }
+  function updateUI(){
+    if (!doc) return;
+    const blk = closestSel('p,h1,h2,h3,blockquote,pre');
+    $('sBlock').value = blk ? blk.tagName.toLowerCase() : (closestSel('li,td,th') ? '' : 'p');
+    ['bold','italic','underline','strikeThrough','insertUnorderedList','insertOrderedList'].forEach(c => {
+      let on = false; try { on = doc.queryCommandState(c); } catch(e){}
+      const b = document.querySelector(`[data-cmd="${c}"]`); if (b) b.classList.toggle('on', on);
+    });
+    const ab = closestSel(BLOCK_SEL);
+    const al = ab ? (['center','right','justify'].find(a => ab.classList.contains('al-' + a)) || 'left') : 'left';
+    document.querySelectorAll('[data-align]').forEach(b => b.classList.toggle('on', b.dataset.align === al));
+    const inCell = !!closestSel('td,th');
+    $('tblTools').classList.toggle('off', !inCell);
+    $('tblTools').querySelectorAll('button,input').forEach(b => b.tabIndex = inCell ? 0 : -1);
+    if (closestSel('td,th')) updColInput();
+  }
+  function applyCss(){
+    if (!docCss) return;
+    const css = cssEd.value + '\n' + ((pg.save || pageView) ? pageCss() : '');
+    docCss.textContent = pageView ? emulatePrint(css) : css;
+    schedulePageCheck();
+  }
+  function updCssLabel(){
+    $('cssNameLbl').textContent = $('cSep').checked ? ' (' + (cssHandle ? cssHandle.name : cssNameFor($('fname').value)) + ')' : '';
+  }
+
+  /* ================= 파일 열기 ================= */
+  function decode(buf){
+    try { return new TextDecoder('utf-8', {fatal:true}).decode(buf); }
+    catch(e){ try { return new TextDecoder('euc-kr').decode(buf); } catch(e2){ return new TextDecoder().decode(buf); } }
+  }
+  const okToDiscard = () => !dirty || confirm('저장하지 않은 변경 내용이 있습니다. 계속할까요?');
+
+  function loadHTML(text, name, hHandle, cssText, cHandle){
+    const d = new DOMParser().parseFromString(text, 'text/html');
+    const styles = [...d.querySelectorAll('style')].map(s => s.textContent.trim()).filter(Boolean).join('\n\n');
+    const isExt = h => /^(https?:)?\/\//i.test(h || '');
+    const links = [...d.querySelectorAll('link[rel~="stylesheet"]')].map(l => l.getAttribute('href')).filter(h => h && !isExt(h));
+    // 저장할 때 되살릴 것들: 외부 글꼴/CSS 링크, head 스크립트, 본문 스크립트, html·body 속성
+    meta = {
+      head: [...d.head.children].filter(el => !(el.tagName === 'STYLE' || el.tagName === 'TITLE'
+              || el.matches('meta[charset],meta[name="viewport"],meta[http-equiv]')
+              || (el.matches('link[rel~="stylesheet"]') && !isExt(el.getAttribute('href'))))).map(el => el.outerHTML).join('\n'),
+      tail: [...d.body.querySelectorAll('script')].map(el => el.outerHTML).join('\n'),
+      htmlA: [...d.documentElement.attributes].map(a => [a.name, a.value]),
+      bodyA: [...d.body.attributes].filter(a => !/^on/i.test(a.name)).map(a => [a.name, a.value])
+    };
+    const nScript = d.querySelectorAll('script').length;
+    const removed = stripActive(d.body);
+    if (srcMode) toggleSrc(false);
+    body.innerHTML = d.body.innerHTML.trim() || '<p><br></p>';
+    $('docTitle').value = d.title || '';
+    $('fname').value = name || '문서.html';
+    htmlHandle = hHandle || null; cssHandle = cHandle || null;
+    linkedCss = links[0] ? links[0].split(/[\\/]/).pop() : '';
+    let msg = `"${$('fname').value}" 열기 완료`;
+    if (cssText != null){ cssEd.value = extractPageCss(cssText); setMode('sep'); if (cHandle) linkedCss = cHandle.name; }
+    else if (styles){ cssEd.value = extractPageCss(styles); setMode(links.length ? 'sep' : 'embed'); }
+    else if (links.length){ cssEd.value = ''; setMode('sep'); msg += ` — 연결된 "${linkedCss}"는 스타일 패널의 [CSS 불러오기]로 열어주세요`; showPanel(true); }
+    else { cssEd.value = ''; setMode('embed'); msg += ' — 스타일이 없는 문서입니다 (스타일 패널에서 프리셋 적용 가능)'; }
+    if (nScript) msg += ` · 스크립트 ${nScript}개는 편집 중엔 실행되지 않고 저장 시 그대로 보존`;
+    else if (removed) msg += ` · 이벤트 속성 ${removed}개 제외`;
+    lockAtoms(); applyMeta(); applyCss(); updCssLabel();
+    dirty = false; $('dirty').textContent = '';
+    autosave(); count(); updateUI();
+    frame.contentWindow.scrollTo(0, 0);
+    toast(msg); schedulePageCheck();
+  }
+
+  async function openFiles(list){   // list: [{file, handle}]
+    const h = list.find(x => /\.html?$/i.test(x.file.name) || x.file.type === 'text/html');
+    const c = list.find(x => /\.css$/i.test(x.file.name));
+    if (h){
+      const text = decode(await h.file.arrayBuffer());
+      const css = c ? decode(await c.file.arrayBuffer()) : null;
+      loadHTML(text, h.file.name, h.handle, css, c && c.handle);
+    } else if (c){
+      cssEd.value = extractPageCss(decode(await c.file.arrayBuffer())); cssHandle = c.handle || null;
+      linkedCss = c.file.name; applyCss(); updCssLabel(); changed();
+      toast(`"${c.file.name}" 스타일을 적용했습니다`);
+    } else toast('HTML 또는 CSS 파일을 선택하세요');
+  }
+  const HTML_T = [{description:'HTML 문서', accept:{'text/html':['.html','.htm']}}];
+  const CSS_T  = [{description:'CSS 스타일', accept:{'text/css':['.css']}}];
+  async function openDialog(){
+    if (!okToDiscard()) return;
+    if (window.showOpenFilePicker){
+      try {
+        const hs = await showOpenFilePicker({multiple:true, types:[{description:'HTML / CSS', accept:{'text/html':['.html','.htm'],'text/css':['.css']}}]});
+        await openFiles(await Promise.all(hs.map(async handle => ({file: await handle.getFile(), handle}))));
+        return;
+      } catch(e){ if (e.name === 'AbortError') return; }
+    }
+    $('fileIn').value = ''; $('fileIn').click();
+  }
+  $('fileIn').onchange = e => openFiles([...e.target.files].map(file => ({file, handle:null})));
+  async function loadCssDialog(){
+    if (window.showOpenFilePicker){
+      try { const [h] = await showOpenFilePicker({types:CSS_T}); await openFiles([{file: await h.getFile(), handle:h}]); return; }
+      catch(e){ if (e.name === 'AbortError') return; }
+    }
+    $('cssIn').value = ''; $('cssIn').click();
+  }
+  $('cssIn').onchange = e => { const f = e.target.files[0]; if (f) openFiles([{file:f, handle:null}]); };
+
+  /* ================= 저장 ================= */
+  function fixName(){
+    let n = $('fname').value.trim() || '문서.html';
+    if (!/\.html?$/i.test(n)) n = baseName(n) + '.html';
+    $('fname').value = n; updCssLabel(); return n;
+  }
+  async function writeTo(h, text){ const w = await h.createWritable(); await w.write(text); await w.close(); }
+  function download(name, text, type){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type: type + ';charset=utf-8'}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  function markSaved(msg){ dirty = false; $('dirty').textContent = ''; autosave(); toast(msg); }
+
+  async function save(as){
+    if (srcMode) toggleSrc(false);
+    const name = fixName(), sep = mode() === 'sep';
+    if (window.showSaveFilePicker){
+      try {
+        let hH = (!as && htmlHandle) || null, cH = (!as && cssHandle) || null;
+        if (!hH) hH = await showSaveFilePicker({suggestedName:name, types:HTML_T});
+        if (sep && !cH) cH = await showSaveFilePicker({suggestedName: cssNameFor(hH.name === name ? name : hH.name), types:CSS_T});
+        const cn = sep ? cH.name : '';
+        if (sep) await writeTo(cH, fullCss() + '\n');
+        await writeTo(hH, buildHTML(sep, cn));
+        htmlHandle = hH; if (sep){ cssHandle = cH; linkedCss = cn; }
+        $('fname').value = hH.name; updCssLabel();
+        markSaved(sep ? `"${hH.name}" + "${cn}" 저장했습니다` : `"${hH.name}" 저장했습니다`);
+        return;
+      } catch(e){
+        if (e.name === 'AbortError') return;
+        console.warn(e);
+      }
+    }
+    const cn = cssNameFor(name);
+    download(name, buildHTML(sep, cn), 'text/html');
+    if (sep) setTimeout(() => download(cn, fullCss() + '\n', 'text/css'), 400);
+    markSaved(sep ? `"${name}" + "${cn}" 다운로드했습니다 (같은 폴더에 두세요)` : `"${name}" 다운로드했습니다`);
+  }
+
+  /* ================= HTML 소스 보기 ================= */
+  let srcMode = false;
+  function toggleSrc(on){
+    srcMode = on === undefined ? !srcMode : on;
+    $('editor').classList.toggle('src', srcMode);
+    $('bSrc').classList.toggle('on', srcMode);
+    document.querySelectorAll('#tb button, #tb select').forEach(b => b.disabled = srcMode);
+    if (srcMode){ srcView.value = ser(cleanBody(), 0); srcView.focus(); }
+    else {
+      const d = new DOMParser().parseFromString('<body>' + srcView.value + '</body>', 'text/html');
+      stripActive(d.body);
+      if (body.innerHTML !== d.body.innerHTML){ body.innerHTML = d.body.innerHTML || '<p><br></p>'; lockAtoms(); changed(); }
+      focusDoc();
+    }
+  }
+
+  /* ================= 인라인 스타일 → CSS로 모으기 ================= */
+  function gatherInline(){
+    let idx = 0; for (const m of cssEd.value.matchAll(/\.st-(\d+)/g)) idx = Math.max(idx, +m[1]);
+    const map = new Map(); let n = 0;
+    body.querySelectorAll('[style]').forEach(el => {
+      const ta = el.style.textAlign;
+      if (ta){ el.style.textAlign = ''; if (!/^(left|start)$/.test(ta)) el.classList.add('al-' + (ta === 'end' ? 'right' : ta)); }
+      const st = el.style.cssText.trim();
+      el.removeAttribute('style'); n++;
+      if (!st) return;
+      let cls = map.get(st); if (!cls){ cls = 'st-' + (++idx); map.set(st, cls); }
+      el.classList.add(cls);
+    });
+    if (!n){ toast('본문에 인라인 스타일이 없습니다'); return; }
+    if (map.size){
+      cssEd.value = (cssEd.value.trim() ? cssEd.value.replace(/\s+$/, '') + '\n\n' : '') + '/* 본문 인라인 스타일에서 모은 스타일 */\n'
+        + [...map].map(([st, c]) => `.${c} { ${st} }`).join('\n') + '\n';
+      applyCss();
+    }
+    changed();
+    toast(`인라인 스타일 ${n}곳 → 클래스 ${map.size}개로 모았습니다`);
+  }
+
+  /* ================= 패널 ================= */
+  function showPanel(on){
+    const p = $('panel'); const v = on === undefined ? !p.classList.contains('show') : on;
+    p.classList.toggle('show', v); $('bPanel').classList.toggle('on', v); store.set('panel', v ? '1' : '0');
+  }
+
+  /* ================= 단축키 ================= */
+  function shortcuts(e){
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === 's'){ e.preventDefault(); save(e.shiftKey); }
+    else if (k === 'o'){ e.preventDefault(); openDialog(); }
+    else if (k === 'p'){ e.preventDefault(); frame.contentWindow.print(); }
+    else if (e.target.ownerDocument === doc || e.currentTarget === doc){
+      if (k === 'k'){ e.preventDefault(); makeLink(); }
+      else if (k === 'enter'){ e.preventDefault(); insertPageBreak(); }
+      else if (/^[0-3]$/.test(k)){ e.preventDefault(); setBlock(k === '0' ? 'p' : 'h' + k); }
+    }
+  }
+  document.addEventListener('keydown', shortcuts);
+
+  /* ================= 이벤트 연결 ================= */
+  const tb = $('tb');
+  tb.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });  // 문서 선택 유지
+  tb.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.cmd) exec(b.dataset.cmd);
+    else if (b.dataset.align) align(b.dataset.align);
+    else if (b.dataset.tbl) tableOp(b.dataset.tbl);
+    updateUI();
+  });
+  $('sBlock').onchange = e => { if (e.target.value) setBlock(e.target.value); };
+  $('sMark').onchange = e => { const v = e.target.value; e.target.value = ''; if (v) wrapInline(v); updateUI(); };
+  $('bIn').onclick = () => indent(1);
+  $('bOut').onclick = () => indent(-1);
+  $('bLink').onclick = makeLink;
+  $('bImg').onclick = () => { $('imgIn').value = ''; $('imgIn').click(); };
+  $('imgIn').onchange = e => insertImages([...e.target.files]);
+  $('bTable').onclick = insertTable;
+  $('bClear').onclick = clearFormat;
+
+  $('bNew').onclick = () => {
+    if (!okToDiscard()) return;
+    if (srcMode) toggleSrc(false);
+    body.innerHTML = '<h1><br></h1><p><br></p>';
+    $('docTitle').value = ''; $('fname').value = '문서.html';
+    htmlHandle = cssHandle = null; linkedCss = '';
+    meta = {head:'', tail:'', htmlA:[], bodyA:[]}; applyMeta();
+    if (!cssEd.value.trim()){ cssEd.value = PRESETS.basic; applyCss(); }
+    setMode('embed');
+    dirty = false; $('dirty').textContent = ''; autosave(); count();
+    focusDoc(); const r = doc.createRange(); r.setStart(body.firstChild, 0); r.collapse(true); sel().removeAllRanges(); sel().addRange(r);
+    updateUI(); toast('새 문서 (현재 스타일 유지)');
+  };
+  $('bOpen').onclick = openDialog;
+  $('bSave').onclick = () => save(false);
+  $('bSaveAs').onclick = () => save(true);
+  $('bPrint').onclick = () => frame.contentWindow.print();
+  $('bSrc').onclick = () => toggleSrc();
+  $('bPage').onclick = () => showPagePop();
+  $('pClose').onclick = () => showPagePop(false);
+  $('pPrint').onclick = () => { showPagePop(false); frame.contentWindow.print(); };
+  $('pView').onchange = e => togglePage(e.target.checked);
+  $('bBreak').onclick = insertPageBreak;
+  $('tColW').addEventListener('change', setColPct);
+  $('tColW').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); setColPct(); } });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('pagePop').classList.contains('show')) showPagePop(false);
+  });
+  ['pPaper','pOrient','pMt','pMb','pMl','pMr','pScale','pSafe','pSave'].forEach(id => $(id).addEventListener('change', readPgUI));
+  ['pMt','pMb','pMl','pMr'].forEach(id => $(id).addEventListener('input', () => { $('pMarPreset').value = ''; }));
+  $('pMarPreset').onchange = e => { const v = e.target.value; if (!v) return; ['pMt','pMb','pMl','pMr'].forEach(id => $(id).value = v); readPgUI(); };
+  $('bFit').onclick = fitWidth;
+  $('bPanel').onclick = () => showPanel();
+  $('bCssLoad').onclick = loadCssDialog;
+  $('bGather').onclick = gatherInline;
+  $('fname').addEventListener('change', () => { fixName(); changed(); });
+  $('fname').addEventListener('keydown', e => { if (e.key === 'Enter'){ fixName(); focusDoc(); } });
+  $('docTitle').addEventListener('input', changed);
+  $('cSep').onchange = () => { store.set('mode', mode()); updCssLabel(); changed(); };
+  cssEd.addEventListener('input', () => { applyCss(); changed(); });
+  cssEd.addEventListener('keydown', e => {
+    if (e.key === 'Tab'){ e.preventDefault(); document.execCommand('insertText', false, '  '); }
+  });
+  $('sPreset').onchange = e => {
+    const v = e.target.value; e.target.value = '';
+    if (!v) return;
+    if (cssEd.value.trim() && !confirm('지금 CSS를 프리셋으로 바꿀까요?')) return;
+    cssEd.value = PRESETS[v]; applyCss(); changed(); toast('프리셋을 적용했습니다');
+  };
+  srcView.addEventListener('input', changed);
+  window.addEventListener('beforeunload', e => { if (dirty && (htmlHandle || cssHandle)){ e.preventDefault(); e.returnValue = ''; } });
+
+  // 파일 끌어다 놓기 (편집기 바깥 영역)
+  const ed = $('editor');
+  ed.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')){ e.preventDefault(); ed.classList.add('drop'); } });
+  ed.addEventListener('dragleave', () => ed.classList.remove('drop'));
+  ed.addEventListener('drop', e => { ed.classList.remove('drop'); handleDrop(e); });
+  function handleDrop(e){
+    const files = [...e.dataTransfer.files]; if (!files.length) return;
+    e.preventDefault();
+    const imgs = files.filter(f => f.type.startsWith('image/'));
+    if (imgs.length){ insertImages(imgs); return; }
+    if (files.some(f => /\.html?$/i.test(f.name)) && !okToDiscard()) return;
+    openFiles(files.map(file => ({file, handle:null})));
+  }
+
+  /* ================= 문서 프레임 준비 ================= */
+  frame.addEventListener('load', () => {
+    doc = frame.contentDocument; body = doc.body; docCss = doc.getElementById('doc-css');
+    try { doc.execCommand('defaultParagraphSeparator', false, 'p'); doc.execCommand('styleWithCSS', false, false); } catch(e){}
+
+    body.addEventListener('input', changed);
+    doc.addEventListener('selectionchange', updateUI);
+    doc.addEventListener('keyup', updateUI);
+    doc.addEventListener('mouseup', updateUI);
+    doc.addEventListener('keydown', shortcuts);
+    doc.addEventListener('keydown', e => {
+      if (e.key !== 'Tab' || e.isComposing) return;
+      e.preventDefault();
+      const cell = closestSel('td,th');
+      if (closestSel('li')) exec(e.shiftKey ? 'outdent' : 'indent');
+      else if (cell){
+        const table = cell.closest('table');
+        let cells = [...table.querySelectorAll('td,th')], i = cells.indexOf(cell) + (e.shiftKey ? -1 : 1);
+        if (i >= cells.length){ tableOp('row'); return; }
+        if (i < 0) return;
+        const r = doc.createRange(); r.selectNodeContents(cells[i]); sel().removeAllRanges(); sel().addRange(r);
+      }
+      else if (!e.shiftKey) exec('insertText', '\u00a0\u00a0\u00a0\u00a0');
+    });
+    doc.addEventListener('paste', async e => {
+      const cd = e.clipboardData; if (!cd) return;
+      const imgs = [...cd.files].filter(f => f.type.startsWith('image/'));
+      const html = cd.getData('text/html');
+      if (imgs.length && !html){ e.preventDefault(); insertImages(imgs); return; }
+      if (html && $('cPaste').checked){ e.preventDefault(); exec('insertHTML', sanitize(html)); tidy(body); }
+    });
+    doc.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
+    doc.addEventListener('drop', handleDrop);
+    doc.addEventListener('pointermove', colHover);
+    doc.addEventListener('pointerdown', colStart, true);
+    doc.addEventListener('mousedown', e => { if (colRs.hover || colRs.drag) e.preventDefault(); }, true);
+    doc.addEventListener('pointerup', colEnd);
+    doc.addEventListener('pointercancel', colEnd);
+    doc.addEventListener('dblclick', e => {
+      const m = e.target.closest && e.target.closest('.math,.math-block');
+      if (m){ e.preventDefault(); openMath(m); }
+    });
+    doc.addEventListener('mousedown', () => { if ($('pagePop').classList.contains('show')) showPagePop(false); });
+    doc.addEventListener('click', e => {   // 링크는 Ctrl+클릭으로 열기
+      const a = e.target.closest('a');
+      if (a && (e.ctrlKey || e.metaKey)){ e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
+      else if (a) e.preventDefault();
+    });
+
+    // 지난 작업 복원
+    const saved = store.get('body', null);
+    cssEd.value = store.get('css', PRESETS.basic);
+    body.innerHTML = saved || WELCOME;
+    lockAtoms();
+    $('docTitle').value = store.get('title', '');
+    $('fname').value = store.get('name', '문서.html');
+    linkedCss = store.get('linked', '');
+    try { meta = Object.assign(meta, JSON.parse(store.get('meta', '{}'))); } catch(e){}
+    setMode(store.get('mode', 'embed'));
+    doc.addEventListener('load', schedulePageCheck, true);      // 그림이 늦게 뜨면 다시 계산
+    frame.contentWindow.addEventListener('resize', schedulePageCheck);
+    syncPgUI(); applyMeta();
+    togglePage(store.get('pv', '1') === '1');
+    applyCss(); updCssLabel(); count(); updateUI();
+    if (saved) toast('지난 작업 내용을 불러왔습니다');
+    focusDoc();
+  });
+  showPanel(store.get('panel', '0') === '1');
+  frame.srcdoc = FRAME;
+})();
+</script>
+</body>
+</html>
