@@ -53,6 +53,12 @@
   .row .val .nm{font-weight:400;color:var(--sub);margin-right:6px}
   .row.er .val{color:var(--err);cursor:default;font-size:13.5px}
   .note{padding:8px 2px 2px;font-size:12.5px;color:var(--ink-soft);font-style:italic}
+  .conv{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+  .cvh{display:flex;align-items:center;gap:8px}
+  .cvh .cvt{flex:1;font-size:12px;font-weight:700;color:var(--ink-soft)}
+  .cvh button{padding:4px 10px;font-size:12.5px}
+  .conv pre{margin:8px 0 0;font-family:var(--mono);font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-all}
+  .cvn{font-size:12px;color:var(--ink-soft);margin-top:4px;min-height:0}
   .hint{font-size:12px;color:var(--ink-soft);margin:6px 2px 0;min-height:16px}
 
   .pad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -105,6 +111,11 @@
       <div class="hint" id="hint"></div>
       <div class="big"><span class="lb">결과</span><span class="v" id="bigv">0</span><button id="copy" title="결과 복사">복사</button></div>
       <div class="rows" id="rows"></div>
+      <div class="conv" id="conv" hidden>
+        <div class="cvh"><span class="cvt" id="cvt"></span><button id="cvCopy" type="button">복사</button><button id="cvApply" type="button">입력창에 적용</button></div>
+        <pre id="cvBody"></pre>
+        <div class="cvn" id="cvNote"></div>
+      </div>
     </div>
     <div>
       <div class="pad" id="pad"></div>
@@ -116,11 +127,13 @@
     <summary>사용법 · 지원하는 함수</summary>
     <h3>엑셀 수식 모드</h3>
     <p>앞의 <code>=</code>는 있어도, 없어도 됩니다. 연산자 <code>+ - * / ^ % &amp;</code> 와 비교 <code>= &lt;&gt; &lt; &gt; &lt;= &gt;=</code>, 인수 구분은 <code>,</code> 또는 <code>;</code>. 엑셀과 같이 <code>-2^2 = 4</code>, <code>10%</code> = 0.1 로 계산합니다.</p>
-    <p>SUM · AVERAGE · MIN · MAX · COUNT · MEDIAN · PRODUCT · SUMSQ · ABS · SQRT · POWER · MOD · EXP · LN · LOG · LOG10 · PI · SIN · COS · TAN · ASIN · ACOS · ATAN · ATAN2 · SINH · COSH · TANH · DEGREES · RADIANS · ROUND · ROUNDUP · ROUNDDOWN · TRUNC · INT · CEILING · FLOOR · MROUND · SIGN · FACT · COMBIN · PERMUT · GCD · LCM · IF · IFERROR · AND · OR · NOT</p>
+    <p>ABS · SQRT · POWER · MOD · EXP · LN · LOG · LOG10 · PI · SIN · COS · TAN · ASIN · ACOS · ATAN · ATAN2 · SINH · COSH · TANH · DEGREES · RADIANS · ROUND · ROUNDUP · ROUNDDOWN · TRUNC · INT · CEILING · FLOOR · MROUND · SIGN · FACT · COMBIN · PERMUT · GCD · LCM · IF · IFERROR · AND · OR · NOT</p>
     <p>예) <code>=SQRT(3)*380*12*COS(RADIANS(30))</code> · <code>=ROUND(100/3,2)</code> · <code>=IF(ans&gt;50,"큼","작음")</code></p>
     <h3>LaTeX 모드</h3>
     <p><code>=\frac{1}{2}</code> · <code>\sqrt{2}</code> · <code>\sqrt[3]{27}</code> · <code>2^{10}</code> · <code>2\pi r</code>(곱셈 기호 생략 가능) · <code>\times</code> <code>\cdot</code> <code>\div</code> · <code>\left( ... \right)</code> · <code>|x|</code> · <code>5!</code> · <code>50\%</code> · <code>30^{\circ}</code>(도 → 라디안) · <code>\sin \cos \tan \arcsin \arccos \arctan \ln \log \log_{2} \exp</code> · 변수 <code>V_{1} = 10</code>, <code>\theta = 30</code></p>
     <p>LaTeX 모드에서는 수학 관례대로 <code>-x^2 = -(x²)</code> 로 계산합니다. 수식 미리보기는 MathJax(인터넷 필요)로 그리며, 인터넷이 없어도 계산은 됩니다.</p>
+    <h3>변환 (엑셀 ⇄ LaTeX)</h3>
+    <p>결과 아래의 변환 칸에 반대쪽 표기가 자동으로 나옵니다. LaTeX → 엑셀은 <code>\cos(60)</code> 을 도(°) 설정이면 <code>COS(RADIANS(60))</code> 로, 라디안이면 <code>COS(60)</code> 으로 바꿉니다. 엑셀에 없는 기능(문자열, IF 등)이나 LaTeX에 없는 함수(ROUND 등)는 변환할 수 없어 주석으로 표시됩니다. 이 계산기는 SUM 같은 목록·범위 함수를 지원하지 않습니다.</p>
     <h3>기타</h3>
     <p><code>#</code> 또는 <code>//</code> 로 시작하는 줄은 메모입니다. 오른쪽 결과 값을 누르면 복사됩니다. 각도 설정이 "도"이면 SIN·COS 등이 도 단위로 동작합니다.</p>
   </details>
@@ -137,7 +150,10 @@ const NUM=v=>({t:'num',v}), BIN=(op,a,b)=>({t:'bin',op,a,b}), CALL=(name,args)=>
 
 /* ---------- 엑셀 수식 파서 ---------- */
 function tokXL(src){
-  const s=src.replace(/×/g,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/，/g,',').replace(/（/g,'(').replace(/）/g,')');
+  // 따옴표 안의 문자열은 그대로 두고, 바깥의 곱셈·나눗셈 기호 변형을 * / 로 바꿉니다.
+  const s=src.split(/("[^"]*")/).map((p,k)=>k%2?p:p
+    .replace(/[×✕✖⨉∙⋅·＊]/g,'*').replace(/[÷➗∕⁄／]/g,'/').replace(/[−–—－➖]/g,'-').replace(/[＋➕]/g,'+')
+    .replace(/＝/g,'=').replace(/％/g,'%').replace(/[，；]/g,',').replace(/（/g,'(').replace(/）/g,')')).join('');
   const t=[];let i=0;
   while(i<s.length){
     const c=s[i];
@@ -202,12 +218,13 @@ function parseXL(src){
 
 /* ---------- LaTeX 파서 ---------- */
 function tokTex(src){
-  const s=src.replace(/π/g,'\\pi ').replace(/×/g,'\\times ').replace(/÷/g,'\\div ').replace(/[−–]/g,'-').replace(/·/g,'\\cdot ')
+  const s=src.replace(/π/g,'\\pi ').replace(/[×✕✖⨉＊]/g,'\\times ').replace(/[÷➗]/g,'\\div ').replace(/[−–—－➖]/g,'-').replace(/[·∙⋅]/g,'\\cdot ').replace(/[∕⁄／]/g,'/').replace(/＋/g,'+')
     .replace(/θ/g,'\\theta ').replace(/ω/g,'\\omega ').replace(/φ/g,'\\phi ').replace(/Ω/g,'\\Omega ').replace(/Δ/g,'\\Delta ').replace(/μ/g,'\\mu ');
   const t=[];let i=0;
   while(i<s.length){
     const c=s[i],rest=s.slice(i);let m;
     if(/\s/.test(c)){i++;continue}
+    if((m=/^\d{1,3}(?:(?:,|\{,\}|\\,)\d{3})+(?:\.\d*)?(?!\d)/.exec(rest))){const r=m[0].replace(/\{,\}|\\,|,/g,'');t.push({k:'n',v:parseFloat(r),r});i+=m[0].length;continue}
     if((m=/^(\d+\.?\d*|\.\d+)/.exec(rest))){t.push({k:'n',v:parseFloat(m[0]),r:m[0]});i+=m[0].length;continue}
     if(c==='\\'){
       m=/^\\([A-Za-z]+|.)/.exec(rest);if(!m)throw E('#ERROR!','잘못된 명령');
@@ -413,15 +430,8 @@ const tri=f=>(a,cx)=>{const x=num(a[0]);const r=f(cx.deg?x*D2R:x);return cx.deg&
 const atri=f=>(a,cx)=>{const r=f(num(a[0]));return cx.deg?r/D2R:r};
 const fact=n=>{if(!Number.isInteger(n)||n<0||n>170)throw E('#NUM!','0~170의 정수만 가능합니다');let r=1;for(let i=2;i<=n;i++)r*=i;return r};
 const gcd2=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b]}return a};
+const NOLIST=new Set(['SUM','PRODUCT','SUMSQ','AVERAGE','MIN','MAX','COUNT','MEDIAN']);
 const FN={
-  SUM:a=>a.map(num).reduce((x,y)=>x+y,0),
-  PRODUCT:a=>a.map(num).reduce((x,y)=>x*y,1),
-  SUMSQ:a=>a.map(num).reduce((x,y)=>x+y*y,0),
-  AVERAGE:a=>{if(!a.length)throw E('#DIV/0!','평균을 낼 값이 없습니다');return FN.SUM(a)/a.length},
-  MIN:a=>a.length?Math.min(...a.map(num)):0,
-  MAX:a=>a.length?Math.max(...a.map(num)):0,
-  COUNT:a=>a.filter(v=>typeof v==='number').length,
-  MEDIAN:a=>{if(!a.length)throw E('#NUM!','값이 없습니다');const s=a.map(num).sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2},
   ABS:a=>Math.abs(num(a[0])),
   SQRT:a=>{const x=num(a[0]);if(x<0)throw E('#NUM!','음수의 제곱근은 구할 수 없습니다');return Math.sqrt(x)},
   NROOT:a=>{
@@ -514,6 +524,7 @@ function ev(n,cx){
         try{const v=ev(n.args[0],cx);if(typeof v==='number')chk(v);return v}
         catch(e){if(e instanceof CalcError)return n.args[1]?ev(n.args[1],cx):0;throw e}
       }
+      if(NOLIST.has(nm))throw E('#NAME?',nm+' 같은 목록·범위 함수는 지원하지 않습니다 (값 하나씩 계산하는 계산기입니다)');
       if(!Object.prototype.hasOwnProperty.call(FN,nm))throw E('#NAME?','알 수 없는 함수: '+nm);
       const args=n.args.map(a=>ev(a,cx));
       const r=FN[nm](args,cx);
@@ -566,6 +577,122 @@ function fmt(v,o,group){
   if(group){const p=s.split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');s=p.join('.')}
   return s;
 }
+/* ---------- 변환 (엑셀 ⇄ LaTeX) ---------- */
+const nstr=v=>{const s=String(clean(v));return /e/i.test(s)?s.replace(/e/i,'E'):s};
+const XLPREC=n=>{
+  switch(n.t){
+    case 'bin':{const o=n.op;return ['=','<>','<','>','<=','>='].includes(o)?1:o==='&'?2:(o==='+'||o==='-')?3:(o==='*'||o==='/')?4:5}
+    case 'un':return 6;
+    case 'pct':return 7;
+    default:return 9;
+  }
+};
+// LaTeX 구문 트리 → 엑셀 수식 문자열 (엑셀은 라디안 기준)
+function toXL(n,deg){
+  const w=(x,min)=>{const t=toXL(x,deg);return XLPREC(x)<min?'('+t+')':t};
+  switch(n.t){
+    case 'num':return nstr(n.v);
+    case 'str':return '"'+n.v+'"';
+    case 'bool':return n.v?'TRUE':'FALSE';
+    case 'var':return (n.name==='pi'||n.name==='PI')?'PI()':n.name==='e'?'EXP(1)':n.name;
+    case 'un':return '-'+w(n.a,7);
+    case 'pct':return w(n.a,9)+'%';
+    case 'deg':return deg?toXL(n.a,deg):'RADIANS('+toXL(n.a,deg)+')';
+    case 'bin':{
+      const p=XLPREC(n),op=n.op;
+      const l=w(n.a,op==='^'?7:p);
+      const r=w(n.b,op==='^'?6:(op==='-'||op==='/'||p===1||p===2)?p+1:p);
+      const sp=(op==='*'||op==='/'||op==='^')?'':' ';
+      return l+sp+op+sp+r;
+    }
+    case 'call':{
+      const nm=n.name,a=n.args,t0=()=>toXL(a[0],deg);
+      if(nm==='SIN'||nm==='COS'||nm==='TAN')return deg?nm+'(RADIANS('+t0()+'))':nm+'('+t0()+')';
+      if(nm==='ASIN'||nm==='ACOS'||nm==='ATAN')return deg?'DEGREES('+nm+'('+t0()+'))':nm+'('+t0()+')';
+      if(nm==='NROOT'){const nn=toXL(a[1],deg);return w(a[0],7)+'^(1/'+(XLPREC(a[1])===9?nn:'('+nn+')')+')'}
+      if(nm==='PI')return 'PI()';
+      return nm+'('+a.map(x=>toXL(x,deg)).join(',')+')';
+    }
+  }
+  throw E('#ERROR!','변환할 수 없는 항목');
+}
+const TEXFN={SIN:'sin',COS:'cos',TAN:'tan',ASIN:'arcsin',ACOS:'arccos',ATAN:'arctan',SINH:'sinh',COSH:'cosh',TANH:'tanh'};
+const TEXPREC=n=>{
+  switch(n.t){
+    case 'bin':return (n.op==='+'||n.op==='-')?3:n.op==='*'?4:n.op==='^'?5:n.op==='/'?9:0;
+    case 'un':return 6;
+    case 'pct':return 7;
+    default:return 9;
+  }
+};
+function texVar(k){
+  if(k==='pi'||k==='PI')return '\\pi';
+  if(GREEK.has(k))return '\\'+k;
+  let m;
+  if((m=/^([A-Za-z])_([A-Za-z0-9]+)$/.exec(k)))return m[1]+'_{'+m[2]+'}';
+  if(/^[A-Za-z]$/.test(k))return k;
+  return '\\mathrm{'+k+'}';
+}
+// 엑셀 구문 트리 → LaTeX 문자열
+function toTex(n,deg){
+  const w=(x,min)=>{const t=toTex(x,deg);return TEXPREC(x)<min?'('+t+')':t};
+  switch(n.t){
+    case 'num':return nstr(n.v);
+    case 'var':return texVar(n.name);
+    case 'str':case 'bool':throw E('#ERROR!','문자열·TRUE/FALSE는 LaTeX로 바꿀 수 없습니다');
+    case 'un':return '-'+w(n.a,5);
+    case 'pct':return w(n.a,9)+'\\%';
+    case 'bin':{
+      const op=n.op;
+      if(op==='/')return '\\frac{'+toTex(n.a,deg)+'}{'+toTex(n.b,deg)+'}';
+      if(op==='+')return w(n.a,3)+' + '+w(n.b,3);
+      if(op==='-')return w(n.a,3)+' - '+w(n.b,4);
+      if(op==='*')return w(n.a,4)+' \\times '+w(n.b,5);
+      if(op==='^')return w(n.a,7)+'^{'+toTex(n.b,deg)+'}';
+      throw E('#ERROR!','연산자 '+op+' 는 LaTeX로 바꿀 수 없습니다');
+    }
+    case 'call':{
+      const nm=n.name,a=n.args,t0=()=>toTex(a[0],deg);
+      if(TEXFN[nm])return '\\'+TEXFN[nm]+'('+t0()+')';
+      switch(nm){
+        case 'SQRT':return '\\sqrt{'+t0()+'}';
+        case 'ABS':return '\\left|'+t0()+'\\right|';
+        case 'EXP':return '\\exp('+t0()+')';
+        case 'LN':return '\\ln('+t0()+')';
+        case 'LOG10':return '\\log('+t0()+')';
+        case 'LOG':return a.length>1?'\\log_{'+toTex(a[1],deg)+'}('+t0()+')':'\\log('+t0()+')';
+        case 'FACT':return w(a[0],9)+'!';
+        case 'PI':return '\\pi';
+        case 'POWER':return w(a[0],7)+'^{'+toTex(a[1],deg)+'}';
+        case 'RADIANS':
+          if(!deg)return (TEXPREC(a[0])===9&&a[0].t!=='call'?t0():'('+t0()+')')+'^{\\circ}';
+          return '('+t0()+'\\times\\frac{\\pi}{180})';
+        case 'DEGREES':return '('+t0()+'\\times\\frac{180}{\\pi})';
+      }
+      throw E('#ERROR!',nm+' 함수는 LaTeX로 바꿀 수 없습니다');
+    }
+  }
+  throw E('#ERROR!','변환할 수 없는 항목');
+}
+// 여러 줄 변환. from: 'xl' | 'tex'. 변환 불가한 줄은 주석(#)으로 남깁니다.
+function convert(text,from,deg){
+  const out=[];let errs=0;
+  for(const raw of text.split('\n')){
+    const line=raw.trim();
+    if(!line)continue;
+    if(/^(#|\/\/)/.test(line)){out.push(line);continue}
+    try{
+      let body=line,name=null;
+      const m=(from==='xl'?AS_XL:AS_TEX).exec(line);
+      if(m){name=from==='xl'?m[1]:texName(m[1]);body=m[2]}
+      else if(body[0]==='=')body=body.slice(1);
+      body=body.trim();
+      if(from==='xl'){const s=toTex(parseXL(body),deg);out.push(name?texVar(name)+' = '+s:'='+s)}
+      else{const s=toXL(parseTex(body),deg);out.push(name?name+' = '+s:'='+s)}
+    }catch(e){errs++;out.push('# 변환 불가 ('+(e&&e.message||e)+'): '+line)}
+  }
+  return {text:out.join('\n'),errs};
+}
 /*ENGINE-END*/
 
 /* ================= 화면 ================= */
@@ -603,7 +730,7 @@ function loadMJ(){
 }
 function texSvg(src){
   try{
-    const node=MathJax.tex2svg(src,{display:false});
+    const node=MathJax.tex2svg('\\displaystyle '+src,{display:false}); // 분수·합 등을 항상 큰 글씨(디스플레이 스타일)로
     if(node.querySelector('[data-mjx-error]'))return null;
     return node.querySelector('svg');
   }catch(e){return null}
@@ -618,7 +745,7 @@ const PAD={
       ['1','1'],['2','2'],['3','3'],['−','-'],['0','0'],['.','.'],['%','\\%'],['+','+'],['xⁿ','^{§}'],['√','\\sqrt{§}'],['π','\\pi '],['=','N']]
 };
 const CHIPS={
-  xl:['ans','SUM(§)','AVERAGE(§)','ROUND(§,2)','POWER(§,2)','MOD(§,2)','IF(§,1,0)','ABS(§)','SIN(§)','COS(§)','TAN(§)','ASIN(§)','LOG10(§)','LN(§)','EXP(§)','RADIANS(§)','DEGREES(§)'],
+  xl:['ans','SQRT(§)','ROUND(§,2)','POWER(§,2)','MOD(§,2)','IF(§,1,0)','ABS(§)','SIN(§)','COS(§)','TAN(§)','ASIN(§)','LOG10(§)','LN(§)','EXP(§)','RADIANS(§)','DEGREES(§)'],
   tex:['\\frac{§}{}','\\sqrt[§]{}','^{2}','^{\\circ}','\\sin(§)','\\cos(§)','\\tan(§)','\\ln(§)','\\log_{2}(§)','\\left|§\\right|','5!','e','\\theta ','\\mathrm{ans}']
 };
 function ins(txt){
@@ -662,7 +789,7 @@ function buildPad(){
 });
 
 /* 출력 */
-let lastPlain='';
+let lastPlain='',cvText='';
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function render(){
   const m=mode(),o=opts(),rows=run(ta.value,m,o);
@@ -695,6 +822,13 @@ function render(){
   if(!last){big.className='v';big.textContent='0';lastPlain='0'}
   else if(last.err){big.className='v err';big.innerHTML=esc(last.err.code)+(last.err.msg?'<span class="em">'+esc(last.err.msg)+'</span>':'');lastPlain=''}
   else{big.className='v';big.textContent=fmt(last.value,o,o.grp);lastPlain=fmt(last.value,o,false)}
+  const cv=convert(ta.value,m,o.deg);
+  $('conv').hidden=!cv.text;
+  $('cvt').textContent=m==='xl'?'LaTeX로 변환':'엑셀 수식으로 변환';
+  $('cvBody').textContent=cv.text;
+  cvText=cv.text;
+  $('cvNote').textContent=(m==='tex'&&/RADIANS\(|DEGREES\(/.test(cv.text))
+    ?'엑셀은 라디안 기준이라 도(°) 값은 RADIANS()·DEGREES()로 바꿨습니다. "입력창에 적용"하면 각도 설정이 라디안으로 바뀝니다.':'';
 }
 let rt=0;
 function schedule(){clearTimeout(rt);rt=setTimeout(render,60);store.set('text',ta.value)}
@@ -712,10 +846,35 @@ ta.addEventListener('input',schedule);
 ta.addEventListener('keydown',e=>{
   if(e.key==='Tab'){e.preventDefault();ins('  ')}
 });
-document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change',setMode));
+/* 입력 방식 탭 전환: 입력창 내용을 반대쪽 표기로 함께 변환 (바로 되돌리면 원문 복원) */
+let curMode='xl',swap=null;
+const setAng=d=>{document.querySelector(`input[name=ang][value=${d?'deg':'rad'}]`).checked=true;store.set('ang',d?'deg':'rad')};
+function onMode(){
+  const to=mode(),from=curMode;
+  if(to===from)return;
+  const o=opts(),cur=ta.value;
+  if(swap&&swap.to===from&&swap.conv===cur){
+    ta.value=swap.orig;setAng(swap.deg);swap=null;
+  }else if(cur.trim()){
+    const cv=convert(cur,from,o.deg);
+    swap={from,to,orig:cur,conv:cv.text,deg:o.deg};
+    ta.value=cv.text;
+    let msg=to==='xl'?'엑셀 수식으로 변환했습니다':'LaTeX로 변환했습니다';
+    if(to==='xl'&&o.deg){setAng(false);msg+=' (엑셀은 라디안 기준이라 각도를 라디안으로 바꿨습니다)'}
+    if(cv.errs)msg+=` · 변환 불가 ${cv.errs}줄은 주석으로 남겼습니다`;
+    toast(msg);
+  }
+  curMode=to;store.set('text',ta.value);setMode();
+}
+document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change',onMode));
 document.querySelectorAll('input[name=ang]').forEach(r=>r.addEventListener('change',()=>{store.set('ang',opts().deg?'deg':'rad');render()}));
 $('dec').addEventListener('change',()=>{store.set('dec',$('dec').value);render()});
 $('grp').addEventListener('change',()=>{store.set('grp',$('grp').checked?'1':'0');render()});
+$('cvCopy').addEventListener('click',()=>{if(cvText)copyText(cvText);else toast('복사할 내용이 없습니다')});
+$('cvApply').addEventListener('click',()=>{
+  if(!cvText)return;
+  document.querySelector(`input[name=mode][value=${mode()==='xl'?'tex':'xl'}]`).click();
+});
 $('copy').addEventListener('click',()=>{if(lastPlain)copyText(lastPlain);else toast('복사할 결과가 없습니다')});
 
 /* 다크 모드 */
@@ -736,6 +895,7 @@ $('dec').value=store.get('dec','auto');
 if(!$('dec').value)$('dec').value='auto';
 $('grp').checked=store.get('grp','0')==='1';
 ta.value=store.get('text','');
+curMode=mode();
 setMode();
 })();
 </script>
