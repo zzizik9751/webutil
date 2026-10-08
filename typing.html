@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한글 타자속도 측정기 · zzizik</title>
+<meta name="description" content="2벌식 기준 한글 타수(CPM)와 정확도, 약한 자모를 측정하는 타자 연습 도구. 내가 붙여넣은 글(애국가 등)로도 연습">
+<style>
+  :root{
+    --bg:#fafaf9; --text:#1c1b1a; --sub:#8a8784; --ink-soft:#9a9794;
+    --accent:#3f3d3b; --line:#e6e4e1; --pill:rgba(125,122,118,.12);
+    --err:#cf222e; --ok:#1a7f37; --gold:#b08628; --mono:Consolas,"D2Coding","Cascadia Mono",monospace;
+  }
+  html.dark{ --bg:#161514; --text:#f2f1ef; --sub:#8a8784; --ink-soft:#6f6c69; --accent:#cbc9c6; --line:#34322f; --err:#ff7b72; --ok:#3fb950; --gold:#d6b05a; }
+  *{box-sizing:border-box}
+  html{background:var(--bg)}
+  body{margin:0;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+    color:var(--text);background:var(--bg);min-height:100vh;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 16px 24px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h1{font-size:clamp(24px,5vw,34px);font-weight:800;letter-spacing:-.02em;margin:0}
+  .lead{margin:6px 0 16px;font-size:13.5px;color:var(--sub);line-height:1.6}
+  button{font-family:inherit;font-size:14px;color:var(--text);background:transparent;border:1px solid var(--line);
+    border-radius:8px;padding:8px 14px;cursor:pointer;transition:border-color .15s,color .15s}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  #dm{border-radius:20px;font-size:13px;font-weight:600;color:var(--sub);border-color:transparent;background:var(--pill)}
+
+  .namebar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:12px;font-size:14px}
+  .namebar input{font:inherit;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:160px;outline:none}
+  .namebar input:focus{border-color:var(--accent)}
+  .namebar a{color:var(--accent)}
+  .namebar .sub{color:var(--sub);font-size:12.5px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tabs button{border-radius:20px;padding:6px 14px;font-size:13.5px;color:var(--sub)}
+  .tabs button.on{border-color:var(--accent);color:var(--text);font-weight:700}
+
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .m{border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  .m .l{font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+  .m .v{font-size:clamp(20px,4vw,28px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3}
+  @media (max-width:520px){.metrics{grid-template-columns:repeat(2,1fr)}}
+
+  .target{border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:clamp(20px,3.4vw,26px);line-height:2;
+    white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;min-height:90px}
+  .target .n{color:var(--ink-soft)}
+  .target .o{color:var(--text)}
+  .target .x{color:var(--err);border-bottom:2px solid var(--err)}
+  .target .c{color:var(--text);border-bottom:2px dotted var(--sub)}
+  .target .cur{border-bottom:2px solid var(--accent)}
+  .tinfo{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink-soft);margin:0 2px 6px}
+  textarea{width:100%;resize:none;font-family:inherit;font-size:20px;line-height:1.6;color:var(--text);background:transparent;
+    border:1px solid var(--line);border-radius:12px;padding:12px 16px;outline:none;margin-top:10px}
+  textarea:focus{border-color:var(--accent)}
+  #inp{font-size:clamp(20px,3.4vw,26px);line-height:2;padding:16px 18px;border-radius:12px;word-break:keep-all;overflow-wrap:anywhere;white-space:pre-wrap;letter-spacing:normal;min-height:90px}
+  textarea[readonly]{opacity:.6}
+  .msg{min-height:20px;margin:6px 2px;font-size:13px;color:var(--sub)}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+
+  .editor{margin-top:14px;font-size:13px;color:var(--sub)}
+  .editor summary{cursor:pointer;font-weight:700;color:var(--text)}
+  .editor textarea{font-size:15px;min-height:130px;resize:vertical;font-family:var(--mono)}
+  .editor .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:8px}
+  input[type=checkbox],input[type=radio]{accent-color:var(--accent);width:16px;height:16px;margin:0;cursor:pointer}
+  label.ck{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+
+  #result{display:none;margin-top:22px;border-top:2px solid var(--accent);padding-top:14px}
+  #result h2{font-size:18px;margin:0 0 10px}
+  #result h3{font-size:13px;margin:18px 0 6px;color:var(--ink-soft);letter-spacing:.03em}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .card{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .card .l{font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+  .card .v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;font-size:11px;font-weight:700;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:0 8px;margin-top:2px}
+  .weak{display:flex;flex-wrap:wrap;gap:10px}
+  .weak span{border:1px solid var(--line);border-radius:10px;padding:6px 14px;font-size:18px}
+  .weak span b{font-size:12px;color:var(--err);margin-left:6px}
+  .kb{display:flex;flex-direction:column;gap:5px;overflow-x:auto;padding-bottom:4px}
+  .kr{display:flex;gap:5px}
+  .kr:nth-child(2){margin-left:20px}.kr:nth-child(3){margin-left:40px}
+  .k{flex:none;width:40px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:7px;font-size:16px;line-height:1.1}
+  .k small{font-size:10px;color:var(--sub)}
+  .k.h1{background:rgba(207,34,46,.16)}.k.h2{background:rgba(207,34,46,.36)}.k.h3{background:rgba(207,34,46,.6)}
+  .legend{display:flex;gap:10px;align-items:center;font-size:11.5px;color:var(--sub);margin-top:6px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px;vertical-align:-3px;margin-right:3px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{font-size:11.5px;color:var(--ink-soft)}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+  .ra{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+  .seg{display:inline-flex;gap:12px;font-size:13px;margin-left:8px}
+
+  details.help{margin-top:22px;font-size:13px;line-height:1.7;color:var(--sub)}
+  details.help summary{cursor:pointer;font-weight:700;color:var(--text)}
+  details.help p{margin:4px 0}
+  details.help code{font-family:var(--mono);font-size:12.5px;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);font-size:13px;color:var(--text);border:1px solid var(--accent);
+    border-radius:20px;padding:6px 14px;background:var(--bg);opacity:0;pointer-events:none;transition:opacity .25s}
+  #toast.on{opacity:1}
+  .credit{margin-top:26px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25);font-size:11px;color:var(--ink-soft);line-height:1.8;text-align:center}
+  .credit a{color:inherit;text-decoration:underline;font-weight:600}
+</style>
+<script>
+  (function(){ try{ if(localStorage.getItem('zz_dark')==='1') document.documentElement.classList.add('dark'); }catch(e){} })();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>한글 타자속도 측정기</h1>
+    <button id="dm">다크 모드</button>
+  </header>
+  <p class="lead">2벌식 기준으로 타수(CPM)와 정확도를 재고, 자주 틀리는 자모를 알려 줍니다. 첫 글자를 입력하면 시간이 시작됩니다. 단문은 짧은 문장을 골라 연습하고, 장문은 긴 글 한 편을 끝까지 입력합니다. 장문에는 아래에서 애국가 등 원하는 글을 넣을 수 있습니다.</p>
+
+  <div class="namebar" id="nameBar" style="display:none">
+    <label>이름 <input id="uname" maxlength="20" placeholder="이름(또는 사번)" autocomplete="off"></label>
+    <a href="rank" target="_blank" rel="noopener">순위표 보기</a>
+    <span class="sub">결과가 나오면 자동으로 순위표에 등록됩니다.</span>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button data-t="short" class="on">단문 연습</button><button data-t="long">장문 연습</button>
+  </div>
+
+  <div class="metrics">
+    <div class="m"><div class="l">CPM (분당 타수)</div><div class="v" id="mCpm">-</div></div>
+    <div class="m"><div class="l">정확도</div><div class="v" id="mAcc">-</div></div>
+    <div class="m"><div class="l">진행률</div><div class="v" id="mProg">0%</div></div>
+    <div class="m"><div class="l">경과 시간</div><div class="v" id="mTime">0:00.0</div></div>
+  </div>
+
+  <div class="tinfo"><span id="tLabel"></span><span id="tStrokes"></span></div>
+  <div class="target" id="target"></div>
+  <textarea id="inp" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="위 문장을 보고 여기에 입력하세요  (Enter: 결과 · Esc: 처음부터 · 붙여넣기 불가)"></textarea>
+  <div class="msg" id="msg"></div>
+  <div class="btns">
+    <button id="bRetry">다시 하기</button>
+    <button id="bNew">새 지문</button>
+    <button id="bDone">결과 보기</button>
+  </div>
+
+  <details class="editor" id="editor">
+    <summary>장문 지문 넣기 (애국가 등 — 한 번 저장하면 계속 사용)</summary>
+    <textarea id="myText" spellcheck="false" placeholder="장문으로 연습할 글(애국가 1~4절 등)을 붙여넣으세요. 줄바꿈은 공백으로 이어집니다. 이 브라우저에만 저장됩니다."></textarea>
+    <div class="row">
+      <button id="myClear">지우고 기본 장문 사용</button>
+      <button id="mySave">저장하고 연습</button>
+    </div>
+  </details>
+
+  <section id="result">
+    <h2>측정 결과</h2>
+    <div class="msg" id="subMsg"></div>
+    <div class="cards" id="cards"></div>
+    <h3>가장 많이 틀린 자모 TOP 3</h3>
+    <div class="weak" id="weak"></div>
+    <h3>2벌식 자판 오타 히트맵
+      <span class="seg"><label class="ck"><input type="radio" name="hm" value="cur" checked>이번</label><label class="ck"><input type="radio" name="hm" value="cum">누적</label></span>
+    </h3>
+    <div class="kb" id="kb"></div>
+    <div class="legend"><span><i></i>0회</span><span><i style="background:rgba(207,34,46,.16)"></i>1~2회</span><span><i style="background:rgba(207,34,46,.36)"></i>3~4회</span><span><i style="background:rgba(207,34,46,.6)"></i>5회 이상</span></div>
+    <h3>복합모음 · 겹받침 · 쌍자음 분석</h3>
+    <div id="comp"></div>
+    <div class="ra"><button id="bCopy">결과 복사</button><button id="bAgain">다시 도전</button><button id="bNext">새 지문</button></div>
+    <h3>최근 기록 (10회)</h3>
+    <div id="hist"></div>
+    <div class="ra"><button id="bClear">기록 초기화</button></div>
+  </section>
+
+  <details class="help">
+    <summary>타수 계산 규칙 · 사용 안내</summary>
+    <p>한 글자 단위가 아니라 <b>자판을 누르는 횟수(타수)</b>로 계산합니다. 자음·모음 1타, 쌍자음(ㄲㄸㅃㅆㅉ)·ㅒㅖ·복합모음(ㅘㅙㅚㅝㅞㅟㅢ)·겹받침(ㄳㄵㄶㄺㄻㄼㄽㄾㄿㅀㅄ) 2타, 공백·숫자·문장부호 1타입니다.</p>
+    <p><b>CPM</b> = 맞게 친 타수 ÷ 경과 분. <b>정확도</b> = 맞게 친 타수 ÷ (지문 전체 타수 + 불필요하게 더 친 타수). 못 친 부분도 오타로 계산합니다.</p>
+    <p>백스페이스로 고쳐 맞게 만든 글자는 오타가 아니지만, 고치는 데 쓴 시간만큼 CPM이 낮아집니다. 조합 중인 마지막 글자는 확정될 때까지 판정하지 않습니다.</p>
+    <p>입력이 지문과 똑같아지면 자동으로 끝납니다. 틀린 채로 끝내려면 Enter 또는 「결과 보기」를 누르세요. 기록은 이 브라우저에만 저장되고 어디로도 전송되지 않습니다. 물리 키보드(2벌식) 기준이라 모바일 천지인 자판에서는 타수가 어긋날 수 있습니다.</p>
+  </details>
+
+  <div class="credit">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer">zzizik</a>, with Claude AI.</div>
+</div>
+<div id="toast"></div>
+
+<script>
+/*ENGINE-START*/
+const CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'.split('');
+const JUNG='ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ'.split('');
+const JONG=['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+const KEYS={ㄲ:['ㄱ'],ㄸ:['ㄷ'],ㅃ:['ㅂ'],ㅆ:['ㅅ'],ㅉ:['ㅈ'],ㅒ:['ㅐ'],ㅖ:['ㅔ'],ㅘ:['ㅗ','ㅏ'],ㅙ:['ㅗ','ㅐ'],ㅚ:['ㅗ','ㅣ'],ㅝ:['ㅜ','ㅓ'],ㅞ:['ㅜ','ㅔ'],ㅟ:['ㅜ','ㅣ'],ㅢ:['ㅡ','ㅣ'],
+  ㄳ:['ㄱ','ㅅ'],ㄵ:['ㄴ','ㅈ'],ㄶ:['ㄴ','ㅎ'],ㄺ:['ㄹ','ㄱ'],ㄻ:['ㄹ','ㅁ'],ㄼ:['ㄹ','ㅂ'],ㄽ:['ㄹ','ㅅ'],ㄾ:['ㄹ','ㅌ'],ㄿ:['ㄹ','ㅍ'],ㅀ:['ㄹ','ㅎ'],ㅄ:['ㅂ','ㅅ']};
+const strokesOf=j=>KEYS[j]?2:1;
+const keysOf=j=>KEYS[j]||[j];
+const kindOf=j=>'ㄲㄸㅃㅆㅉ'.includes(j)?'쌍자음':'ㅒㅖㅘㅙㅚㅝㅞㅟㅢ'.includes(j)?'복합모음':KEYS[j]?'겹받침':null;
+function decomp(ch){
+  const c=ch.codePointAt(0);
+  if(c>=0xAC00&&c<=0xD7A3){
+    const n=c-0xAC00,out=[{k:'cho',j:CHO[(n/588)|0]},{k:'jung',j:JUNG[((n%588)/28)|0]}];
+    const jg=JONG[n%28];if(jg)out.push({k:'jong',j:jg});
+    return out;
+  }
+  return [{k:'etc',j:ch}];
+}
+const charStrokes=ch=>decomp(ch).reduce((a,c)=>a+strokesOf(c.j),0);
+function evaluate(target,typed,composing,final){
+  const T=Array.from(target),U=Array.from(typed);
+  const r={st:[],correct:0,extra:0,total:0,attempted:0,missKeys:{},comp:{},typedCount:U.length};
+  const note=(c,ok)=>{
+    const k=kindOf(c.j);
+    if(k){const e=r.comp[c.j]||(r.comp[c.j]={kind:k,n:0,miss:0});e.n++;if(!ok)e.miss++}
+    if(!ok&&c.k!=='etc')keysOf(c.j).forEach(x=>{r.missKeys[x]=(r.missKeys[x]||0)+1});
+  };
+  T.forEach((tc,i)=>{
+    const tcomps=decomp(tc),tot=tcomps.reduce((a,c)=>a+strokesOf(c.j),0);
+    r.total+=tot;
+    const ch=U[i];
+    if(ch===undefined){r.st.push('n');if(final)tcomps.forEach(c=>note(c,false));return}
+    if(composing&&i===U.length-1){r.st.push('c');return}
+    r.attempted+=tot;
+    const uc=decomp(ch);
+    tcomps.forEach(c=>{
+      const m=uc.find(u=>u.k===c.k),ok=!!m&&m.j===c.j;
+      if(ok)r.correct+=strokesOf(c.j);
+      note(c,ok);
+    });
+    uc.forEach(u=>{if(!tcomps.some(c=>c.k===u.k))r.extra+=strokesOf(u.j)});
+    r.st.push(ch===tc?'o':'x');
+  });
+  for(let i=T.length;i<U.length;i++){
+    if(composing&&i===U.length-1)continue;
+    decomp(U[i]).forEach(u=>{r.extra+=strokesOf(u.j)});
+  }
+  return r;
+}
+/*ENGINE-END*/
+
+/* ================= 지문 (직접 작성한 연습용 문장) ================= */
+const POOL={
+  short:[
+    '아침마다 강아지와 공원을 천천히 걷습니다.',
+    '오늘은 날씨가 맑고 바람이 시원합니다.',
+    '저녁에는 가족과 함께 따뜻한 밥을 먹었어요.',
+    '주말에 친구를 만나 영화를 보기로 했습니다.',
+    '커피 한 잔과 함께 책을 읽는 시간이 좋아요.',
+    '가는 말이 고와야 오는 말이 곱다.',
+    '천 리 길도 한 걸음부터 시작된다.',
+    '낮말은 새가 듣고 밤말은 쥐가 듣는다.',
+    '꾸준히 연습하면 손가락이 자판의 위치를 기억합니다.',
+    '비가 그친 뒤 골목마다 젖은 나뭇잎 냄새가 퍼졌습니다.',
+    '새로운 기술은 작은 프로젝트를 직접 만들며 배우는 것이 좋습니다.',
+    '닭볶음탕과 읊조림, 흙탕물까지 겹받침 낱말을 입력해 봅니다.',
+    "2026년 10월 8일(목) 오후 3시 30분, 회의실 B-204에서 '설계 검토'를 시작합니다!",
+    '전차선로의 가공 전차선(25kV, 60Hz) 높이는 5,200mm이며 이격거리를 반드시 확인해야 한다.',
+    '무늬와 희망, 의의를 되새기며 쉬웠다 어려웠다 반복했다.',
+    '퇴근길에 들른 작은 서점에서 오래전부터 찾던 책을 우연히 발견했습니다.'
+  ],
+  long:[
+    '아침마다 강아지와 함께 공원을 천천히 걷습니다. 이른 시간의 공원은 조용하고, 풀잎에 맺힌 이슬이 햇빛을 받아 반짝입니다. 강아지는 앞서 달려가다가도 자꾸 뒤를 돌아보며 내가 따라오는지 확인합니다. 그럴 때마다 나는 웃으며 이름을 불러 줍니다. 별것 아닌 산책이지만, 하루 중 가장 마음이 편안해지는 시간입니다. 걷다 보면 복잡하던 생각도 하나둘 정리되고, 오늘 해야 할 일의 순서가 자연스럽게 떠오릅니다.',
+    '타자를 잘 치려면 먼저 정확하게 치는 습관을 들여야 합니다. 속도에만 욕심을 내면 오타가 늘고, 오타를 고치느라 오히려 시간이 더 걸립니다. 처음에는 조금 느리더라도 글자 하나하나를 또박또박 입력하고, 손가락이 자판의 위치를 충분히 익힌 뒤에 속도를 올리는 것이 좋습니다. 매일 십 분씩만 꾸준히 연습해도 몇 주 뒤에는 눈에 띄게 달라진 자신을 발견할 수 있습니다.'
+  ]
+};
+const TAB_NAME={short:'단문',long:'장문'};
+
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem('typing.'+k);return v===null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem('typing.'+k,v)}catch(e){}},del(k){try{localStorage.removeItem('typing.'+k)}catch(e){}}};
+const inp=$('inp');
+const S={tab:'all',text:'',idx:0,start:0,end:0,done:false,composing:false,timer:0,last:null};
+
+let toastT=0;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1600)}
+const fmtTime=ms=>{const s=ms/1000,m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(1).padStart(4,'0')};
+
+/* 지문 고르기 */
+let SRV={long:'',short:[]};
+function myLong(){return SRV.long||store.get('my','').replace(/\s*\r?\n\s*/g,' ').trim()}
+function pick(next){
+  const p=(S.tab==='short'&&SRV.short.length)?SRV.short:POOL[S.tab];let t;
+  if(S.tab==='long'&&myLong())t=myLong();
+  else if(!next&&S.text&&p.includes(S.text))t=S.text;
+  else do{t=p[Math.floor(Math.random()*p.length)]}while(p.length>1&&t===S.text);
+  S.text=t;
+  return true;
+}
+function setTab(t,keepText){
+  S.tab=t;store.set('tab',t);S.idx=0;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  if(!keepText)S.text='';
+  reset(true);
+}
+
+/* 화면 */
+function drawTarget(st,typedLen,composing){
+  const box=$('target');box.textContent='';
+  const T=Array.from(S.text);
+  if(!T.length){box.innerHTML='<span class="n">지문이 없습니다.</span>';return}
+  T.forEach((c,i)=>{
+    const sp=document.createElement('span');
+    const s=(st&&st[i])||'n';
+    let cls=s;
+    if(!S.done&&i===typedLen-(composing?1:0)&&s!=='c')cls+=' cur';
+    sp.className=cls;sp.textContent=c;box.appendChild(sp);
+  });
+}
+function updateMetrics(r,now){
+  const el=(S.start?(S.done?S.end:now)-S.start:0);
+  const cpm=el>=1500?Math.round(r.correct/(el/60000)):null;
+  const den=r.attempted+r.extra;
+  $('mCpm').textContent=cpm===null?'-':cpm;
+  $('mAcc').textContent=den?(Math.max(0,r.correct/den*100)).toFixed(1)+'%':'-';
+  const n=Array.from(S.text).length;
+  $('mProg').textContent=n?Math.min(100,Math.round(r.typedCount/n*100))+'%':'0%';
+  $('mTime').textContent=fmtTime(el);
+}
+function refresh(){
+  if(!S.text)return;
+  const v=inp.value.replace(/\r?\n/g,'');
+  const r=evaluate(S.text,v,S.composing,false);
+  drawTarget(r.st,r.typedCount,S.composing);
+  updateMetrics(r,performance.now());
+  S.last=r;
+}
+function reset(fresh){
+  clearInterval(S.timer);S.start=0;S.end=0;S.done=false;S.composing=false;
+  inp.value='';inp.readOnly=false;inp.rows=S.tab==='long'?6:2;
+  $('result').style.display='none';
+  if(fresh&&!pick(true))S.text='';
+  else if(!fresh)pick(false);
+  $('tLabel').textContent=TAB_NAME[S.tab]+(S.tab==='short'&&SRV.short.length?' · 대회 지문':'')+(S.tab==='long'?(SRV.long?' · 대회 지문':myLong()?' · 내 글':' · 기본 글'):'');
+  $('tStrokes').textContent=S.text?`총 ${Array.from(S.text).reduce((a,c)=>a+charStrokes(c),0)}타 · ${Array.from(S.text).length}자`:'';
+  $('msg').textContent=S.text?'':'';
+  drawTarget(null,0,false);
+  updateMetrics({correct:0,attempted:0,extra:0,typedCount:0},0);
+  $('mCpm').textContent='-';$('mAcc').textContent='-';
+  if(S.text)inp.focus();
+}
+
+/* 입력 */
+inp.addEventListener('compositionstart',()=>{S.composing=true});
+inp.addEventListener('compositionend',()=>{S.composing=false;onInput()});
+inp.addEventListener('input',onInput);
+function onInput(){
+  if(S.done||!S.text)return;
+  const v=inp.value.replace(/\r?\n/g,'');
+  if(!S.start&&v){
+    S.start=performance.now();
+    S.timer=setInterval(()=>{if(!S.done&&S.last)updateMetrics(S.last,performance.now())},100);
+  }
+  refresh();
+  if(v===S.text)finish();
+}
+['paste','drop','contextmenu'].forEach(ev=>inp.addEventListener(ev,e=>{e.preventDefault();if(ev==='paste')$('msg').textContent='공정한 측정을 위해 붙여넣기는 막혀 있습니다.'}));
+inp.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();if(S.start&&!S.done)finish()}
+  else if(e.key==='Escape'){e.preventDefault();reset(false);toast('처음부터 다시 시작합니다')}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.activeElement!==inp){reset(false)}});
+
+/* 결과 */
+let hmMode='cur';
+function recs(){try{return JSON.parse(store.get('rec','[]'))}catch(e){return[]}}
+function finish(){
+  if(S.done||!S.start)return;
+  S.done=true;S.end=performance.now();clearInterval(S.timer);
+  inp.readOnly=true;
+  const v=inp.value.replace(/\r?\n/g,'');
+  const r=evaluate(S.text,v,false,true);
+  drawTarget(r.st,r.typedCount,false);
+  const ms=S.end-S.start,cpm=r.correct/(ms/60000),den=r.total+r.extra,acc=den?Math.max(0,r.correct/den*100):0,missStrokes=Math.max(0,den-r.correct);
+  updateMetrics({...r,attempted:r.total},S.end);
+  $('mCpm').textContent=Math.round(cpm);$('mAcc').textContent=acc.toFixed(1)+'%';
+  const old=recs();
+  const bestC=old.reduce((a,x)=>Math.max(a,x.cpm),0),bestA=old.reduce((a,x)=>Math.max(a,x.acc),0);
+  const newC=old.length>0&&Math.round(cpm)>bestC,newA=old.length>0&&+acc.toFixed(1)>bestA;
+  old.unshift({d:new Date().toISOString(),cpm:Math.round(cpm),acc:+acc.toFixed(1),ms:Math.round(ms),txt:S.text.slice(0,14)});
+  store.set('rec',JSON.stringify(old.slice(0,50)));
+  let cum={};try{cum=JSON.parse(store.get('cum','{}'))}catch(e){}
+  Object.entries(r.missKeys).forEach(([k,n])=>{cum[k]=(cum[k]||0)+n});
+  store.set('cum',JSON.stringify(cum));
+  S.res={r,cpm:Math.round(cpm),acc,ms,missStrokes,cum};
+  renderResult(newC,newA);
+  submitScore(Math.round(cpm),+acc.toFixed(1),Math.round(ms));
+}
+/* 서버 등록 (server.py로 열었을 때만 동작) */
+let ONLINE=false; // server.py가 응답할 때만 true
+async function submitScore(cpm,acc,ms){
+  const el=$('subMsg');el.textContent='';
+  if(!ONLINE)return;
+  const name=$('uname').value.trim()||'(이름없음)';
+  try{
+    const res=await fetch('api/score',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,cpm,acc,ms,tab:S.tab,len:Array.from(S.text).length,txt:S.text.slice(0,14)})});
+    const j=await res.json();
+    el.textContent=j.ok?`순위표에 등록되었습니다. (${TAB_NAME[S.tab]} 기준 현재 ${j.rank}위 / ${j.total}명)`:'등록 실패: '+(j.err||'');
+  }catch(e){el.textContent='서버에 연결하지 못해 순위표에 등록되지 않았습니다.'}
+}
+function renderResult(newC,newA){
+  const {r,cpm,acc,ms,missStrokes}=S.res;
+  $('result').style.display='block';
+  $('cards').innerHTML=
+    `<div class="card"><div class="l">CPM</div><div class="v">${cpm}</div>${newC?'<span class="badge">최고 CPM 갱신</span>':''}</div>`+
+    `<div class="card"><div class="l">정확도</div><div class="v">${acc.toFixed(1)}%</div>${newA?'<span class="badge">최고 정확도 갱신</span>':''}</div>`+
+    `<div class="card"><div class="l">소요 시간</div><div class="v">${fmtTime(ms)}</div></div>`+
+    `<div class="card"><div class="l">오타 타수</div><div class="v">${missStrokes}</div></div>`;
+  const top=Object.entries(r.missKeys).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,3);
+  $('weak').innerHTML=top.length?top.map(([k,n])=>`<span>${k}<b>${n}회</b></span>`).join(''):'<span style="font-size:14px;color:var(--ok)">오타가 없습니다. 완벽해요!</span>';
+  renderHeat();
+  const comp=Object.entries(r.comp).sort((a,b)=>b[1].miss-a[1].miss||b[1].n-a[1].n);
+  $('comp').innerHTML=comp.length
+    ?'<table><thead><tr><th>자모</th><th>종류</th><th class="r">출현</th><th class="r">오타</th></tr></thead><tbody>'+comp.map(([j,e])=>`<tr><td style="font-size:16px">${j}</td><td>${e.kind}</td><td class="r">${e.n}</td><td class="r"${e.miss?' style="color:var(--err);font-weight:700"':''}>${e.miss}</td></tr>`).join('')+'</tbody></table>'
+    :'<div style="font-size:13px;color:var(--sub)">이 지문에는 복합모음·겹받침·쌍자음이 없습니다.</div>';
+  renderHist();
+  $('result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+const ROWS=[['ㅂ','ㅈ','ㄷ','ㄱ','ㅅ','ㅛ','ㅕ','ㅑ','ㅐ','ㅔ'],['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ'],['ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ']];
+function renderHeat(){
+  if(!S.res)return;
+  const data=hmMode==='cum'?S.res.cum:S.res.r.missKeys;
+  $('kb').innerHTML=ROWS.map(row=>'<div class="kr">'+row.map(k=>{
+    const n=data[k]||0,lv=n>=5?3:n>=3?2:n>=1?1:0;
+    return `<div class="k${lv?' h'+lv:''}">${k}<small>${n||''}</small></div>`;
+  }).join('')+'</div>').join('');
+}
+function renderHist(){
+  const l=recs().slice(0,10);
+  $('hist').innerHTML=l.length
+    ?'<table><thead><tr><th>일시</th><th class="r">CPM</th><th class="r">정확도</th><th>지문</th></tr></thead><tbody>'+l.map(x=>{
+        const d=new Date(x.d),p=n=>String(n).padStart(2,'0');
+        return `<tr><td>${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}</td><td class="r">${x.cpm}</td><td class="r">${x.acc.toFixed(1)}%</td><td style="color:var(--sub)">${x.txt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}…</td></tr>`;
+      }).join('')+'</tbody></table>'
+    :'<div style="font-size:13px;color:var(--sub)">아직 기록이 없습니다.</div>';
+}
+
+/* 버튼 */
+$('bRetry').onclick=()=>reset(false);
+$('bNew').onclick=()=>{reset(true)};
+$('bDone').onclick=()=>{if(S.start&&!S.done)finish();else if(!S.start)toast('먼저 입력을 시작하세요')};
+$('bAgain').onclick=()=>{reset(false);window.scrollTo({top:0,behavior:'smooth'})};
+$('bNext').onclick=()=>{reset(true);window.scrollTo({top:0,behavior:'smooth'})};
+$('bCopy').onclick=async()=>{
+  if(!S.res)return;
+  const t=`한글 타자속도 측정 — CPM ${S.res.cpm} · 정확도 ${S.res.acc.toFixed(1)}% · 시간 ${fmtTime(S.res.ms)} · 오타 ${S.res.missStrokes}타`;
+  try{await navigator.clipboard.writeText(t);toast('결과를 복사했습니다')}catch(e){toast('복사하지 못했습니다')}
+};
+$('bClear').onclick=()=>{
+  if(!confirm('모든 기록과 누적 오타 통계를 지울까요?'))return;
+  store.del('rec');store.del('cum');
+  if(S.res)S.res.cum={};
+  renderHist();renderHeat();toast('기록을 초기화했습니다');
+};
+document.querySelectorAll('input[name=hm]').forEach(r=>r.addEventListener('change',()=>{hmMode=r.value;renderHeat()}));
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.t)));
+$('mySave').onclick=()=>{
+  store.set('my',$('myText').value);
+  if(!myLong()){toast('내용이 비어 있습니다');return}
+  $('editor').open=false;setTab('long');toast('장문을 저장했습니다 ('+Array.from(myLong()).length+'자)');
+};
+$('myClear').onclick=()=>{store.del('my');$('myText').value='';setTab('long');toast('기본 장문으로 되돌렸습니다')};
+
+/* 다크 모드 */
+const dm=$('dm');
+const syncDm=()=>{dm.textContent=document.documentElement.classList.contains('dark')?'라이트 모드':'다크 모드'};
+dm.addEventListener('click',()=>{
+  const on=document.documentElement.classList.toggle('dark');
+  try{localStorage.setItem('zz_dark',on?'1':'0')}catch(e){}
+  syncDm();
+});
+syncDm();
+
+/* 이름 (서버 모드) */
+
+/* 시작 */
+$('myText').value=store.get('my','');
+(async()=>{
+  if(/^https?:$/.test(location.protocol)){try{
+    const res=await fetch('api/text',{cache:'no-store'});
+    const j=res.ok?await res.json():null;
+    if(j&&typeof j==='object'&&'long' in j){
+      ONLINE=true;
+      SRV.long=(j.long||'').replace(/\s*\r?\n\s*/g,' ').trim();SRV.short=j.short||[];
+      if(SRV.long)$('editor').style.display='none';
+      $('nameBar').style.display='flex';$('uname').value=store.get('name','');
+      $('uname').addEventListener('input',()=>store.set('name',$('uname').value));
+    }
+  }catch(e){}}
+  setTab(['short','long'].includes(store.get('tab','short'))?store.get('tab','short'):'short');
+})();
+})();
+</script>
+</body>
+</html>
