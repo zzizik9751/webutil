@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>철도 용어 초성퀴즈</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+  
+  :root {
+    --ac: #555555;
+    --ac-light: #6b6b6b;
+    --ac-dark: #333333;
+    --ac-text: #222222;
+    --btn-text: #ffffff;
+    --bad: #ef4444;
+    --bg-gradient: #F8F8F8;
+    --card-bg: rgba(255, 255, 255, 0.75);
+    --card-border: rgba(255, 255, 255, 0.8);
+    --glass-shadow: 0 8px 32px 0 rgba(128, 128, 128, 0.10);
+    --text-main: #222222;
+    --text-muted: #64748b;
+    --chip-bg: rgba(255, 255, 255, 0.9);
+    --chip-border: rgba(128, 128, 128, 0.4);
+    --input-bg: rgba(255, 255, 255, 0.8);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ac: #bdbdbd;
+      --ac-light: #d6d6d6;
+      --ac-dark: #9e9e9e;
+      --ac-text: #e0e0e0;
+      --btn-text: #111111;
+      --bad: #f87171;
+      --bg-gradient: #1a1a1a;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --text-main: #eeeeee;
+      --text-muted: #94a3b8;
+      --chip-bg: rgba(30, 41, 59, 0.8);
+      --chip-border: rgba(128, 128, 128, 0.4);
+      --input-bg: rgba(30, 41, 59, 0.6);
+    }
+  }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-main);
+    min-height: 100vh;
+  }
+
+  .glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* 3D Glasslike Chosung Chip */
+  .chosung-chip {
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .chosung-chip:hover {
+    transform: translateY(-2px) scale(1.05);
+    border-color: var(--ac);
+    box-shadow: 0 6px 16px rgba(128, 128, 128, 0.2);
+  }
+
+  /* Custom input animation */
+  .custom-input {
+    background: var(--input-bg);
+    border: 1.5px solid var(--chip-border);
+    transition: all 0.25s ease;
+  }
+
+  .custom-input:focus {
+    border-color: var(--ac-light);
+    box-shadow: 0 0 0 4px rgba(128, 128, 128, 0.15);
+    outline: none;
+  }
+
+  /* Button Pulse Effects */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--ac) 0%, var(--ac-dark) 100%);
+    box-shadow: 0 4px 14px rgba(80, 80, 80, 0.3);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 20px rgba(80, 80, 80, 0.4);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .btn-secondary {
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid var(--chip-border);
+    transition: all 0.2s ease;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(128, 128, 128, 0.1);
+    border-color: var(--ac);
+    color: var(--ac-text);
+  }
+
+  /* Progress Dots Bar */
+  .prog-dot {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .prog-dot.o {
+    background: var(--ac-light);
+    box-shadow: 0 0 8px rgba(128, 128, 128, 0.5);
+  }
+
+  .prog-dot.x {
+    background: var(--bad);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+
+  .prog-dot.c {
+    background: var(--ac);
+    box-shadow: 0 0 8px rgba(128, 128, 128, 0.5);
+    transform: scaleY(1.25);
+  }
+
+  /* 강조색 보조 클래스 (Tailwind 기본 색 대체) */
+  .ac-text { color: var(--ac-text) !important; }
+  .ac-bg10 { background-color: rgba(128, 128, 128, 0.12) !important; }
+  .ac-bg5 { background-color: rgba(128, 128, 128, 0.06) !important; }
+  .ac-bl { border-color: var(--ac) !important; }
+  .ac-hover:hover { color: var(--ac-text) !important; }
+  .tx { color: var(--text-main) !important; }
+  .btn-primary { color: var(--btn-text) !important; white-space: nowrap; }
+  .row > input { min-width: 0; }
+  #game > div { min-width: 0; }
+</style>
+</head>
+<body class="py-8 px-4 sm:px-6 flex flex-col min-h-screen justify-between">
+
+<main class="w-full max-w-2xl mx-auto space-y-6">
+  
+  <!-- Sleek Header Section -->
+  <header class="glass-card rounded-2xl p-6 text-center relative overflow-hidden">
+    <div class="absolute -right-6 -top-6 w-24 h-24 ac-bg10 rounded-full blur-xl pointer-events-none"></div>
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full ac-bg10 ac-text text-xs font-semibold mb-3">
+      <i class="fa-solid fa-train"></i> 국가철도공단 KR CODE 기반
+    </div>
+    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight tx flex items-center justify-center gap-2">
+      <span>철도 용어 초성퀴즈</span>
+    </h1>
+    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2">
+      <b>KR E-01020 용어의 정의</b> (2025.03.28, Rev.08)
+    </p>
+  </header>
+
+  <!-- Options & Controls Bar -->
+  <div class="glass-card rounded-xl p-4 flex flex-wrap gap-3 items-center justify-between">
+    <div class="flex flex-wrap gap-2 flex-1 min-w-[240px]">
+      <select id="cat" aria-label="분야" class="custom-input text-sm rounded-lg px-3 py-2 tx cursor-pointer flex-1 min-w-[120px] "></select>
+      <select id="mode" aria-label="출제 방식" class="custom-input text-sm rounded-lg px-3 py-2 tx cursor-pointer flex-1 min-w-[120px] ">
+        <option value="rand">🎲 무작위 20문제</option>
+        <option value="daily">📅 오늘의 20문제</option>
+      </select>
+    </div>
+    <button class="btn-primary font-semibold text-sm px-5 py-2 rounded-lg flex items-center gap-2" id="start">
+      <i class="fa-solid fa-rotate-right"></i> 새 판 시작
+    </button>
+  </div>
+
+  <!-- Dynamic Game Panel -->
+  <div id="game"></div>
+
+</main>
+
+<!-- Footer -->
+<footer class="w-full max-w-2xl mx-auto mt-8 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
+  <p>※ 모든 문제는 기준 문서의 뜻풀이를 그대로(또는 일부 축약하여) 사용합니다. 점수는 저장되지 않으며 서버로 전송되지 않습니다.</p>
+  <p class="pt-1">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener" class="underline hover:ac-text transition-colors">zzizik</a>, with Claude AI.</p>
+</footer>
+
+<script>
+const DATA = [{"a": "가스증기위험장소", "d": "유류저장고, 위험물품창고, 도장실 또는 수술실 같은 가연성 가스 또는 인화성 액체의 증기가 공기중에 존재하여 위험한 장소 또는 그 우려가 있는 장소를 말함", "s": "전철전력 공통", "x": [], "n": "가스 증기 위험장소"}, {"a": "간선", "d": "인입구로부터 분기 과전류차단기에 이르는 배선으로서 분기회로의 분기점으로부터 전원측의 부분을 말함", "s": "전철전력 공통", "x": [], "n": "간선"}, {"a": "건조물", "d": "사람이 거주하거나 근무하며 또는 빈번한 출입이 있고 사람이 모이는 건축물 등을 말함", "s": "전철전력 공통", "x": [], "n": "건조물"}, {"a": "건축한계", "d": "차량이 안전하게 운행될 수 있도록 궤도상에 설정한 일정한 공간을 말함", "s": "전철전력 공통", "x": [], "n": "건축한계"}, {"a": "고압", "d": "직류에 있어서는 1,500V를 초과, 교류에 있어서는 1,000V를 초과하고 7,000V 이하의 전압을 말함", "s": "전철전력 공통", "x": [], "n": "고압"}, {"a": "공칭전압", "d": "전선로를 대표하는 선간전압을 말함", "s": "전철전력 공통", "x": [], "n": "공칭전압"}, {"a": "공동관로", "d": "전력ㆍ신호ㆍ통신케이블 중 2개 분야 이상을 함께 사용하는 관로를 말함", "s": "전철전력 공통", "x": [], "n": "공동관로"}, {"a": "공사시방서", "d": "전문시방서를 기본으로 공사의 특수성․지역여건․공사방법 등을 고려 하여 기본설계 및 실시설계 도면에 구체적으로 표시할 수 없는 내용과 공사수행을 위한 시공방법. 자재의 성능․규격 및 공법, 품질시험 및 검사, 안전관리계획 등에 관한 사항을 기술한 시공기준으로 당해공사의 계약문서를 말함", "s": "전철전력 공통", "x": [], "n": "공사시방서"}, {"a": "공사원가계산서", "d": "공사 시 노무비, 재료비, 경비 등 순공사비와 이윤 등을 계산하기 위해 작성하는 명세서를 말함", "s": "전철전력 공통", "x": [], "n": "공사원가계산서"}, {"a": "통합접지방식", "d": "레일과 병행하여 지중 매설접지선을 포설하여 변전소로 돌아오는 전류의 귀환을 용이하게 하는 방식으로 모든 전기설비(신호설비 포함) 및 전자통신 설비, 건축물의 피뢰설비 등의 접지극을 등전위 접지망으로 구성하여 레일 및 귀선 을 연결시키는 접지방식을 말함", "s": "전철전력 공통", "x": [], "n": "통합접지방식"}, {"a": "공해지역", "d": "아황산가스 오염도가 기준치(0.05ppm)를 넘는 곳으로서 공단이 공해발생 취약개소로 지정한 장소를 말함", "s": "전철전력 공통", "x": [], "n": "공해지역"}, {"a": "과부하전류", "d": "기기에 대하여는 그 정격전류, 전선에 대하여는 그 허용전류를 초과 하여 계속 흐르고 있을 때, 기기 또는 전선의 손상 방지상 자동차단을 필요로 하는 전류를 말함", "s": "전철전력 공통", "x": [], "n": "과부하 전류"}, {"a": "과전류차단기", "d": "배선용 차단기 및 기중 차단기와 같이 과부하 전류 및 단락 전류를 자동 차단하는 기능을 가지는 기구를 말함", "s": "전철전력 공통", "x": [], "n": "과전류 차단기"}, {"a": "과전류", "d": "과부하 전류 또는 단락전류를 말함", "s": "전철전력 공통", "x": [], "n": "과전류"}, {"a": "관등회로", "d": "방전등용 안정기(네온변압기 포함) 및 점등관 등 점등에 필요한 부속품과 방전관을 결합한 회로를 말함", "s": "전철전력 공통", "x": [], "n": "관등회로"}, {"a": "구내배전설비", "d": "수전설비의 배전반 이후로부터 전기기계, 기구에 이르는 전선로, 개폐기, 차단기, 분전반, 콘센트, 제어반, 스위치 기타 부속설비를 말함", "s": "전철전력 공통", "x": [], "n": "구내 배전설비"}, {"a": "구내", "d": "벽, 울타리, 도랑 등으로 구분된 지역 또는 시설관리자 및 그 관계자 이외의 사람이 자유로이 출입할 수 없거나 지형상 및 사회통념상 이에 따르는 장소를 말함", "s": "전철전력 공통", "x": [], "n": "구내"}, {"a": "궤간", "d": "양쪽 레일 안쪽 간의 거리 중 가장 짧은 거리, 레일의 윗면으로부터 14㎜ 아래 지점을 기준", "s": "전철전력 공통", "x": [], "n": "궤간"}, {"a": "궤도", "d": "레일ㆍ침목 및 도상과 이들의 부속품으로 구성된 시설을 말함", "s": "전철전력 공통", "x": [], "n": "궤도"}, {"a": "귀선", "d": "운전용 전기를 통하는 귀선레일, 보조귀선, 부급전선, 흡상선, 중성선, 보호선용 접속선 및 변전소인입귀선을 총괄한 것을 말함", "s": "전철전력 공통", "x": [], "n": "귀선"}, {"a": "귀선로", "d": "귀선 및 이를 지지 또는 보장하는 설비를 총괄한 것을 말함", "s": "전철전력 공통", "x": [], "n": "귀선로"}, {"a": "기본설계", "d": "예비타당성조사, 타당성 조사 및 기본계획을 감안하여 시설물의 규모, 배치, 형태, 개략공사방법 및 기간, 개략 공사비 등에 관한 조사, 분석, 비교ㆍ검토를 거쳐 최적 안을 선정하고 이를 설계도서로 표현하여 제시하는 설계업무로서 각종사업 의 인ㆍ허가를 위한 설계를 포함하며, 설계기준 및 조건 등 실시…", "s": "전철전력 공통", "x": [], "n": "기본설계"}, {"a": "기지", "d": "화물의 취급 또는 차량의 유치 등을 목적으로 시설한 장소로서 화물기지, 차량기지, 주박기지, 보수기지 및 궤도기지 등", "s": "전철전력 공통", "x": [], "n": "기지"}, {"a": "내진설계", "d": "지진 등의 물리적인 충격을 줄 수 있는 자연 재해로부터 건물이나 구조물, 설비, 인원을 안전하게 보호할 수 있도록 하는 설계", "s": "전철전력 공통", "x": [], "n": "내진설계"}, {"a": "누설전류", "d": "전로 이외를 흐르는 전류로서 전로의 절연체(전선의 피복, 애자, 붓싱, 스페이서 및 기타 기기의 부분으로 사용하는 절연체 등)의 내부 및 표면과 공간을 통하여 선간 또는 대지 사이로 흐르는 전류", "s": "전철전력 공통", "x": [], "n": "누설전류"}, {"a": "누전경보장치", "d": "전로에 지락이 발생할 때 부하기기, 금속제 외함 등에 발생되는", "s": "전철전력 공통", "x": [], "n": "누전 경보장치"}, {"a": "누전경보기", "d": "누전경보장치를 일체화하여(직접 경보를 하는 부분을 제외한 것을 포함) 용기 내에 넣은 것", "s": "전철전력 공통", "x": [], "n": "누전경보기"}, {"a": "누전차단기", "d": "누전 차단장치를 일체로 하여 용기 속에 넣어서 제작한 것으로서 용기 외로부터 수동으로 전로의 개폐 및 자동차단 후의 복귀가 가능한 것", "s": "전철전력 공통", "x": [], "n": "누전 차단기"}, {"a": "노출장소", "d": "옥내의 천정 밑면, 벽면 기타 옥 측과 같은 장소", "s": "전철전력 공통", "x": [], "n": "노출장소"}, {"a": "단락전류", "d": "전로의 선간이 임피던스가 적은 상태로 접촉되었을 경우에 그 부분을 통하여 흐르는 큰 전류", "s": "전철전력 공통", "x": [], "n": "단락전류"}, {"a": "대지전압", "d": "접지식 전로에서는 전선과 대지 사이의 전압을 말하고, 비접지식 전로 에서는 전선과 그 전로 중의 임의의 다른 전선 사이의 전압", "s": "전철전력 공통", "x": [], "n": "대지전압"}, {"a": "도상", "d": "레일 및 침목으로부터 전달되는 차량 하중을 노반에 넓게 분산시키고 침목을 일정한 위치에 고정시키는 기능을 하는 자갈 또는 콘크리트 등의 재료로 구성된 구조부분", "s": "전철전력 공통", "x": [], "n": "도상"}, {"a": "매설접지선", "d": "통합접지방식에서 레일과 병행하여 양쪽 또는 한쪽에 매설하는 접지 용 전선", "s": "전철전력 공통", "x": [], "n": "매설접지선"}, {"a": "물기있는장소", "d": "세탁장 등 물을 취급하는 봉당(토방) 혹은 주방(세차장 및 욕실의 세면장을 포함) 또는 그 부근의 물기가 비산하는 장소, 간이 지하실에 상시 물이 누출 또는 결로 하는 장소, 소(沼), 연못, 용수(用水) 등 및 이들 주변, 기타 이것들과 유사한 장소", "s": "전철전력 공통", "x": [], "n": "물기있는 장소"}, {"a": "방전등", "d": "방전관, 방전등용 안정기(방전등용 변압기 포함) 및 방전관의 점등에 필요한 부속품 등", "s": "전철전력 공통", "x": [], "n": "방전등"}, {"a": "배선", "d": "전기 사용 장소에서 고정시켜 시설하는 전선을 말하며, 기계기구(배분전반을 포함) 내에 그 일부분으로 시설되는 배선으로 소 세력회로의 전선 등은 포함하지 않음", "s": "전철전력 공통", "x": [], "n": "배선"}, {"a": "배선용차단기", "d": "전자작용 또는 바이메탈의 작용에 의하여 과전류를 검출하고 자동으로 차단하는 과전류 차단기로서 그 최대 동작전류가 정격전류의 100%와 125% 사이에 있 고 또한 외부에서 수동, 전자적 또는 전동적으로 조작할 수 있는 것", "s": "전철전력 공통", "x": [], "n": "배선용 차단기"}, {"a": "배전반", "d": "개폐기, 과전류 차단기, 계기, 보호계전기 등을 설비한 독립된 반으로서 구내 배전설비로 전기를 공급하는 전기설비", "s": "전철전력 공통", "x": [], "n": "배전반"}, {"a": "배전선로", "d": "전철변전소 또는 수전설비의 배전반 2차측부터 전기실 등 변압기 1차측 까지의 전선로 및 이에 부속되는 개폐장치 등의 설비", "s": "전철전력 공통", "x": [], "n": "배전선로"}, {"a": "배전설비", "d": "수전설비의 배전반 이후로부터 전기기계, 기구에 이르는 전선로, 개폐기, 차단기, 분전반, 콘센트, 제어반, 스위치 기타 부속설비", "s": "전철전력 공통", "x": [], "n": "배전설비"}, {"a": "본선", "d": "열차운행에 상용할 목적으로 설치한 선로", "s": "전철전력 공통", "x": [], "n": "본선"}, {"a": "분기개폐기", "d": "간선과 분기회로와의 분기점에 설치하는 개폐기(개폐기를 겸한 배선용 차단기 포함)", "s": "전철전력 공통", "x": [], "n": "분기개폐기"}, {"a": "분기회로", "d": "간선으로부터 분기하여 분기 과전류차단기를 거쳐서 부하에 이르는 사이의 배선", "s": "전철전력 공통", "x": [], "n": "분기회로"}, {"a": "분전반", "d": "전로를 2이상으로 분기하기 위하여 필요한 기기를 설비한 독립된 반", "s": "전철전력 공통", "x": [], "n": "분전반"}, {"a": "선로", "d": "차량을 운행하기 위한 궤도와 이를 받치는 노반 또는 인공구조물로 구성된 시설", "s": "전철전력 공통", "x": [], "n": "선로"}, {"a": "설계도면", "d": "과업계획에 의해 제시된 목적물의 형상과 규격 등을 표현하기 위해 설계자에 의해 작성된 도면으로 물량산출 및 내역산출의 기초가 되며 시공자가 시공상세도면을 작성할 수 있도록 모든 지침이 표현된 도면을 말하며, 복잡한 부분을 쉽게 판독할 수 있도록 상세히 작성한 상세설계 도면과 구조계산이 필요한 가시설…", "s": "전철전력 공통", "x": [], "n": "설계도면"}, {"a": "설계보고서", "d": "시설물의 규모, 배치, 형태, 공사방법과 기간, 공사비, 유지관리 등에 관한 세부 조사 및 분석, 비교·검토를 통한 최적안 선정 등 시공 및 유지관리에 필 요한 내용을 작성한 설계도서", "s": "전철전력 공통", "x": [], "n": "설계보고서"}, {"a": "설계속도", "d": "해당 선로를 설계할 때 기준이 되는 상한속도", "s": "전철전력 공통", "x": [], "n": "설계속도"}, {"a": "소형전기기계기구", "d": "소비전류 6A이하(전동기는 정격출력 200W이하)의 가정용 전기 기계기구", "s": "전철전력 공통", "x": [], "n": "소형전기기계기구"}, {"a": "수량산출서", "d": "설계도면을 작성·완료한 후에 공종별로 재료의 수량을 산출한 내역서", "s": "전철전력 공통", "x": [], "n": "수량산출서"}, {"a": "수용장소", "d": "전기사용장소를 포함하여 전기를 사용하는 구내 전체", "s": "전철전력 공통", "x": [], "n": "수용장소"}, {"a": "수전반", "d": "특별고압 또는 고압 수용가의 수전용 배전반", "s": "전철전력 공통", "x": [], "n": "수전반"}, {"a": "습기많은장소", "d": "조리실, 열기소독실 등의 수증기가 충만한 장소, 바닥 또는 이와 유사한 장소(주택의 누각 같은 장소는 포함되지 않음)", "s": "전철전력 공통", "x": [], "n": "습기 많은 장소"}, {"a": "시공기면", "d": "노반을 조성하는 기준이 되는 면", "s": "전철전력 공통", "x": [], "n": "시공기면"}, {"a": "시공상세도", "d": "실시설계도서에 포함된 각종 상세도면 외에 시공자가 설계도서에 표시된 내용을 구체적으로 구현하기 위하여 어떤 수단과 방법 등으로 시공할 것인지의 검토 결과를 도면으로 작성하는 것", "s": "전철전력 공통", "x": [], "n": "시공상세도"}, {"a": "시운전", "d": "선로를 새로 부설했거나 중대한 선로 보수를 한 경우와 전차선의 이상 유무 확인 및 각종설비를 설치하고 사용 개시 전 최종 확인하는 것", "s": "전철전력 공통", "x": [], "n": "시운전"}, {"a": "실시설계", "d": "기본설계 결과를 토대로 시설물의 규모, 배치, 형태, 공사방법과 기간, 공사비, 유지관리 등에 관하여 세부조사 및 분석, 비교ㆍ검토를 통하여 최적안을 선정하여 시공 및 유지관리에 필요한 설계도서(도면, 시방서, 내역서, 계산서 등), 및 각종사업의 인․허가를 위한 설계도서를 작성하는 것", "s": "전철전력 공통", "x": [], "n": "실시설계"}, {"a": "약전류전선", "d": "약전류전기의 전송에 사용하는 전기도체, 절연물로 피복한 전기도체, 절연물로 피복한 위를 보호피복으로 보호한 전기도체", "s": "전철전력 공통", "x": [], "n": "약전류 전선"}, {"a": "약전류전선로", "d": "약전류전선 및 이를 지지하거나 보장하는 설비(조영물의 옥내 또는 옥측에 시설하는 것 제외)", "s": "전철전력 공통", "x": [], "n": "약전류 전선로"}, {"a": "역소", "d": "역, 조차장, 신호장, 각 사무소, 기타 이와 유사한 장소", "s": "전철전력 공통", "x": [], "n": "역소"}, {"a": "열차", "d": "동력차에 객차 또는 화차 등을 연결하여 본선을 운행할 목적으로 조성한 차량", "s": "전철전력 공통", "x": [], "n": "열차"}, {"a": "염해지역", "d": "염수의 침입 및 해풍으로 해안지역의 식물이나 전기시설물의 피해 우려가 있는 지역을 말한다.", "s": "전철전력 공통", "x": [], "n": "염해지역"}, {"a": "옥내배선", "d": "옥내의 전기 사용 장소에서 고정하여 시설하는 전선", "s": "전철전력 공통", "x": [], "n": "옥내배선"}, {"a": "옥측", "d": "건조물의 옥외 측면", "s": "전철전력 공통", "x": [], "n": "옥측"}, {"a": "옥측배선", "d": "옥측 전기 사용 장소에 시설하는 배선", "s": "전철전력 공통", "x": [], "n": "옥측배선"}, {"a": "옥외배선", "d": "옥외 전기 사용 장소에 시설하는 배선(옥측배선을 제외)", "s": "전철전력 공통", "x": [], "n": "옥외배선"}, {"a": "우선내", "d": "옥 측에서 처마, 차양 또는 이와 유사한 것의 끝에서 연직선에 대해 건조물 방향으로 45° 선의 내측 부분", "s": "전철전력 공통", "x": [], "n": "우선내"}, {"a": "우선외", "d": "옥 측에서 우선 내 이외의 장소( 비를 맞는 장소)", "s": "전철전력 공통", "x": [], "n": "우선외"}, {"a": "이중화전원계통", "d": "각종 사고의 경우에도 전원공급이 가능하도록 2회선으로 구성된 전용배전선로 전력계통", "s": "전철전력 공통", "x": [], "n": "이중화 전원계통"}, {"a": "인입구", "d": "옥외 또는 옥측으로부터 전로가 가옥의 외벽을 관통하는 부분", "s": "전철전력 공통", "x": [], "n": "인입구"}, {"a": "인입구배선", "d": "가공 인입선 및 지중 인입선의 종단에서 인입구를 거쳐 인입개폐기에 이르는 배선", "s": "전철전력 공통", "x": [], "n": "인입구배선"}, {"a": "인입구장치", "d": "인입구 이후 전로에 설치하는 전원 측에서 보아 최초의 개폐기 및 과 전류차단기 조합", "s": "전철전력 공통", "x": [], "n": "인입구장치"}, {"a": "인입선", "d": "배전선로로부터 분기하여 수용장소의 인입구에 이르는 부분의 전선", "s": "전철전력 공통", "x": [], "n": "인입선"}, {"a": "인하선", "d": "배전선로의 지지점으로부터 분기하여 지지물을 따라 옥외 시설의 제표지등․ 역명표․외등 및 기타 시설물의 인입구에 이르는 부분의 전선", "s": "전철전력 공통", "x": [], "n": "인하선"}, {"a": "장대터널", "d": "연장 5㎞이상의 터널", "s": "전철전력 공통", "x": [], "n": "장대터널"}, {"a": "저압", "d": "직류에 있어서는 1,500V 이하, 교류에 있어서는 1,000V 이하의 전압을 말함", "s": "전철전력 공통", "x": [], "n": "저압"}, {"a": "전기수용설비", "d": "수전설비와 구내 배전설비", "s": "전철전력 공통", "x": [], "n": "전기 수용설비"}, {"a": "전기설비", "d": "수전, 변전, 전철, 배전 또는 전기사용을 위하여 설치하는 기계, 기구, 전선로, 보안 통신선로 기타의 설비", "s": "전철전력 공통", "x": [], "n": "전기설비"}, {"a": "전기실등", "d": "전기수용설비 중 개폐기 기타의 장치에 의하여 고압 또는 특별고압 전로를 개폐할 수 있는 설비와 변압기 등이 설치되어 있는 옥내․외 장소를 말하며, 변압기 만 설치되어 있는 장소는 제외. 또한, 배전선로의 전기실은 수전실, 전기실, 배전소 로 나누며, 한전에서 수전 받아 각 전기실로 공급하는 1차 전…", "s": "전철전력 공통", "x": [], "n": "전기실 등"}, {"a": "전로", "d": "보통의 사용 상태에서 전기를 통하고 있는 회로의 전부 또는 일부를 말한다.", "s": "전철전력 공통", "x": [], "n": "전로"}, {"a": "전문시방서", "d": "공사시방서 작성을 위한 가이드로서 모든 공종을 대상으로 하여 발주처가 작성한 종합적인 시공기준", "s": "전철전력 공통", "x": [], "n": "전문시방서"}, {"a": "전선", "d": "강전류전기의 전송에 사용하는 나전선, 절연전선, 코드선, 케이블 등의 전기 도체를 말한다. 또한, 부급전선, 보호선, 비절연보호선 및 가공공동지선, 섬락보호지선도 전선으로 봄", "s": "전철전력 공통", "x": [], "n": "전선"}, {"a": "전선로", "d": "전기사용장소 상호간의 전선 및 이를 지지하거나 또는 보장하는 시설물", "s": "전철전력 공통", "x": [], "n": "전선로"}, {"a": "전주", "d": "전선로에 사용하는 목주, 철주, 강관주, H형강주 및 콘크리트주", "s": "전철전력 공통", "x": [], "n": "전주"}, {"a": "전철전력설비", "d": "전기철도에서 수전선로, 변전설비, 스카다(SCADA), 전차선로, 배전선로, 건축전기설비와 이에 부속되는 설비를 총괄한 것", "s": "전철전력 공통", "x": [], "n": "전철전력설비"}, {"a": "전철전원설비", "d": "전기사업자로 부터 수전할 수 있는 수전선로, 전철전력설비에 공급할 수 있도록 적합하게 변성할 수 있는 제반 변전설비", "s": "전철전력 공통", "x": [], "n": "전철전원설비"}, {"a": "절연구간", "d": "절연체에 의해 접지부 및 충전부와 구분되는 개소", "s": "전철전력 공통", "x": [], "n": "절연구간"}, {"a": "절연전선", "d": "절연물로 피복한 전선", "s": "전철전력 공통", "x": [], "n": "절연전선"}, {"a": "점멸기", "d": "전등 등의 점멸에 사용하는 개폐기(텀블러스위치 등)", "s": "전철전력 공통", "x": [], "n": "점멸기"}, {"a": "점검가능은폐장소", "d": "점검구가 있는 천정 속, 찬장 또는 벽장 같은 장소", "s": "전철전력 공통", "x": [], "n": "점검 가능 은폐장소"}, {"a": "접지선", "d": "다음 각목에 열거한 것을 접지극 또는 접지단자함에 접속하는 금속선을 말한다.", "s": "전철전력 공통", "x": [], "n": "접지선"}, {"a": "접촉전압", "d": "지락이 발생된 전기기계, 기구의 금속제 외함 등에 사람이 닿았을 때 생체에 가하여지는 전압", "s": "전철전력 공통", "x": [], "n": "접촉전압"}, {"a": "정거장", "d": "여객 또는 화물의 취급을 위한 철도시설 등을 설치한 장소[조차장(열차의 조성 또는 차량의 입환을 위하여 철도시설 등이 설치된 장소) 및 신호장(열차의 교차 통행 또는 대피를 위하여 철도시설 등이 설치된 장소)을 포함]", "s": "전철전력 공통", "x": [], "n": "정거장"}, {"a": "정격차단용량", "d": "과전류 차단기가 어떤 정해진 조건에서 차단할 수 있는 차단용량의 한계", "s": "전철전력 공통", "x": [], "n": "정격 차단용량"}, {"a": "정격전압", "d": "전기사용 기계, 기구, 배선기구 등에서 사용상 기준이 되는 전압", "s": "전철전력 공통", "x": [], "n": "정격전압"}, {"a": "제어반", "d": "특정의 전기기계, 기구를 현지제어 및 원격제어하기 위하여 설치된 독립된 반", "s": "전철전력 공통", "x": [], "n": "제어반"}, {"a": "제어회로", "d": "계전기 또는 이와 유사한 기구를 통하여 다른 회로를 제어하는 회로", "s": "전철전력 공통", "x": [], "n": "제어회로"}, {"a": "조영물", "d": "건물, 광고탑 등 토지에 정착된 공작물중 건물기초 및 기둥 또는 벽이 있는 공작물", "s": "전철전력 공통", "x": [], "n": "조영물"}, {"a": "조영재", "d": "조영물을 구성하는 부분", "s": "전철전력 공통", "x": [], "n": "조영재"}, {"a": "조작반", "d": "특정의 전기기계, 기구를 수동조작하기 위하여 필요한 기기를 설비한 독립된 반", "s": "전철전력 공통", "x": [], "n": "조작반"}, {"a": "지락차단장치", "d": "전로에 지락이 생겼을 경우에 부하기기 금속제 외함 등에 발생하는 고장전압 또는 지락전류를 검출하는 부분과 차단기 부분을 조합하여 자동적으로 전로를 차단하는 장치", "s": "전철전력 공통", "x": [], "n": "지락 차단장치"}, {"a": "지락전류", "d": "지락에 의하여 전로의 대지로 유출되어 화재, 감전 또는 전로나 기기의 손상 등 사고를 일으킬 우려가 있는 전류", "s": "전철전력 공통", "x": [], "n": "지락전류"}, {"a": "지중관로", "d": "지중에 일정한 공간을 확보하여 지중전선로, 지중 약전류전선로, 지중 광섬유케이블 선로, 지중에 시설하는 수관 및 가스관과 이와 유사한 것 및 이들에 부속되는 지중함 등", "s": "전철전력 공통", "x": [], "n": "지중관로"}, {"a": "지지물", "d": "각종 전주 및 철탑, 전주대용물, 하수강 및 이의 부속장치", "s": "전철전력 공통", "x": [], "n": "지지물"}, {"a": "직렬콘덴서", "d": "인덕턴스에 의한 전압강하의 경감을 위하여 급전선, 부급전선 또는 전차선에 직렬로 접속하는 콘덴서", "s": "전철전력 공통", "x": [], "n": "직렬콘덴서"}, {"a": "차량", "d": "선로를 운행할 목적으로 제작된 동력차ㆍ객차ㆍ화차 및 특수차", "s": "전철전력 공통", "x": [], "n": "차량"}, {"a": "차량한계", "d": "철도차량의 안전을 확보하기 위하여 궤도 위에 정지된 상태에서 측정한 철도차량의 길이ㆍ너비 및 높이의 한계", "s": "전철전력 공통", "x": [], "n": "차량한계"}, {"a": "최대사용전압", "d": "보통의 사용 상태에서 그 회로에 가하여지는 선간전압의 최대치", "s": "전철전력 공통", "x": [], "n": "최대 사용전압"}, {"a": "측선", "d": "본선 외의 선로", "s": "전철전력 공통", "x": [], "n": "측선"}, {"a": "캔트", "d": "차량이 곡선구간을 원활하게 운행할 수 있도록 안쪽 레일을 기준으로 바깥쪽 레일을 높게 부설하는 것", "s": "전철전력 공통", "x": ["cant"], "n": "캔트"}, {"a": "특별고압", "d": "고압의 한도를 초과하는 전압. 단, 고압 또는 특별고압의 다선식전로 (중성선을 가지는 것)의 중성선과 다른 1선을 전기적으로 접속하여 시설하는 전기 설비에 관하여는 그 사용전압 또는 최대 사용전압이 그 다선식전로의 사용전압 또는 최대 사용전압과 같은 것으로 하여 이 규정을 적용", "s": "전철전력 공통", "x": [], "n": "특별고압"}, {"a": "폴라이트", "d": "기초, 등주, 조명기구 및 그 배선을 총칭", "s": "전철전력 공통", "x": ["polelight"], "n": "폴라이트"}, {"a": "횡단접속선", "d": "상하선 각 궤도에 대한 귀선전류 평형단락 또는 지락사고 발생시 대 지전위의 감소를 목적으로 설치하는 전선", "s": "전철전력 공통", "x": [], "n": "횡단접속선"}, {"a": "횡단전선관", "d": "철도선로 양측의 역구내 및 역간 각 기능실(변전소, 배전소, 신호 및 통신)의 전원공급, 접지 등의 선로횡단이 필요한 개소에 설치", "s": "전철전력 공통", "x": [], "n": "횡단전선관"}, {"a": "철도건축전기설비", "d": "역사, 변전건물 등 철도와 관련한 시설에 전기를 공급하기 위 한 설비를 철도건축전기설비라 말한다. 단, 다음의 경우는 제외한다. ① 열차 운행에 필요한 설비 (수전선로, 변전설비, 스카다(SCADA), 전차선로, 배전선 로 등) ② 선로 연변의 부하에 전기를 공급하기 위해 변압기만 설치된 장소 ③…", "s": "전철전력 공통", "x": [], "n": "철도건축전기설비"}, {"a": "가스절연개폐장치", "d": "SF6 가스를 절연체로 하여 모선 개폐장치, 계기용 변성기, 변류기, 피뢰기 등을 내장한 금속압력기기로 된 회로군", "s": "전철전원설비", "x": ["gis"], "n": "가스절연개폐장치"}, {"a": "급전구간", "d": "차단장치에 의하여 전력공급 구간을 구분할 수 있는 급전회로의 1구간", "s": "전철전원설비", "x": [], "n": "급전구간"}, {"a": "급전구분소", "d": "전철변전소간 전기를 구분 또는 연장급전을 하기 위 하여 개폐장치, 단권변압기 등을 설치한 장소", "s": "전철전원설비", "x": ["sectioningpost"], "n": "급전구분소"}, {"a": "급전점", "d": "전철변전소의 전력을 급전회로에 공급하는 점", "s": "전철전원설비", "x": [], "n": "급전점"}, {"a": "급전회로", "d": "전기철도에 있어서 급전선, 합성전차선, 귀선(부급전선, 보호선, 레일) 등 으로 구성되는 전기회로", "s": "전철전원설비", "x": [], "n": "급전회로"}, {"a": "단권변압기", "d": "교류전차선로에서 전압강하 및 유도장해 등을 경감시킬 목적으로 전차 선로에 설치하는 변압기", "s": "전철전원설비", "x": [], "n": "단권변압기"}, {"a": "단말보조급전구분소", "d": "전차선로의 말단에 가공전차선의 전압 강하 보상과 유도장해의 경감을 위하여 단권변압기를 설치한 장소", "s": "전철전원설비", "x": ["autotransformerpost"], "n": "단말보조급전구분소"}, {"a": "병렬급전", "d": "1급전 구간에 2이상의 급전점을 가진 급전방식", "s": "전철전원설비", "x": [], "n": "병렬급전"}, {"a": "병렬급전소", "d": "전압강하의 보상 및 유도장해 경감을 목적으로 전차선로의 상, 하선을 병렬로 연결하기 위하여 개폐장치를 설치한 장소", "s": "전철전원설비", "x": ["parallelpost"], "n": "병렬급전소"}, {"a": "보조급전구분소", "d": "선로의 작업, 고장, 장애 또는 사고시에 정전 (단전)구간을 단축하기 위하여 급전계통의 분리에 필요한 개폐장치와 단권변압기 등 을 설치한 장소", "s": "전철전원설비", "x": ["subsectioningpost"], "n": "보조급전구분소"}, {"a": "수전선로", "d": "한국전력변전소에서 전철변전소 또는 수전설비 간의 전선로와 이에 부속 되는 설비", "s": "전철전원설비", "x": [], "n": "수전선로"}, {"a": "연장급전", "d": "2개소 이상의 급전점에서 급전할 수 있는 급전구간을 1개소의 급전점에서 급전하는 방식", "s": "전철전원설비", "x": [], "n": "연장급전"}, {"a": "원격진단장치", "d": "전기철도용 변전소(S/S), 급전구분소(SP), 보조급전 구분소(SSP), 병렬급전소(PP), 단말보조급전구분소(ATP) 등에서 운전 중인 변전설비 (변압기, 가스절연개폐장치)의 열화 상태를 상시 원격으로 감시 및 진단할 수 있는 장치", "s": "전철전원설비", "x": ["예방진단설비"], "n": "원격진단장치"}, {"a": "전철변전소등", "d": "전철변전소, 급전구분소, 보조급전구분소, 단말보조급전구분소, 병렬 급전소를 총칭함", "s": "전철전원설비", "x": [], "n": "전철변전소 등"}, {"a": "전철변전소", "d": "전기차량 및 전기철도설비에 전력을 공급하기 위하여 구외로부터 전송된 전기를 구내에 시설한 변압기, 전동발전기, 회전변류기, 정류기 등 기타의 기계 기구에 의하여 변성(전압을 높이거나 낮추는 것)하는 장소로서 변성한 전기를 다시 구외로 전송하는 장소", "s": "전철전원설비", "x": ["substation"], "n": "전철변전소"}, {"a": "절연구분장치", "d": "전차선로에서 서로 다른 전기방식(교류/직류) 또는 다른 위상(교류/교류)을 가진 전기를 구분하는 구간에 설치하는 설비", "s": "전철전원설비", "x": ["neutralsection"], "n": "절연구분장치"}, {"a": "흡상변압기", "d": "교류 전차선로에서 통신유도장해 경감을 위하여 급전회로에 직렬로 연결하여 레일에 통하는 운전전류를 부급전선으로 흐르게 하는 변압기", "s": "전철전원설비", "x": [], "n": "흡상변압기"}, {"a": "흡상선", "d": "흡상변압기방식에서 부급전선과 귀선레일을 접속하는 전선", "s": "전철전원설비", "x": [], "n": "흡상선"}, {"a": "가고", "d": "합성전차선의 지지점에서 조가선과 전차선과의 수직 중심간격", "s": "전차선설비", "x": [], "n": "가고"}, {"a": "가공전차선", "d": "합성전차선과 이에 부속된 곡선당김장치, 건넘선장치, 장력조정장치, 구분 장치, 급전분기장치, 균압장치, 흐름방지장치 등을 총괄한 것", "s": "전차선설비", "x": [], "n": "가공전차선"}, {"a": "가공지선", "d": "가공전선로의 뇌격방지를 위하여 전선로 상부에 설치하는 접지전선", "s": "전차선설비", "x": ["overheadgroundwire"], "n": "가공지선"}, {"a": "강체전차선", "d": "전기차량의 집전장치에 접촉, 동작하여 이에 전기를 공급하는 강체레 일 형태의 도체 바(bar)", "s": "전차선설비", "x": [], "n": "강체전차선"}, {"a": "강체전차선로", "d": "강체전차선 및 이를 지지하는 설비(지지금구, 연결금구, 리지드바, 롱 이어, 애자, 브래킷 등)를 총괄한 것", "s": "전차선설비", "x": [], "n": "강체전차선로"}, {"a": "건넘선장치", "d": "선로가 교차하는 분기장소에 있어서 각 선로에 전기차를 운전할 수 있도록 전차선을 교차시켜서 팬터그래프의 집전을 가능하게 하는 설비", "s": "전차선설비", "x": [], "n": "건넘선 장치"}, {"a": "건식게이지", "d": "전주중심과 궤도 중심과의 최소이격거리", "s": "전차선설비", "x": ["gauge"], "n": "건식게이지"}, {"a": "곡선당김장치", "d": "가동브래킷을 사용하지 않고 애자 등으로 절연하여 합성전차선을 지지하는 장치", "s": "전차선설비", "x": [], "n": "곡선당김장치"}, {"a": "구분장치", "d": "정전구간을 한정하거나 교류전철화 구간의 M, T상의 이상 전원을 구분하기 위하여 설치하는 장치로서, 전차선로의 운영 및 유지보수를 위하여 전기적으로 구분 하는 장치인 동상구분장치(에어섹션, 애자섹션), 변전소 급전인출구 및 급전구분소의 급전인출구, 교류와 직류를 구분하는 장치인 절연구분장치(Neut…", "s": "전차선설비", "x": [], "n": "구분장치"}, {"a": "급전선", "d": "합성전차선에 전기를 공급하는 전선〔AT 급전방식에서 전차선에 직접 전기를 공급하는 전선(TF), 주변압기와 단권변압기 간을 연결하는 전선(AF)과 BT 급전방식에서 주변압기의 2차측 또는 BT에서 전차선에 직접 전기를 공급하는 전선(PF)을 포함", "s": "전차선설비", "x": [], "n": "급전선"}, {"a": "급전선로", "d": "급전선 및 이를 지지 또는 보장하는 설비(전주, 완철, 문형완철, 애자, 관로 등)를 총괄한 것", "s": "전차선설비", "x": [], "n": "급전선로"}, {"a": "보조조가선", "d": "합성전차선의 지지점에서 조가선의 가고를 조정하기 위하여 보조로 설치한 조가선을 말한다. 또한, 콤파운드 가선방식에서 본 조가선 밑에 설치한 조가선도 이에 포함", "s": "전차선설비", "x": [], "n": "보조조가선"}, {"a": "보호선", "d": "단권변압기방식에서 애자의 부측 또는 빔 등을 연접하여 귀선 레일에 접속하는 가공전선으로서 대지에 대하여 절연한 전선", "s": "전차선설비", "x": ["protectivewire"], "n": "보호선"}, {"a": "보호선용접속선", "d": "단권변압기 방식에서 보호선과 귀선레일을 접속하는 전선", "s": "전차선설비", "x": ["contactprotectionwire"], "n": "보호선용접속선"}, {"a": "부급전선", "d": "통신유도장해 경감을 위하여 귀선레일과 병렬로 시설하여 운전용 전기를 변전소로 귀환하게 하는 전선", "s": "전차선설비", "x": [], "n": "부급전선"}, {"a": "비절연보호선", "d": "단권변압기방식의 지하구간 및 통합접지방식 구간에서 섬락보호를 위하여 철재, 지지물을 연접하여 귀선레일에 접속하는 가공전선 으로서 대지에 대하여 절연하지 아니하는 전선", "s": "전차선설비", "x": ["faultprotectionwire"], "n": "비절연보호선"}, {"a": "섬락보호지선", "d": "섬락으로부터 여객 및 기타 전선로를 보호하기 위하여 일정구간에 대하여 빔․철주 등 철지지물을 연접하여 접지시키는 가공전선", "s": "전차선설비", "x": ["flashoverprotectiongroundwire"], "n": "섬락보호지선"}, {"a": "심플커티너리", "d": "전차선로 타입의 하나로서, 단일 조가선과 단일 전차선만으로 전차선로를 가공 현수하는 구조를 갖는 가선형태를 말하며, 헤비 심플 커티너리(Heavy Simple Catenary)를 포함", "s": "전차선설비", "x": ["simplecatenary"], "n": "심플커티너리"}, {"a": "에어섹션", "d": "집전부분의 전차선에 절연물을 넣지 않고 절연해야 할 전차선 상호간의 평행부분을 일정간격으로 유지시켜 공기의 절연을 이용한 구분장치", "s": "전차선설비", "x": [], "n": "에어섹션"}, {"a": "영구신장조성", "d": "전차선 및 조가선을 정상적으로 인류하기 전에 영구신장이 생기도록 미리 과장력을 가하여 주는 것", "s": "전차선설비", "x": ["prestretch"], "n": "영구신장조성"}, {"a": "이선", "d": "전차선과 전기차의 집전장치가 서로 떨어지거나 접촉력이 “0 (Zero)”인 상태", "s": "전차선설비", "x": [], "n": "이선"}, {"a": "이중조가선", "d": "합성전차선의 과선교 하부 및 지지점 등에서 조가선의 손상을 방지하기 위하여 2중으로 설치한 조가선", "s": "전차선설비", "x": [], "n": "이중조가선"}, {"a": "이행구간", "d": "커티너리 가선구간과 강체 가선구간의 접속구간", "s": "전차선설비", "x": [], "n": "이행구간"}, {"a": "인류구간", "d": "가공전차선의 한 인류지점에서 맞은편 인류지점까지의 구간(흐름방지장치 제외)", "s": "전차선설비", "x": [], "n": "인류구간"}, {"a": "장력구간", "d": "가공전차선의 한 인류지점에서 장력조정장치의 힘이 미치는 구간", "s": "전차선설비", "x": [], "n": "장력구간"}, {"a": "장력조정장치", "d": "합성전차선에 장력을 일정하게 유지하기 위한 장치", "s": "전차선설비", "x": [], "n": "장력조정장치"}, {"a": "전차선", "d": "전기차량의 집전장치에 접촉, 동작하여 이에 전기를 공급하는 가공전선", "s": "전차선설비", "x": [], "n": "전차선"}, {"a": "전차선해빙시스템", "d": "전차선 결빙과 관련하여 전차선 결빙조건 도달시 해빙회로(동절기) 가공전차선에 발생하는 결빙을 임의의 폐회로를 구성하여 Joule열을 발생시켜 결빙 을 녹이도록 구성한 회로)를 구성, 원격감시제어에 의해 이를 제거하여 전기차의 팬터그래프가 정상적인 집전이 이루어질 수 있도록 설치한 설비", "s": "전차선설비", "x": [], "n": "전차선 해빙시스템"}, {"a": "전차선로", "d": "동력차에 전기에너지를 공급하기 위하여 선로를 따라 설치한 시설물로서 전선, 지지물 및 관련 부속설비를 총괄한 것", "s": "전차선설비", "x": [], "n": "전차선로"}, {"a": "전차선로용보안기", "d": "한쪽은 대지와 접지 또는 섬락보호지선에 연결하여 일정한 간극을 유지하고, 다른 한쪽은 부급전선 또는 보호선에 접속하여 대지의 정격전압을 제한 하기 위하여 삽입하는 방전간격장치", "s": "전차선설비", "x": [], "n": "전차선로용보안기"}, {"a": "절연조가선", "d": "조가선의 보호와 상구분장치 구간에서 갑작스러운 단락사고로부터 조 가선 보호를 위해 절연물로 피복한 전선", "s": "전차선설비", "x": [], "n": "절연조가선"}, {"a": "중성선", "d": "단권변압기의 중성점과 귀선레일을 접속하는 전선을 말하며 중성점접지방식의 중성선과 구별", "s": "전차선설비", "x": ["neturalwire"], "n": "중성선"}, {"a": "지락도선", "d": "애자의 부측을 섬락보호지선, 부급전선 또는 보호선에 접속하는 전선(애자 보호선)과 콘크리트주 등에 취부한 가동브래킷, 빔 등의 설치 밴드와 섬락보호지선, 부급전선 또는 보호선에 접속하는 전선(지락유도선)을 말함. 또한, 섬락보호지선에 연결되지 아니한 인접 철지지물 상호간을 연결하는 연접가공접지선(연…", "s": "전차선설비", "x": [], "n": "지락도선"}, {"a": "진동가고", "d": "전차선과 가동브래킷의 수평파이프(또는 진동방지파이프) 및 빔하스펜선과 의 수직 중심간격", "s": "전차선설비", "x": [], "n": "진동가고"}, {"a": "피복조가선", "d": "조가선 보호를 위해 절연물로 피복한 전선", "s": "전차선설비", "x": [], "n": "피복조가선"}, {"a": "합성전차선", "d": "조가선(강체 포함), 전차선, 행거, 드로퍼 등으로 구성한 가공전선", "s": "전차선설비", "x": [], "n": "합성전차선"}, {"a": "소규모원격제어장치", "d": "변전소 또는 역사에 설치되는 SCADA 시스템을 말하며 유사시 현장에서 중앙감시제어장치를 대체할 수 있도록 하는 설비로써 해당 변전소 급전구간 및 전력설비 전력공급구간의 원격제어 및 감시를 수행", "s": "원격제어설비", "x": [], "n": "소규모 원격제어장치"}, {"a": "스카다", "d": "원방감시제어시스템으로서 전철변전소, 수전실, 전기실 등 원격지에 설치된 전기설비를 통신망으로 연결하여 전기관제실의 전기관제사 및 변전실에서 개폐기 등 각종 기기를 감시, 제어통제 할 수 있도록 설치한 일체의 설비", "s": "원격제어설비", "x": ["scada"], "n": "스카다"}, {"a": "원격소장치", "d": "전철전력설비(변전소, 구분소, 전기실, 전차선 설비 등)가 설치된 장소에 설치되어 현장의 상태 및 아날로그 데이터를 수집하여 전기관제실 및 소규모 원격 제어장치에 전송하는 장치", "s": "원격제어설비", "x": [], "n": "원격소장치"}, {"a": "전기관제실", "d": "전력계통운영 및 전력설비의 유지관리를 위하여 원격감시제어장치(이하 “원제장치”라 한다)에 의하여 전철변전소, 전기실 등의 원격감시제어와 설비의 유지 관리 및 계통운용, 보호계전기 정정 등에 대하여 지시와 통제를 하는 장소", "s": "원격제어설비", "x": [], "n": "전기관제실"}];
+
+const CHO = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+function getCho(str){
+  let res = "";
+  for(let i=0;i<str.length;i++){
+    const code = str.charCodeAt(i)-44032;
+    if(code>=0 && code<=11172){
+      res += CHO[Math.floor(code/588)];
+    } else {
+      res += str[i];
+    }
+  }
+  return res;
+}
+
+function clean(str){
+  return str.replace(/[^가-힣a-zA-Z0-9]/g,"").toLowerCase();
+}
+
+function seededShuffle(arr, seed){
+  const a = arr.slice();
+  let m = a.length, t, i;
+  let s = seed;
+  while(m){
+    s = (s * 9301 + 49297) % 233280;
+    i = Math.floor((s / 233280) * m--);
+    t = a[m]; a[m] = a[i]; a[i] = t;
+  }
+  return a;
+}
+
+function getTodaySeed(){
+  const d = new Date();
+  return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+}
+
+const cats = ["전체", ...new Set(DATA.map(x=>x.s))];
+const catEl = document.getElementById("cat");
+cats.forEach(c=>{
+  const opt = document.createElement("option");
+  opt.value = c;
+  opt.textContent = c === "전체" ? "🌐 전체 분야" : `📌 ${c}`;
+  catEl.appendChild(opt);
+});
+
+let currentList = [];
+let idx = 0;
+let results = [];
+let hintLevel = 0;
+
+function initGame(){
+  const cat = catEl.value;
+  const mode = document.getElementById("mode").value;
+  let pool = DATA.filter(x => cat === "전체" || x.s === cat);
+  
+  if(pool.length === 0){
+    alert("해당 분야에 문제가 없습니다.");
+    return;
+  }
+  
+  if(mode === "daily"){
+    pool = seededShuffle(pool, getTodaySeed());
+  } else {
+    pool = seededShuffle(pool, Math.floor(Math.random()*1000000));
+  }
+  
+  currentList = pool.slice(0, Math.min(20, pool.length));
+  idx = 0;
+  results = new Array(currentList.length).fill(null);
+  hintLevel = 0;
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const g = document.getElementById("game");
+  if(idx >= currentList.length){
+    renderResult();
+    return;
+  }
+  
+  const q = currentList[idx];
+  const total = currentList.length;
+  const chosung = getCho(q.a);
+  
+  let hintText = "";
+  if(hintLevel >= 1){
+    hintText += `💡 <b>글자 수:</b> ${q.a.length}글자 (원문: "${q.n}")<br>`;
+  }
+  if(hintLevel >= 2){
+    hintText += `💡 <b>첫 글자:</b> ${q.a[0]}<br>`;
+  }
+  if(hintLevel >= 3){
+    hintText += `💡 <b>분야:</b> ${q.s}`;
+  }
+
+  g.innerHTML = `
+    <div class="glass-card rounded-2xl p-6 relative overflow-hidden transition-all duration-300">
+      
+      <!-- Progress Bar -->
+      <div class="prog flex gap-1.5 mb-6">
+        ${results.map((r, i) => `
+          <div class="prog-dot flex-1 ${i === idx ? 'c' : (r === true ? 'o' : (r === false ? 'x' : ''))}"></div>
+        `).join('')}
+      </div>
+
+      <!-- Meta Info -->
+      <div class="meta flex justify-between items-center text-xs font-semibold text-slate-500 dark:text-slate-400 mb-4">
+        <span><i class="fa-solid fa-layer-group ac-text"></i> ${q.s}</span>
+        <span class="ac-bg10 ac-text px-2.5 py-0.5 rounded-full">
+          문제 ${idx + 1} / ${total}
+        </span>
+      </div>
+
+      <!-- 3D Glasslike Chosung Chips Display -->
+      <div class="cho flex justify-center gap-2 sm:gap-3 my-6 flex-wrap">
+        ${chosung.split('').map(char => `
+          <div class="chosung-chip w-12 h-14 sm:w-14 sm:h-16 rounded-xl flex items-center justify-center font-black text-2xl sm:text-3xl ac-text">
+            ${char}
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Description Box -->
+      <div class="bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl p-4 text-sm tx leading-relaxed mb-6">
+        <span class="font-semibold ac-text"><i class="fa-solid fa-quote-left mr-1"></i> 뜻풀이:</span> ${q.d}
+      </div>
+
+      <!-- Input Row -->
+      <div class="row flex gap-2">
+        <input type="text" id="ans" class="custom-input flex-1 px-4 py-3 rounded-xl text-base tx placeholder-slate-400" placeholder="정답을 입력하세요" autofocus autocomplete="off">
+        <button id="sub" class="btn-primary font-bold px-6 py-3 rounded-xl flex items-center gap-1.5">
+          <i class="fa-solid fa-paper-plane"></i> 제출
+        </button>
+      </div>
+
+      <!-- Hint Section -->
+      ${hintText ? `<div class="hint mt-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 ac-bg5 border-l-4 ac-bl p-3 rounded-r-lg space-y-1">${hintText}</div>` : ''}
+
+      <!-- Message Area -->
+      <div id="msg" class="msg min-h-[1.6em] mt-3 text-sm font-semibold text-center"></div>
+
+      <!-- Action Buttons -->
+      <div class="acts flex gap-2 mt-6 flex-wrap">
+        <button id="btnHint" class="btn-secondary text-xs sm:text-sm font-medium px-4 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 flex-1">
+          <i class="fa-regular fa-lightbulb text-amber-500"></i> 힌트 보기 (${hintLevel}/3)
+        </button>
+        <button id="btnSkip" class="btn-secondary text-xs sm:text-sm font-medium px-4 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 flex-1">
+          <i class="fa-solid fa-forward"></i> 건너뛰기
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  document.getElementById("ans").focus();
+  document.getElementById("ans").addEventListener("keypress", function(e){
+    if(e.key === "Enter") checkAnswer();
+  });
+  document.getElementById("sub").addEventListener("click", checkAnswer);
+  document.getElementById("btnHint").addEventListener("click", function(){
+    if(hintLevel < 3){
+      hintLevel++;
+      renderQuestion();
+    }
+  });
+  document.getElementById("btnSkip").addEventListener("click", function(){
+    results[idx] = false;
+    const msg = document.getElementById("msg");
+    msg.className = "msg ng text-red-500 dark:text-red-400 mt-3 text-sm font-semibold text-center";
+    msg.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> 정답은 <b>"${q.a}"</b> (원문: ${q.n}) 입니다.`;
+    disableInputs();
+    setTimeout(() => {
+      idx++;
+      hintLevel = 0;
+      renderQuestion();
+    }, 1800);
+  });
+}
+
+function disableInputs(){
+  const input = document.getElementById("ans");
+  const sub = document.getElementById("sub");
+  const hint = document.getElementById("btnHint");
+  const skip = document.getElementById("btnSkip");
+  if(input) input.disabled = true;
+  if(sub) sub.disabled = true;
+  if(hint) hint.disabled = true;
+  if(skip) skip.disabled = true;
+}
+
+function checkAnswer(){
+  const input = document.getElementById("ans");
+  if(!input || input.disabled) return;
+  const user = clean(input.value);
+  if(!user) return;
+  
+  const q = currentList[idx];
+  const targetA = clean(q.a);
+  const targetN = clean(q.n);
+  const aliasList = (q.x || []).map(clean);
+  
+  const isCorrect = (user === targetA || user === targetN || aliasList.includes(user));
+  const msg = document.getElementById("msg");
+
+  if(isCorrect){
+    results[idx] = true;
+    msg.className = "msg ok ac-text mt-3 text-sm font-bold text-center";
+    msg.innerHTML = `<i class="fa-solid fa-circle-check"></i> 정답입니다! 🎉 (정답: ${q.n})`;
+    disableInputs();
+    setTimeout(() => {
+      idx++;
+      hintLevel = 0;
+      renderQuestion();
+    }, 1200);
+  } else {
+    msg.className = "msg ng text-red-500 dark:text-red-400 mt-3 text-sm font-semibold text-center";
+    msg.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> 오답입니다. 다시 시도해보세요!`;
+    input.select();
+  }
+}
+
+function renderResult(){
+  const g = document.getElementById("game");
+  const correctCount = results.filter(x => x === true).length;
+  const total = results.length;
+  const score = Math.round((correctCount / total) * 100);
+
+  g.innerHTML = `
+    <div class="glass-card rounded-2xl p-6 text-center space-y-6">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full ac-bg10 ac-text text-3xl my-2">
+        <i class="fa-solid fa-trophy"></i>
+      </div>
+      
+      <div>
+        <h2 class="text-2xl font-bold tx">퀴즈 완료!</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">총 ${total}문항 중 <b class="ac-text">${correctCount}문항</b> 맞히셨습니다.</p>
+        <div class="text-3xl font-black ac-text mt-3">${score}점</div>
+      </div>
+
+      <div class="res text-left bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl p-4 max-h-80 overflow-y-auto space-y-2">
+        <h3 class="text-sm font-bold tx mb-3 border-b border-slate-200 dark:border-slate-700 pb-2 flex items-center justify-between">
+          <span>문제 결과 복습</span>
+          <span class="text-xs font-normal text-slate-400">정답 여부</span>
+        </h3>
+        <ul class="space-y-2 text-xs sm:text-sm">
+          ${currentList.map((q, i) => `
+            <li class="flex justify-between items-start gap-2 p-2 rounded-lg ${results[i] ? 'ac-bg5' : 'bg-red-500/5'}">
+              <span class="tx">
+                <b>${i+1}.</b> ${q.n} <span class="text-slate-400 text-xs">(${getCho(q.a)})</span>
+              </span>
+              <span class="${results[i] ? 'ac-text' : 'text-red-500'} font-bold flex-shrink-0">
+                ${results[i] ? '<i class="fa-solid fa-check"></i> 정답' : '<i class="fa-solid fa-xmark"></i> 오답'}
+              </span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+
+      <button id="retry" class="btn-primary font-bold px-8 py-3 rounded-xl text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2">
+        <i class="fa-solid fa-rotate-right"></i> 다시 도전하기
+      </button>
+    </div>
+  `;
+
+  document.getElementById("retry").addEventListener("click", initGame);
+}
+
+document.getElementById("start").addEventListener("click", initGame);
+catEl.addEventListener("change", initGame);
+document.getElementById("mode").value = "rand";
+
+// Start Quiz on Load
+initGame();
+</script>
+</body>
+</html>

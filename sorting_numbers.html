@@ -49,6 +49,25 @@
     .empty-state { text-align: center; padding: 32px 16px; color: #9ca3af; font-size: 14px; }
     .hidden { display: none; }
   </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--zbg:#F8F8F8;--ztext:#222222;--zsub:#64748B;--zac:#555555;--zacd:#333333;--zbtn:#ffffff;--zcard:rgba(255,255,255,.75);--zcb:rgba(255,255,255,.8);--zchip:rgba(128,128,128,.4);--zline:rgba(128,128,128,.28);--zpill:rgba(128,128,128,.12);--zin:rgba(255,255,255,.8);--zsh:0 8px 32px rgba(128,128,128,.14);--zbad:#EF4444;}
+@media (prefers-color-scheme:dark){:root{--zbg:#1A1A1A;--ztext:#EEEEEE;--zsub:#94A3B8;--zac:#BDBDBD;--zacd:#9E9E9E;--zbtn:#111111;--zcard:rgba(15,23,42,.75);--zcb:rgba(255,255,255,.1);--zchip:rgba(128,128,128,.4);--zline:rgba(128,128,128,.32);--zpill:rgba(128,128,128,.18);--zin:rgba(30,41,59,.6);--zsh:0 8px 32px rgba(0,0,0,.37);--zbad:#F87171;}}
+body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,'Malgun Gothic',sans-serif;background:var(--zbg);color:var(--ztext)}
+.container{background:var(--zcard);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--zcb);border-radius:16px;box-shadow:var(--zsh)}
+h1,h2{color:var(--ztext)} .desc,.count,.empty-state{color:var(--zsub)}
+textarea{background:var(--zin);color:var(--ztext);border:1.5px solid var(--zchip);border-radius:12px}
+textarea:focus{border-color:var(--zac);box-shadow:0 0 0 4px var(--zpill)}
+button{background:linear-gradient(135deg,var(--zac),var(--zacd));color:var(--zbtn);border-radius:12px;font-weight:700;box-shadow:0 4px 14px rgba(128,128,128,.2)}
+button:hover,button:active{background:linear-gradient(135deg,var(--zac),var(--zacd));filter:brightness(1.08)}
+.copy-btn,.copy-btn:hover,.copy-btn.copied{background:rgba(148,163,184,.12);color:var(--ztext);border:1px solid var(--zchip);box-shadow:none}
+.result-section{background:transparent;border:1px solid var(--zline);border-radius:12px}
+.result-item{background:transparent;color:var(--ztext);border:1px solid var(--zline);border-radius:10px}
+button:focus-visible{outline:2px solid var(--zac);outline-offset:2px}
+a{color:inherit !important;text-decoration:underline}
+
+</style>
 </head>
 <body>
   <div class="container">

@@ -508,6 +508,17 @@ html,body{
 }
 
 </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root,[data-theme="blue"]{--bg:#F8F8F8;--surface:rgba(255,255,255,.75);--surface-alt:rgba(148,163,184,.14);--text:#222222;--text-dim:#64748B;--accent:#555555;--accent-ink:#F8F8F8;--accent-soft:rgba(128,128,128,.12);--border:rgba(128,128,128,.28);--shadow:0 8px 32px rgba(128,128,128,.14);--radius-lg:22px;--radius-md:16px;--radius-sm:12px}
+[data-theme="gray"]{--accent:#555555;--accent-soft:rgba(128,128,128,.12)}
+[data-theme="dark"]{--bg:#1A1A1A;--surface:rgba(15,23,42,.75);--surface-alt:rgba(30,41,59,.8);--text:#EEEEEE;--text-dim:#94A3B8;--accent:#BDBDBD;--accent-ink:#111111;--accent-soft:rgba(128,128,128,.18);--border:rgba(128,128,128,.32);--shadow:0 8px 32px rgba(0,0,0,.37)}
+html,body{background:var(--bg)}
+.best-score-box,.hub-section,.week-row,.ach-card,.card,.reveal-banner,.overlay-card,.result-box,.weak-list,.pattern-box,.settings-panel,.history-row,.history-chart{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+:root,[data-theme]{--mode-quiz:#3F3F3F;--mode-match:#595959;--mode-flip:#737373;--mode-quiz-soft:rgba(128,128,128,.14);--mode-match-soft:rgba(128,128,128,.14);--mode-flip-soft:rgba(128,128,128,.14)}
+[data-theme="dark"]{--mode-quiz:#4A4A4A;--mode-match:#5F5F5F;--mode-flip:#757575}
+</style>
 </head>
 <body>
 <div id="app">

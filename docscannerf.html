@@ -148,6 +148,20 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
 .cam-wrap { position:relative; border-radius:12px; overflow:hidden; background:#000; aspect-ratio:3/4; margin-bottom:12px; }
 #camVideo { width:100%; height:100%; object-fit:cover; display:block; }
 </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--bg:#F8F8F8;--bg2:rgba(255,255,255,.75);--bg3:rgba(148,163,184,.14);--border:rgba(128,128,128,.32);--mint:#555555;--red:#EF4444;--gold:#8a6d1a;--text:#222222;--text2:#64748B;--text3:#8a94a3;--btxt:#ffffff;--sans:'Pretendard','Malgun Gothic',sans-serif;}
+@media (prefers-color-scheme:dark){:root{--bg:#1A1A1A;--bg2:rgba(15,23,42,.75);--bg3:rgba(30,41,59,.8);--border:rgba(128,128,128,.32);--mint:#BDBDBD;--red:#F87171;--gold:#d6b05a;--text:#EEEEEE;--text2:#94A3B8;--text3:#7b879a;--btxt:#111111;}}
+header{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.dropzone,.page-row{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:16px;box-shadow:0 8px 32px rgba(128,128,128,.12)}
+.btn-p{color:var(--btxt);background-image:linear-gradient(135deg,var(--mint),#333)}
+@media (prefers-color-scheme:dark){.btn-p{background-image:linear-gradient(135deg,var(--mint),#9E9E9E)}}
+.btn-p:hover{background:var(--mint);filter:brightness(1.08)}
+.btn{border-radius:12px}
+.intro-link:hover{background:rgba(128,128,128,.12);box-shadow:none}
+
+</style>
 </head>
 <body>
 

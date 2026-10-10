@@ -299,6 +299,16 @@
     .row-actions{width:100%; justify-content:space-between;}
   }
 </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--ink-900:#222222;--ink-700:#475569;--ink-500:#64748B;--paper-50:#F8F8F8;--surface-0:rgba(255,255,255,.75);--surface-1:rgba(148,163,184,.14);--line-200:rgba(128,128,128,.28);--teal-600:#555555;--teal-700:#333333;--focus-ring:#555555;--btn-text:#ffffff;}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink-900:#EEEEEE;--ink-700:#CBD5E1;--ink-500:#94A3B8;--paper-50:#1A1A1A;--surface-0:rgba(15,23,42,.75);--surface-1:rgba(30,41,59,.8);--line-200:rgba(128,128,128,.32);--teal-600:#BDBDBD;--teal-700:#9E9E9E;--focus-ring:#BDBDBD;--btn-text:#111111;}}
+:root[data-theme="dark"]{--ink-900:#EEEEEE;--ink-700:#CBD5E1;--ink-500:#94A3B8;--paper-50:#1A1A1A;--surface-0:rgba(15,23,42,.75);--surface-1:rgba(30,41,59,.8);--line-200:rgba(128,128,128,.32);--teal-600:#BDBDBD;--teal-700:#9E9E9E;--focus-ring:#BDBDBD;--btn-text:#111111;}
+.brand-mark,.chip,.dropzone,.queue{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(128,128,128,.12)}
+.btn-primary{color:var(--btn-text);background-image:linear-gradient(135deg,var(--teal-600),var(--teal-700))}
+
+</style>
 </head>
 <body>
 <div class="app">

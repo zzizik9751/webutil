@@ -121,6 +121,21 @@ footer a{color:var(--sub)}
 }
 @media (min-width:901px){#find.closed{display:none}}
 </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--line:rgba(128,128,128,.32);--txt:#222222;--sub:#64748B;--acc:#555555;--warn:#e8590c;--mbg:#F8F8F8;--mcard:rgba(255,255,255,.75);}
+@media (prefers-color-scheme:dark){:root{--line:rgba(128,128,128,.36);--txt:#EEEEEE;--sub:#94A3B8;--acc:#BDBDBD;--warn:#f59e0b;--mbg:#1A1A1A;--mcard:rgba(15,23,42,.75);}#drop{background:rgba(26,26,26,.85)}#find{background:#1e293b}.r,.fh{border-bottom-color:rgba(128,128,128,.25)}button:hover,#q{border-color:#94A3B8}}
+body{background:var(--mbg);font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif}
+header,#tabbar{background:var(--mcard);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+button{background:rgba(148,163,184,.1);border-radius:8px}
+button.on{background:transparent}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input,select,textarea{background:rgba(255,255,255,.8);color:var(--txt)}
+select option{background:#fff;color:#222}
+@media (prefers-color-scheme:dark){input,select,textarea{background:rgba(30,41,59,.6)}select option{background:#1e293b;color:#eee}}
+
+</style>
 </head>
 <body data-tool="hand">
 <header>

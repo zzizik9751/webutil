@@ -17,7 +17,23 @@ textarea{width:100%;box-sizing:border-box;height:90px;font:12px monospace;border
 .note{color:var(--sub);font-size:13px}
 footer{margin-top:40px;color:var(--sub);font-size:12px;text-align:center}
 footer a{color:inherit}
-</style></head><body><main>
+</style><style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--zbg:#F8F8F8;--ztext:#222222;--zsub:#64748B;--zac:#555555;--zacd:#333333;--zbtn:#ffffff;--zcard:rgba(255,255,255,.75);--zcb:rgba(255,255,255,.8);--zchip:rgba(128,128,128,.4);--zline:rgba(128,128,128,.28);--zpill:rgba(128,128,128,.12);--zin:rgba(255,255,255,.8);--zsh:0 8px 32px rgba(128,128,128,.14);--zbad:#EF4444;}
+@media (prefers-color-scheme:dark){:root{--zbg:#1A1A1A;--ztext:#EEEEEE;--zsub:#94A3B8;--zac:#BDBDBD;--zacd:#9E9E9E;--zbtn:#111111;--zcard:rgba(15,23,42,.75);--zcb:rgba(255,255,255,.1);--zchip:rgba(128,128,128,.4);--zline:rgba(128,128,128,.32);--zpill:rgba(128,128,128,.18);--zin:rgba(30,41,59,.6);--zsh:0 8px 32px rgba(0,0,0,.37);--zbad:#F87171;}}
+:root{--fg:#222222;--sub:#64748B;--line:rgba(128,128,128,.4);--acc:#555555}
+@media (prefers-color-scheme:dark){:root{--fg:#EEEEEE;--sub:#94A3B8;--line:rgba(128,128,128,.4);--acc:#BDBDBD}}
+body{background:var(--zbg);font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+@media (prefers-color-scheme:dark){body{background:#1A1A1A}}
+main{background:var(--zcard);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--zcb);border-radius:16px;box-shadow:var(--zsh);margin-top:24px;margin-bottom:24px}
+.drag{border-color:var(--zac);color:var(--ztext);background:rgba(148,163,184,.12)}
+button{background:rgba(148,163,184,.12);border:1px solid var(--zchip);border-radius:12px;padding:8px 14px}
+button:hover{border-color:var(--zac)}
+textarea{background:var(--zin);border:1.5px solid var(--zchip);border-radius:12px;color:var(--zsub)}
+
+</style>
+</head><body><main>
 <h1>유튜브 자막 받기</h1>
 <p class="lead">유튜브 영상의 자막(자동 생성 포함)을 화면에서 읽고, SRT/TXT로 저장합니다. 영어 등 외국어 자막은 한국어로 자동 번역합니다.</p>
 

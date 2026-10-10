@@ -275,6 +275,18 @@ html.mini .sidebar{order:2;flex:1 1 auto;min-height:0;width:100%;min-width:0;bor
 html.mini .tlist{flex:1 1 auto;min-height:0;overflow-y:auto;padding-bottom:20px}
 html.mini .sbar{left:0}
 </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--bg:#F8F8F8;--bg2:rgba(255,255,255,.75);--bg3:rgba(148,163,184,.14);--bg4:rgba(128,128,128,.2);--accent:#555555;--accent2:#333333;--text:#222222;--text2:#64748B;--text3:#8a94a3;--border:rgba(128,128,128,.28);--btxt:#ffffff;}
+@media (prefers-color-scheme:dark){:root{--bg:#1A1A1A;--bg2:rgba(15,23,42,.75);--bg3:rgba(30,41,59,.8);--bg4:rgba(51,65,85,.8);--accent:#BDBDBD;--accent2:#9E9E9E;--text:#EEEEEE;--text2:#94A3B8;--text3:#7b879a;--border:rgba(128,128,128,.32);--btxt:#111111;}}
+.sidebar{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(128,128,128,.12)}
+.add-btn,.sb.on,.pbtn{color:var(--btxt)}
+.ti{border-bottom-color:var(--border)}
+.drag-handle,.del-btn{color:var(--text3)}
+input[type=text]{border-radius:12px}
+
+</style>
 </head>
 <body>
 <div class="pw" id="pw">

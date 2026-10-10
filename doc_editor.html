@@ -130,6 +130,17 @@
     #fname{width:120px}
   }
 </style>
+<style id="zz-standard">
+/* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+:root{--fg:#222222;--muted:#64748B;--line:rgba(128,128,128,.35);--accent:#555555;--bg:#F8F8F8;--on:rgba(128,128,128,.16);}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--fg:#EEEEEE;--muted:#94A3B8;--line:rgba(128,128,128,.4);--accent:#BDBDBD;--bg:#1A1A1A;--on:rgba(128,128,128,.24);}}
+:root[data-theme="dark"]{--fg:#EEEEEE;--muted:#94A3B8;--line:rgba(128,128,128,.4);--accent:#BDBDBD;--bg:#1A1A1A;--on:rgba(128,128,128,.24);}
+html{background:var(--bg)}
+button,select{border-radius:8px}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+</style>
 </head>
 <body>
 
