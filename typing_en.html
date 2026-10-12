@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>English Typing Practice</title>
+<style>
+:root{--bg:#f8f8f8;--fg:#222;--mut:#777;--line:#ddd;--card:#fff;--bad:#c0392b;--hm:34,34,34}
+@media (prefers-color-scheme:dark){:root:not(.light){--bg:#161616;--fg:#eee;--mut:#999;--line:#333;--card:#1e1e1e;--bad:#ff7b6b;--hm:238,238,238}}
+:root.dark{--bg:#161616;--fg:#eee;--mut:#999;--line:#333;--card:#1e1e1e;--bad:#ff7b6b;--hm:238,238,238}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+h1{font-size:22px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit;font-size:14px;text-decoration:none}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.mut{color:var(--mut);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+.stats b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--mut)}
+:root{--ff:Verdana,"Segoe UI","DejaVu Sans",Arial,sans-serif;--fs:22px}
+#target{font-family:var(--ff);font-size:var(--fs);line-height:1.9;letter-spacing:.02em;white-space:pre-wrap;overflow-wrap:break-word;min-height:90px;user-select:none}
+#target span{border-bottom:2px solid transparent}
+#target .ok{color:var(--mut)}
+#target .bad{color:var(--bad);border-bottom-color:var(--bad)}
+#target .cur{border-bottom-color:var(--fg);font-weight:700}
+#trans{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:17px;color:var(--mut)}
+textarea#inp{width:100%;min-height:96px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:12px;font-family:var(--ff);font-size:calc(var(--fs) - 2px);line-height:1.6;letter-spacing:.02em;background:var(--card);color:var(--fg)}
+textarea#inp:focus{outline:2px solid var(--fg);outline-offset:0}
+textarea#inp:disabled{opacity:.5}
+input.txt,textarea.txt{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit;background:var(--card);color:var(--fg)}
+textarea.txt{width:100%;min-height:80px}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;width:0;background:var(--fg);transition:width .1s}
+.big{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;margin-bottom:10px}
+.big b{display:block;font-size:28px;font-variant-numeric:tabular-nums}
+.big span{font-size:12px;color:var(--mut)}
+.kb{display:flex;flex-direction:column;gap:5px;align-items:center;margin:10px 0}
+.kb .r{display:flex;gap:5px}
+.k{width:44px;height:44px;border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;line-height:1.1;font-weight:600}
+.k small{font-size:10px;font-weight:400;opacity:.75}
+.hide{display:none!important}
+table.h{width:100%;border-collapse:collapse;font-size:14px}
+table.h th,table.h td{padding:6px 8px;text-align:center;border-bottom:1px solid var(--line)}
+table.h th{color:var(--mut);font-weight:600;font-size:12px}
+details summary{cursor:pointer;font-weight:600}
+select.sel{border:1px solid var(--line);border-radius:8px;padding:4px 8px;font:inherit;font-size:13px;background:var(--card);color:var(--fg);max-width:220px}
+.hint{color:var(--mut);font-size:12px;margin:6px 2px 0}
+#imeWarn{color:var(--bad);font-size:14px;margin:6px 0}
+footer{text-align:center;color:var(--mut);font-size:12px;margin-top:24px}
+footer a{color:inherit}
+@media (max-width:560px){.k{width:30px;height:38px;font-size:13px}.big b{font-size:22px}.stats b{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>⌨️ English Typing Practice</h1>
+  <div class="row"><a class="chip" id="langLink" href="typing.html">한글 버전</a><button class="chip" id="darkBtn" title="다크 모드">🌓</button></div>
+</header>
+
+<div class="card hide" id="serverBar">
+  <div class="row">
+    <b>이름</b>
+    <input class="txt" id="nameInp" maxlength="20" placeholder="순위표에 표시될 이름" style="width:180px">
+    <span class="mut" id="nameMsg"></span>
+    <span style="flex:1"></span>
+    <a class="chip" href="/rank" target="_blank">🏆 순위표</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row" style="margin-bottom:12px">
+    <button class="chip on" data-mode="short">단문 (생활영어)</button>
+    <button class="chip" data-mode="long">장문</button>
+    <label class="mut" id="fixWrap" title="대문자/소문자만 틀린 글자를 자동으로 고쳐 정타로 처리합니다"><input type="checkbox" id="caseFix" checked> 대소문자 자동 교정</label>
+    <label class="mut" id="transWrap"><input type="checkbox" id="showTrans" checked> 해석 보기</label>
+    <span style="flex:1"></span>
+    <button class="chip" id="nextBtn">다음 지문</button>
+    <button class="chip" id="resetBtn">다시 (Esc)</button>
+  </div>
+  <div class="row mut" id="fontRow" style="margin-bottom:10px">
+    <span id="fontLbl">글꼴</span><select class="sel" id="fontSel"><option value="verdana">Verdana</option><option value="segoe">Segoe UI</option><option value="georgia">Georgia</option><option value="consolas">Consolas</option></select>
+    <span>글자 크기</span><button class="chip" id="fsMinus" title="작게">A-</button><button class="chip" id="fsPlus" title="크게">A+</button>
+  </div>
+  <div class="stats">
+    <div><b id="sCpm">0</b><span>타수(CPM)</span></div>
+    <div><b id="sWpm">0</b><span>WPM</span></div>
+    <div><b id="sAcc">100%</b><span>정확도</span></div>
+    <div><b id="sProg">0%</b><span>진행률</span></div>
+    <div><b id="sTime">0.0</b><span>경과(초)</span></div>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+</div>
+
+<div class="card">
+  <div id="pageInfo" class="mut hide" style="text-align:right;font-size:13px;margin-bottom:4px"></div>
+  <div id="target"></div>
+  <div id="trans" class="hide"></div>
+  <div class="mut" id="srcInfo" style="margin-top:8px"></div>
+  <div class="row mut hide" id="ttsBar" style="margin-top:8px">
+    <button class="chip" id="ttsBtn">🔊 듣기</button><button class="chip" id="ttsStop">■ 정지</button>
+    <span>속도</span><select class="sel" id="ttsRate"><option value="0.7">느리게</option><option value="0.85">조금 느리게</option><option value="1">보통</option><option value="1.15">빠르게</option></select>
+    <span>음성</span><select class="sel" id="ttsVoice"></select>
+    <label><input type="checkbox" id="ttsAuto"> 자동 읽기</label>
+    <span id="ttsMsg"></span>
+  </div>
+</div>
+
+<div id="imeWarn" class="hide">⚠ 한/영 키가 한글 입력 상태입니다. 영문으로 바꿔서 입력하세요.</div>
+<textarea id="inp" lang="en" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Type here. The timer starts with your first key. (Enter: finish · Esc: restart)"></textarea>
+<div class="hint" id="hint"></div>
+
+<div class="card hide" id="result" style="margin-top:12px">
+  <div class="big">
+    <div><b id="rCpm">0</b><span>타수(CPM)</span></div>
+    <div><b id="rWpm">0</b><span>WPM</span></div>
+    <div><b id="rAcc">0%</b><span>정확도</span></div>
+    <div><b id="rTime">0</b><span>시간(초)</span></div>
+    <div><b id="rChars">0</b><span>글자수</span></div>
+  </div>
+  <div id="rSubmit" class="mut" style="margin-bottom:8px"></div>
+  <div id="rFix" class="mut" style="margin-bottom:6px"></div>
+  <div><b>약한 글자 Top3</b> <span id="rWeak" class="mut"></span></div>
+  <div class="row" style="margin-top:10px">
+    <b>오타 키 히트맵</b>
+    <button class="chip on" data-hm="cur">이번</button>
+    <button class="chip" data-hm="cum">누적</button>
+  </div>
+  <div class="kb" id="kb"></div>
+  <div class="row">
+    <button class="chip" id="copyBtn">결과 복사</button>
+    <button class="chip" id="again">같은 지문 다시</button>
+    <button class="chip" id="nextBtn2">다음 지문</button>
+  </div>
+</div>
+
+<div class="card">
+  <b>최근 기록 (10회)</b>
+  <table class="h" id="hist" style="margin-top:6px"></table>
+  <div class="row" style="margin-top:8px"><button class="chip" id="clearHist">기록·누적 통계 초기화</button></div>
+</div>
+
+<div class="card" id="customCard">
+  <details id="custom">
+    <summary>내 지문 입력</summary>
+    <div style="margin-top:10px">
+      <textarea class="txt" id="customTxt" placeholder="Paste your own English text and save."></textarea>
+      <div class="row" style="margin-top:8px">
+        <label><input type="checkbox" id="useCustom"> 내 지문 사용</label>
+        <label><input type="checkbox" id="perLine"> 줄마다 한 지문 (줄 끝에 " | 해석" 가능)</label>
+        <button class="chip" id="saveCustom">저장</button>
+        <span class="mut" id="customMsg"></span>
+      </div>
+    </div>
+  </details>
+</div>
+
+<footer>
+  Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener">zzizik</a>, with Claude AI.<br>
+  Thanks to <a href="http://hwjy.co.kr/" target="_blank" rel="noopener">HWJY Co., Ltd.</a><br>
+  <span id="ver"></span>
+</footer>
+</div>
+
+<script>
+const VERSION = 'v1.4 (2026-10-12)';
+
+/*ENGINE-START*/
+// 영문: 글자 1개 = 1타 (대문자 Shift는 별도로 세지 않음). 마지막 글자까지 즉시 채점.
+function charStrokes() { return 1; }
+function evaluate(target, typed) {
+  const n = typed.length;
+  let correct = 0, strokes = 0;
+  const charMiss = {}, keyMiss = {};
+  for (let i = 0; i < n; i++) {
+    const t = target[i], c = typed[i];
+    strokes += 1;
+    if (t === c) { correct++; continue; }
+    if (t === undefined) continue;
+    charMiss[t] = (charMiss[t] || 0) + 1;
+    const k = t.toLowerCase();
+    if (/[a-z]/.test(k)) keyMiss[k] = (keyMiss[k] || 0) + 1;
+  }
+  return { n, correct, strokes, charMiss, keyMiss };
+}
+/*ENGINE-END*/
+
+// ---- 내장 지문 ----
+// 단문: 생활영어 [영어, 한글 해석]
+const BUILTIN_SHORT = [["I'm looking in the mirror.", "거울을 보고 있어요"], ["I'll be there soon.", "금방 갈게요"], ["I took off my shirt.", "셔츠를 벗었습니다"], ["Can you turn on the light?", "불 좀 켜줄래요"], ["Turn off the laptop.", "노트북 좀 꺼 봐"], ["Have a good day.", "좋은 하루 보내세요"], ["I'm almost there.", "거의 다 왔어요"], ["Where do you live?", "어디 사세요"], ["I took a one-hour nap.", "한 시간 낮잠 잤어"], ["Oh, I'm okay, thank you.", "어 괜찮아요 감사합니다"], ["That's great, right?", "너무 좋죠"], ["That sounds good.", "그거 좋은데요"], ["I'm eating breakfast.", "아침 먹고 있는 중이에요"], ["I'm on my way.", "오고 있어"], ["I'm not that tired.", "나 그렇게 안 피곤해"], ["I've never even opened it.", "펴본 적 없어요"], ["I'm waiting outside.", "밖에서 기다리고 있어"], ["I have a dog.", "개를 키우고 있어요"], ["Do you need help?", "도움 필요하세요"], ["I was so embarrassed.", "정말 창피했어요"], ["You're right.", "네가 맞아"], ["I think so too.", "나도 그렇게 생각해"], ["I'm walking.", "걷고 있어요"], ["Do you want to join?", "함께 할래요"], ["Take that bus.", "저 버스를 타세요"], ["This is good, it's tasty.", "이거 괜찮다 맛있다"], ["Would you like some more?", "더 드릴까요"], ["Oh, I'm not that hungry.", "아 저 그렇게 배고프지 않아요"], ["I'm just looking around.", "저 그냥 돌아보고 있어요"], ["I'm going to take a taxi.", "저는 택시를 탈 거예요"], ["Please have a seat.", "자리에 앉아 주세요"], ["Can you help me?", "저 좀 도와줄 수 있나요"], ["Thanks for helping me.", "도와줘서 고마워요"], ["I'm thinking about her.", "그녀를 생각하고 있어"], ["Everyone, gather around.", "모두 모여 보세요"], ["It looks fine.", "괜찮아 보인다"], ["That's enough.", "충분한데"], ["Where did you buy it?", "어디서 샀어"], ["Oh, I'm so full right now.", "아 나 지금 너무 배불러"], ["She's really lovely.", "그녀는 정말로 사랑스러워"], ["He's pretty mature.", "그는 제법 성숙해"], ["It doesn't matter.", "상관없어요"], ["I'm getting ready.", "준비하고 있는 중이야"], ["Ugh, traffic is really bad today.", "아 오늘 길 진짜 막힌다"], ["It's on the third floor.", "3층에 있어요"], ["What's going on?", "무슨 일이야"], ["Can I come in?", "들어가도 돼요"], ["Don't push yourself too hard.", "너무 무리하지 마"], ["Oh, you scared me.", "아 놀랐잖아"], ["Ugh, this is so annoying.", "아 정말 짜증 나"], ["Did you sleep well?", "잘 잤어"], ["Go for it, give it a try.", "해봐 도전해 봐"], ["Why don't you call her?", "그녀한테 전화해 보는 게 어때"], ["Can I try this on?", "이거 입어봐도 돼요"], ["Let's meet tomorrow.", "내일 만나자"], ["What a coincidence!", "이런 우연이 다 있네"], ["Oh, I'm kind of in a hurry right now.", "아 내가 지금 좀 급해 가지고"], ["Can you drive?", "운전할 수 있어요"], ["I didn't drink at all.", "전혀 안 마셨어요"], ["It's no big deal.", "별일 아니야"], ["How was your day?", "오늘 하루 어땠어"], ["That makes sense.", "그거 말 되는데"], ["Sit in front of me.", "내 앞에 앉아"], ["I'm feeling better.", "기분이 나아지고 있어"], ["You can do it.", "할 수 있어"], ["That sounds fun.", "재밌겠는데"], ["This turned out to be really interesting.", "이거 되게 흥미롭더라"], ["Are you okay?", "너 괜찮아"], ["I'm not drunk, just a little tipsy.", "나 안 취했어 살짝 알딸딸해"], ["I just heard.", "방금 들었어"], ["Don't give up.", "포기하지 마"], ["What time is it now?", "지금 몇 시예요"], ["Please believe me.", "믿어 줘 제발"], ["Can you say that again?", "다시 말해 줄 수 있어요"], ["I knew this would happen.", "이럴 줄 알았어"], ["Oh, something's wrong.", "아 뭔가 잘못됐어"], ["I'm having a good time.", "잘 놀고 있어"], ["I'm hanging out with my friends.", "친구들이랑 놀고 있는 중이야"], ["I respect my parents.", "부모님을 존경해"], ["I was in a bad mood earlier.", "아까 기분 안 좋았어"], ["How much is this?", "이거 얼마예요"], ["My phone died.", "핸드폰이 꺼졌어"], ["Are you bored?", "지루하니"], ["Get dressed.", "옷 입어"], ["I'm brushing my teeth.", "양치하고 있는 중이에요"], ["It takes an hour.", "한 시간 걸려요"], ["I'll be right back.", "금방 돌아올게요"], ["I'm putting on my shoes.", "신발 신고 있는 중이야"], ["Get off here next.", "다음 여기에서 내려요"], ["What do you think?", "어떻게 생각해"], ["I wasn't feeling well this morning.", "오늘 아침에 컨디션이 안 좋았어"], ["You look like your mom.", "엄마 닮았다"], ["Wow, I guess it's summer now.", "야 이제 여름인가 봐"], ["One coffee, please.", "커피 한 잔 주세요"], ["I wish I could do that too.", "나도 그럴 수 있으면 좋겠다"], ["Don't worry about it.", "신경 쓰지 마세요"], ["I don't care.", "신경 안 써요"], ["Could you speak a little more slowly?", "조금만 천천히 얘기해 줄래요"], ["You study English consistently.", "너는 꾸준하게 영어 공부를 해요"], ["Would that be okay with you?", "괜찮으실까요"], ["If it's okay, I'd rather not say.", "괜찮다면 안 말할래요"], ["Oh, that's a shame, but there's nothing we can do.", "아 유감이지만 어쩔 수가 없네요"], ["I'm taking off my makeup.", "메이크업 지우는 중이야"], ["What time do you arrive?", "몇 시에 도착해"], ["I never saw that coming.", "전혀 예측 못 했어"], ["I'm so excited.", "너무 기대돼"], ["Do you use Instagram?", "인스타그램 하세요"], ["I was worried about you.", "너 걱정했잖아"], ["I'm curious about that.", "그거 궁금한데"], ["He doesn't seem like a bad person.", "그는 나쁜 사람처럼 보이지 않아"], ["I hope I can help you.", "내가 널 도와주기를 바래"], ["I haven't thought about it.", "생각 안 해봤어"], ["Oh, I need some time to rest.", "아 난 좀 쉴 시간이 필요해"], ["That sounds tough.", "힘들겠다"], ["You must have been happy.", "행복했겠는데"], ["I have no idea.", "전혀 모르겠어"], ["I thought you'd like it.", "네가 좋아할 줄 알았어"], ["I'm on my phone.", "핸드폰 하고 있는 중이야"], ["Oh, I'm out of breath.", "아 숨차"], ["I like going for a run.", "달리기하러 가는 거 좋아해"], ["It's not for me.", "아 나랑 안 맞아"], ["I really love soccer.", "나 축구 진짜 좋아해"], ["Where's the bathroom?", "화장실이 어디예요"], ["Oh, I should get going now.", "아 이제 가 봐야겠다"], ["It was nice meeting you.", "만나서 반가웠어요"], ["What do you do for work?", "어떤 일 하세요"], ["Have you ever been there?", "거기 가 본 적 있어요"], ["This is the best.", "이거 진짜 최고다"], ["I highly recommend it.", "나 그거 강추해"], ["This is my favorite movie.", "이게 내 최애 영화야"], ["I binge-watched the drama.", "나 드라마 정주행했어"], ["Sorry, it's my fault.", "미안 내 잘못이야"], ["I don't know what you mean.", "무슨 말인지 모르겠어"], ["Let's not rush.", "서두르지 말자"], ["Should we order delivery?", "배달시켜 먹을까"], ["How about a beer after this?", "끝나고 맥주 한 잔 어때"], ["That's a good plan.", "좋은 계획이다"], ["Could you turn down the volume?", "소리 좀 줄여 주실래요"], ["I can't think of the word.", "단어가 생각이 안 나"], ["I wasn't that sad.", "나 그렇게 안 슬펐어"], ["I almost cried.", "나 거의 울 뻔했잖아"], ["I cut my finger.", "손가락을 베었어"], ["I sprained my ankle.", "발목을 삐었어"], ["Thanks for inviting me.", "초대해 줘서 고마워요"], ["Oh, it's not that far from here.", "어 여기서 그렇게 안 멀어요"], ["Why did you decide to learn English?", "왜 영어를 배우기로 하셨어요"], ["It's always the same.", "항상 똑같죠"], ["It couldn't get any better.", "이보다 좋을 순 없어"], ["Do you like working out?", "운동하는 거 좋아하세요"], ["I thought she would come.", "그녀가 올 줄 알았는데"], ["I like summer better than winter.", "난 겨울보다 여름이 좋아"], ["I'd better go home now.", "지금 집에 가는 게 낫겠다"], ["I was busy yesterday.", "어제 바빴어"], ["Why would I do that?", "내가 그걸 왜 하냐"], ["Why did you do that?", "너 왜 그랬어"], ["I have a crush on her.", "나 그녀한테 호감 있어"], ["I fell for him.", "그한테 반했어"], ["Oh, it smells so good.", "아 냄새 너무 좋다"], ["I used to study a lot.", "예전에 공부 많이 했었는데"], ["Ugh, I want to do something fun.", "아 뭔가 재밌는 게 하고 싶은데"], ["I got wrinkles on my face.", "얼굴에 주름 생겼어"], ["The more, the better.", "많으면 좋지"], ["Can I get a refund?", "환불할 수 있을까요"], ["Oh, excuse me.", "아 실례합니다"], ["Have you seen my phone?", "내 핸드폰 봤어"], ["How do you commute to work?", "출근 어떻게 하세요"], ["It's such a hassle.", "귀찮아"], ["Ugh, I want to sleep in.", "아 늦게까지 자고 싶어"], ["I broke up with him.", "나 그랑 헤어졌어"], ["Want one more drink?", "한 잔 더 할래"], ["Ugh, I can't take it anymore.", "아 더 이상 못 참아"], ["Where have you been?", "어디 갔다 왔어"], ["I don't think that's a good idea.", "아 좋은 생각 아닌 거 같은데"], ["It's none of your business.", "너 알 바 아니잖아"], ["You're so kind.", "너무 친절하다"], ["Something feels off.", "뭔가 쌔한데"], ["I'm in my mid-thirties.", "저는 30대 중간이에요"], ["It's not as hard as you thought.", "너 생각만큼 어렵지 않네"], ["I was just about to leave.", "막 나가려던 참이야"], ["Are you seeing someone? I'm kind of talking to someone.", "누구 만나고 있어 썸 타는 중이야"], ["Please submit it by Monday.", "월요일까지 제출하세요"], ["I just saw it.", "봤어 방금"], ["I'm trying to wake up early in the morning.", "아침에 일찍 일어나려고 하고 있어"], ["Time really flies.", "시간 진짜 빠르다"], ["I want to have a cat.", "고양이 키우고 싶다"], ["I'm getting married.", "나 결혼한다"], ["Oh, tell me.", "어 나한테 말해 줘"], ["I'm walking my dog.", "강아지 산책 중이야"], ["It's been 10 years.", "10년 됐네"], ["It's been a while.", "오래됐다"], ["Ugh, that's really annoying.", "아 그거 진짜 거슬리네"], ["It can't be helped.", "어쩔 수 없어"], ["Could you watch my bag for a second?", "잠깐 제 가방 좀 봐 주실래요"], ["It's not your fault.", "너 잘못 아니야"], ["I'm glad you like it.", "좋아해서 다행이네"], ["I had a great time with my family.", "가족들이랑 좋은 시간 보냈어요"], ["Should we just stay home and relax?", "우리 그냥 집에서 쉴까"], ["I'll help you.", "내가 도와줄게"], ["She's really mean.", "그녀는 진짜 못 됐어"], ["I'm anxious about my future.", "내 미래가 불안해"], ["My dad is a very laid-back person.", "우리 아빠는 되게 느긋한 사람이야"], ["My mom is a considerate person.", "우리 엄마는 배려심 있는 사람이야"], ["Are you an introvert or an extrovert?", "내향적이세요 외향적이세요"], ["Sorry for being late.", "늦어서 죄송해요"], ["It's so rewarding.", "너무 보람차"], ["See you on Tuesday.", "화요일에 보자"], ["I'll turn 30 in May.", "5월에 30살이 돼요"], ["This is hard to peel off.", "이것 좀 떼네"], ["I don't think I can do it.", "나 못 할 거 같아"], ["Do you want to come to the party?", "파티에 올래"], ["I can't go to the party.", "파티에 못 가"], ["I messed up.", "내가 망쳤어"], ["The result is disappointing.", "결과가 실망스러워"], ["Whatever it is, I'm going to do it.", "뭐가 됐든 난 할 거야"], ["Ugh, I want to lie down in bed.", "아 침대 눕고 싶다"], ["I think I need to talk to him.", "내 생각엔 그랑 대화를 해 봐야겠어"], ["Could you take a photo for me?", "사진 좀 찍어 주실 수 있나요"], ["I swept the floor.", "바닥을 쓸었어"], ["Can you vacuum for me?", "청소기 좀 돌려줄 수 있어"], ["I'm on my way down.", "내려가고 있는 중이야"], ["I think I'm lost.", "길을 잃은 거 같은데"], ["Feel free to ask me anything.", "뭐든지 편하게 물어봐"], ["It's getting better.", "점점 나아지고 있어"], ["I hope you get well soon.", "빨리 나았으면 좋겠어"], ["That looks good on you.", "그거 잘 어울린다"], ["I'll have the pasta.", "저는 파스타 먹을게요"], ["I'm getting used to it.", "점점 익숙해지고 있어"], ["What do you recommend?", "무엇을 추천하시나요"], ["Oh, so close!", "아 아깝다"], ["It'll be ready in 10 minutes.", "10분이면 준비돼요"], ["Do you need anything else?", "더 필요한 거 있으세요"], ["I'll double-check.", "한 번 더 확인해 볼게요"], ["Do you have this in a larger size?", "이거 큰 사이즈 있어요"], ["I'm not falling for it.", "안 속아"], ["I didn't know.", "몰랐어"], ["You did really well.", "너 되게 잘했는데"], ["Don't cut in line.", "새치기하지 마세요"], ["I wrote her a letter.", "그녀에게 편지를 썼어"], ["I'm leaving.", "간다"], ["I'm trying my best.", "노력하고 있는 중이야"], ["Hang in there.", "힘내"], ["How's it going?", "어떻게 돼가고 있어"], ["It's going well.", "잘 진행되고 있어"], ["I'm thinking about it.", "생각 중이야"], ["Just in case.", "만약을 위해서"], ["Do you have any plans today?", "오늘 무슨 약속 있어"], ["Nothing comes to mind.", "생각나는 게 없는데"], ["I've gotten into running lately.", "최근에 달리기(러닝)에 빠졌어"], ["I hardly eat breakfast.", "나 아침은 거의 안 먹어"], ["Nothing special, really.", "딱히 별거 없어"], ["I drink beer sometimes.", "가끔 맥주 마셔"], ["Which do you like better?", "뭐가 더 좋아"], ["What are you into these days?", "요즘에 뭐에 관심 있어"], ["What's your hobby?", "취미가 뭐예요"], ["I do Pilates regularly.", "저는 규칙적으로 필라테스를 해요"], ["I know what you mean.", "무슨 말 하는지 알아"], ["Do you want to do it too?", "너도 할래"], ["Not this time.", "이번에는 안 돼"], ["I'm shy around new people.", "저 낯을 가려요"], ["Are you free on Thursday?", "목요일에 시간 돼"], ["Let's take a break.", "아 좀 쉬자"], ["I bought coffee.", "커피 사 왔어"], ["Can you pass me a pen?", "펜 좀 줄래"], ["I've lost a little weight.", "살이 좀 빠졌어"], ["I want to gain weight.", "살찌고 싶다"], ["Ugh, it's complicated.", "아 복잡해"], ["I was waiting for you.", "너를 기다리고 있었어"], ["Just keep doing that.", "그대로만 계속해"], ["This is trending these days.", "이게 요즘 유행이야"], ["Why didn't you tell me earlier?", "왜 일찍 안 말했어"], ["Ugh, I really want something sweet.", "아 뭔가 단 게 당기는데 진짜로"], ["I'm not going to do that.", "나는 안 그럴 거야"], ["I can't afford that.", "그럴 여유가 없어"], ["I knew you could do it.", "해낼 줄 알았어"]];
+// 장문
+const BUILTIN_LONG = [
+  { title: 'Gettysburg Address (Lincoln, 1863)', text:
+`Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.
+Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.
+But, in a larger sense, we can not dedicate - we can not consecrate - we can not hallow - this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us - that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion - that we here highly resolve that these dead shall not have died in vain - that this nation, under God, shall have a new birth of freedom - and that government of the people, by the people, for the people, shall not perish from the earth.` },
+  { title: 'Inaugural Address, closing part (Kennedy, 1961)', text:
+`In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility - I welcome it. I do not believe that any of us would exchange places with any other people or any other generation. The energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it - and the glow from that fire can truly light the world.
+And so, my fellow Americans: ask not what your country can do for you - ask what you can do for your country.
+My fellow citizens of the world: ask not what America will do for you, but what together we can do for the freedom of man.
+Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help, but knowing that here on earth God's work must truly be our own.` },
+  { title: "Aesop's Fables (retold in plain English)", text:
+`The Tortoise and the Hare. A hare once laughed at a tortoise for being so slow. "Do you ever get anywhere?" he asked with a smile. "Yes," replied the tortoise, "and I get there sooner than you think. Let us run a race." The hare was amused and agreed. At the start, the hare ran far ahead and, feeling sure of winning, lay down by the road to take a nap. The tortoise kept walking, slowly and steadily. When the hare woke up, he ran as fast as he could, but it was too late. The tortoise was already at the finish line. Slow and steady wins the race.
+The Boy Who Cried Wolf. A shepherd boy watched his sheep near a village. To amuse himself, he cried out, "Wolf! Wolf!" The villagers ran up the hill to help him, but they found no wolf, and the boy laughed at them. He did this a second time, and again the villagers came, and again he laughed. Then one evening a real wolf came. "Wolf! Wolf!" cried the boy, but this time nobody came. The wolf scattered the flock. A liar is not believed, even when he tells the truth.
+The Fox and the Grapes. One hot summer day, a fox saw a bunch of ripe grapes hanging high on a vine. "Just what I need to quench my thirst," he said. He jumped, but missed the grapes. He tried again and again, but he could not reach them. At last he gave up and walked away. "I am sure they are sour anyway," he said. It is easy to despise what you cannot get.` }
+];
+
+// ---- 유틸/저장 ----
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+};
+function rawGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function rawSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+const norm = s => String(s).replace(/\s*[\r\n]+\s*/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
+const pickIdx = (len, avoid) => { if (len < 2) return 0; let x; do { x = Math.floor(Math.random() * len); } while (x === avoid); return x; };
+$('#ver').textContent = VERSION;
+
+// ---- 다크 모드 (zz_dark 공용) ----
+(function () {
+  const root = document.documentElement;
+  const v = rawGet('zz_dark');
+  if (v === '1' || v === 'true' || v === 'dark') root.classList.add('dark');
+  else if (v === '0' || v === 'false' || v === 'light') root.classList.add('light');
+  $('#darkBtn').onclick = () => {
+    const isDark = root.classList.contains('dark') || (!root.classList.contains('light') && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.remove('dark', 'light');
+    root.classList.add(isDark ? 'light' : 'dark');
+    rawSet('zz_dark', isDark ? '0' : '1');
+  };
+})();
+
+// ---- 상태 ----
+let mode = LS.get('zz_typing_en_mode', 'short');
+let target = '', trans = '', lastKey = '';
+let started = false, finished = false, t0 = 0, timer = null;
+let serverMode = false, serverTexts = { long: null, short: null };
+let lastResult = null, hmView = 'cur';
+let fixCount = 0;                         // 대소문자 자동 교정 횟수
+const caseFixOn = () => serverMode ? true : $('#caseFix').checked;   // 대회(서버) 모드: 전원 ON 고정
+const inp = $('#inp');
+
+// ---- 장문 페이지 나누기 ----
+const PAGE_MAX = 500;          // 한 페이지 목표 글자 수 (문장 단위로 균등 분할)
+let fullText = '', pages = [''], pi = 0, accum = {}, totalLen = 1, srcBase = '';
+function combine(a, b) {                // 이전 페이지 결과 + 현재 페이지 결과
+  const r = {};
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = a[k], y = b[k];
+    if (typeof x === 'object' || typeof y === 'object') { r[k] = Object.assign({}, x); for (const j in (y || {})) r[k][j] = (r[k][j] || 0) + y[j]; }
+    else r[k] = (x || 0) + (y || 0);
+  }
+  return r;
+}
+function paginate(text) {
+  if (mode !== 'long' || text.length <= PAGE_MAX * 1.15) return [text];
+  const n = Math.ceil(text.length / PAGE_MAX), per = text.length / n;
+  const units = [];
+  (text.match(/[^.!?]+[.!?]+["')]*\s*|[^.!?]+$/g) || [text]).forEach(s => {
+    while (s.length > PAGE_MAX * 1.2) {     // 너무 긴 문장은 공백 기준으로 자름
+      let cut = s.lastIndexOf(' ', PAGE_MAX); if (cut < PAGE_MAX * 0.5) cut = PAGE_MAX;
+      units.push(s.slice(0, cut + 1)); s = s.slice(cut + 1);
+    }
+    units.push(s);
+  });
+  const out = []; let cur = '';
+  for (const u of units) { cur += u; if (cur.length >= per - 30 && out.length < n - 1) { out.push(cur); cur = ''; } }
+  if (cur) out.push(cur);
+  out[out.length - 1] = out[out.length - 1].trimEnd();   // 쪽 끝의 공백은 다음 쪽으로 넘어가기 위해 직접 치도록 남김(마지막 쪽 제외)
+  return out;
+}
+function pageLabel() {
+  const pl = $('#pageInfo');
+  if (pages.length > 1) { pl.textContent = 'Page ' + (pi + 1) + '/' + pages.length; pl.classList.remove('hide'); } else pl.classList.add('hide');
+}
+
+
+// ---- 지문 선택 ----
+function parseLines(text) {
+  return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(s => {
+    const i = s.indexOf(' | ');
+    return i > 0 ? [norm(s.slice(0, i)), s.slice(i + 3).trim()] : [norm(s), ''];
+  });
+}
+function chooseText() {
+  const useC = !serverMode && $('#useCustom').checked && $('#customTxt').value.trim();
+  let src = '', text = '', ko = '', key = '';
+  if (mode === 'long') {
+    if (serverTexts.long) { text = norm(serverTexts.long); src = '대회 지문 (서버)'; key = 'srv'; }
+    else if (useC && !$('#perLine').checked) { text = norm($('#customTxt').value); src = '내 지문'; key = 'cus'; }
+    else if (useC) { const L = parseLines($('#customTxt').value); const i = pickIdx(L.length, +lastKey.slice(1)); text = L[i][0]; ko = L[i][1]; src = '내 지문'; key = 'c' + i; }
+    else { const i = pickIdx(BUILTIN_LONG.length, +lastKey.slice(1)); text = norm(BUILTIN_LONG[i].text); src = BUILTIN_LONG[i].title; key = 'b' + i; }
+  } else {
+    let pool, label;
+    if (serverTexts.short) { pool = serverTexts.short; label = '대회 지문 (서버)'; }
+    else if (useC) { pool = parseLines($('#customTxt').value); label = '내 지문'; }
+    else { pool = BUILTIN_SHORT; label = '생활영어'; }
+    const i = pickIdx(pool.length, +lastKey.slice(1));
+    text = norm(pool[i][0]); ko = pool[i][1] || ''; src = label + ' #' + (i + 1); key = 'p' + i;
+  }
+  lastKey = key;
+  srcBase = src + ' · ' + text.length + '자';
+  trans = ko;
+  return text;
+}
+function setTarget(text) {
+  target = text;
+  const el = $('#target'); el.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (const ch of target) { const s = document.createElement('span'); s.textContent = ch; frag.appendChild(s); }
+  el.appendChild(frag);
+  const t = $('#trans');
+  if (trans && mode === 'short' && $('#showTrans').checked) { t.textContent = '해석: ' + trans; t.classList.remove('hide'); }
+  else t.classList.add('hide');
+  pageLabel();
+}
+function reset(newText) {
+  stopSpeak();
+  clearInterval(timer); timer = null;
+  started = finished = false;
+  inp.value = ''; inp.readOnly = false;
+  $('#imeWarn').classList.add('hide');
+  $('#result').classList.add('hide');
+  if (newText !== false) fullText = newText || chooseText();
+  fixCount = 0; pages = paginate(fullText); pi = 0; accum = { n: 0, correct: 0, strokes: 0, charMiss: {}, keyMiss: {} };
+  totalLen = Math.max(1, pages.join('').length);
+  $('#srcInfo').textContent = srcBase + (pages.length > 1 ? ' · ' + pages.length + ' pages' : '');
+  setTarget(pages[0]);
+  inp.maxLength = target.length;
+  render(evaluate(target, ''), 0);
+  gate();
+  if (!inp.disabled) inp.focus(); else if (serverMode) $('#nameInp').focus();
+  if (newText !== false && ttsAutoOn()) setTimeout(speakCurrent, 150);
+}
+const DEFAULT_PH = inp.placeholder;
+function gate() {
+  if (serverMode) {
+    const has = $('#nameInp').value.trim().length > 0;
+    inp.disabled = !has;
+    inp.placeholder = has ? DEFAULT_PH : '⬆ 먼저 위의 이름 칸에 이름을 입력하세요. (입력 후 Enter)';
+    $('#nameInp').style.borderColor = has ? '' : 'var(--bad)';
+    $('#nameMsg').textContent = has ? '' : '← 이름을 입력하면 타자 칸이 열립니다.';
+    $('#nameMsg').style.color = has ? '' : 'var(--bad)';
+  } else inp.disabled = false;
+}
+
+// ---- 화면 갱신 ----
+function typedText() { return inp.value.replace(/[\r\n]/g, ''); }
+function render(res, elapsed) {
+  const spans = $('#target').children;
+  const typed = typedText();
+  for (let i = 0; i < spans.length; i++) {
+    let c = '';
+    if (i < res.n) c = (typed[i] === target[i]) ? 'ok' : 'bad';
+    else if (i === res.n && !finished) c = 'cur';
+    spans[i].className = c;
+  }
+  const nAll = accum.n + res.n, okAll = accum.correct + res.correct, stAll = accum.strokes + res.strokes;
+  const accPct = nAll ? okAll / nAll * 100 : 100;
+  const cpm = elapsed >= 1 ? stAll / (elapsed / 60) : 0;
+  $('#sCpm').textContent = Math.round(cpm);
+  $('#sWpm').textContent = Math.round(cpm / 5);
+  $('#sAcc').textContent = Math.round(accPct) + '%';
+  const prog = Math.min(100, nAll / totalLen * 100);
+  $('#sProg').textContent = Math.round(prog) + '%';
+  $('#sTime').textContent = elapsed.toFixed(1);
+  $('#bar').style.width = prog + '%';
+}
+function update() {
+  const res = evaluate(target, typedText());
+  render(res, started ? (performance.now() - t0) / 1000 : 0);
+  return res;
+}
+
+// ---- 입력 처리 ----
+inp.addEventListener('compositionstart', () => { $('#imeWarn').classList.remove('hide'); });
+function applyCaseFix() {                  // 대소문자만 다른 글자는 지문의 글자로 즉시 교체
+  if (!caseFixOn()) return;
+  const v = inp.value; let out = '', n = 0;
+  for (let i = 0; i < v.length; i++) {
+    const c = v[i], t = target[i];
+    if (t !== undefined && c !== t && c.toLowerCase() === t.toLowerCase() && t.toLowerCase() !== t.toUpperCase()) { out += t; n++; }
+    else out += c;
+  }
+  if (n) { const pos = inp.selectionStart; inp.value = out; try { inp.setSelectionRange(pos, pos); } catch (e) { } fixCount += n; }
+}
+inp.addEventListener('input', e => {
+  if (finished) return;
+  if (!e.isComposing) applyCaseFix();
+  const typed = typedText();
+  if (!started && typed.length > 0) { started = true; t0 = performance.now(); timer = setInterval(update, 200); }
+  update();
+  if (started && typed.length >= target.length) pageDone();
+});
+let finishedAt = 0;
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); speakCurrent(); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (started && !finished) finish(); else if (finished && Date.now() - finishedAt > 500) reset(); }
+  else if (e.key === 'Escape') { e.preventDefault(); reset(false); }
+  else if (e.key === 'Tab') { e.preventDefault(); if (!serverMode) reset(); }
+});
+['paste', 'drop', 'dragover', 'contextmenu', 'cut'].forEach(ev => inp.addEventListener(ev, e => e.preventDefault()));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.activeElement !== inp) reset(false);
+  else if (e.key === 'Enter' && finished && document.activeElement === document.body && Date.now() - finishedAt > 500) reset();
+});
+
+// ---- 페이지 완료 / 전체 완료 ----
+function pageDone() {
+  if (pi >= pages.length - 1) { finish(); return; }
+  accum = combine(accum, evaluate(target, typedText().slice(0, target.length)));
+  pi++; inp.value = '';
+  setTarget(pages[pi]); inp.maxLength = target.length;
+  update(); inp.focus();
+  if (ttsAutoOn()) setTimeout(speakCurrent, 150);
+}
+function finish() {
+  if (finished || !started) return;
+  const elapsed = (performance.now() - t0) / 1000;
+  clearInterval(timer); timer = null;
+  finished = true; finishedAt = Date.now(); inp.readOnly = true; stopSpeak();
+  const typed = typedText();
+  const pageRes = evaluate(target, typed);
+  render(pageRes, elapsed);
+  const res = combine(accum, pageRes);
+  const cpm = elapsed > 0 ? res.strokes / (elapsed / 60) : 0;
+  const acc = res.n ? res.correct / res.n * 100 : 0;
+  const complete = pi >= pages.length - 1 && typed.length >= target.length;
+  lastResult = { mode, cpm: Math.round(cpm * 10) / 10, wpm: Math.round(cpm / 5 * 10) / 10, acc: Math.round(acc * 10) / 10, secs: Math.round(elapsed * 10) / 10, chars: res.n, res, complete, fix: fixCount };
+  const cum = LS.get('zz_typing_en_cum', { key: {}, ch: {} });
+  for (const k in res.keyMiss) cum.key[k] = (cum.key[k] || 0) + res.keyMiss[k];
+  for (const c in res.charMiss) cum.ch[c] = (cum.ch[c] || 0) + res.charMiss[c];
+  LS.set('zz_typing_en_cum', cum);
+  const hist = LS.get('zz_typing_en_hist', []);
+  hist.unshift({ t: Date.now(), mode, cpm: Math.round(cpm), wpm: Math.round(cpm / 5), acc: Math.round(acc * 10) / 10, secs: Math.round(elapsed * 10) / 10, done: complete });
+  LS.set('zz_typing_en_hist', hist.slice(0, 10));
+  showResult(); renderHist(); submit();
+}
+const lab = c => c === ' ' ? '공백' : c;
+function showResult() {
+  const r = lastResult;
+  $('#rCpm').textContent = Math.round(r.cpm);
+  $('#rWpm').textContent = Math.round(r.wpm);
+  $('#rAcc').textContent = r.acc + '%';
+  $('#rTime').textContent = r.secs;
+  $('#rChars').textContent = r.chars;
+  const weak = Object.entries(r.res.charMiss).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  $('#rWeak').textContent = weak.length ? weak.map(([c, n]) => lab(c) + ' ' + n + '회').join('  ·  ') : '틀린 글자가 없습니다 👏';
+  $('#rFix').textContent = caseFixOn() ? '대소문자 자동 교정 ' + r.fix + '회' + (r.fix ? ' (정타로 처리됨)' : '') : '';
+  drawKb();
+  $('#rSubmit').textContent = serverMode ? (r.complete ? '순위 등록 중…' : '끝까지 치지 않아 순위에는 등록되지 않았습니다.') : '';
+  $('#result').classList.remove('hide');
+}
+async function submit() {
+  if (!serverMode || !lastResult.complete) return;
+  const name = $('#nameInp').value.trim();
+  if (!name) return;
+  try {
+    const r = await fetch('/api/submit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type: lastResult.mode + '_en', cpm: lastResult.cpm, acc: lastResult.acc, secs: lastResult.secs, chars: lastResult.chars })
+    });
+    const d = await r.json();
+    $('#rSubmit').innerHTML = d.ok
+      ? '✅ 등록 완료 · 영문 ' + (lastResult.mode === 'long' ? '장문' : '단문') + ' 기준 현재 <b>' + d.rank + '위</b> / ' + d.total + '명 · <a href="/rank" target="_blank">순위표 보기</a>'
+      : '등록 실패: ' + (d.error || '');
+  } catch (e) { $('#rSubmit').textContent = '서버에 연결할 수 없어 등록하지 못했습니다.'; }
+}
+
+// ---- 키보드 히트맵 (QWERTY) ----
+const ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+function drawKb() {
+  const data = hmView === 'cur' ? (lastResult ? lastResult.res.keyMiss : {}) : LS.get('zz_typing_en_cum', { key: {} }).key;
+  const max = Math.max(1, ...Object.values(data));
+  const kb = $('#kb'); kb.innerHTML = '';
+  ROWS.forEach((row, ri) => {
+    const r = document.createElement('div'); r.className = 'r'; r.style.marginLeft = (ri * 14) + 'px';
+    for (const k of row) {
+      const c = data[k] || 0, a = c ? 0.15 + 0.75 * c / max : 0;
+      const d = document.createElement('div'); d.className = 'k';
+      d.style.background = c ? 'rgba(var(--hm),' + a.toFixed(2) + ')' : 'transparent';
+      d.style.color = a > 0.5 ? 'var(--bg)' : 'var(--fg)';
+      d.innerHTML = k.toUpperCase() + '<small>' + (c || '') + '</small>';
+      r.appendChild(d);
+    }
+    kb.appendChild(r);
+  });
+}
+document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => {
+  hmView = b.dataset.hm;
+  document.querySelectorAll('[data-hm]').forEach(x => x.classList.toggle('on', x === b));
+  drawKb();
+});
+
+// ---- 기록 ----
+function renderHist() {
+  const h = LS.get('zz_typing_en_hist', []);
+  const t = $('#hist');
+  if (!h.length) { t.innerHTML = '<tr><td class="mut">아직 기록이 없습니다.</td></tr>'; return; }
+  t.innerHTML = '<tr><th>일시</th><th>구분</th><th>타수</th><th>WPM</th><th>정확도</th><th>시간</th></tr>' + h.map(x => {
+    const d = new Date(x.t), p = n => String(n).padStart(2, '0');
+    return '<tr><td>' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + '</td><td>' + (x.mode === 'long' ? '장문' : '단문') + (x.done ? '' : ' (중단)') + '</td><td>' + x.cpm + '</td><td>' + (x.wpm || '') + '</td><td>' + x.acc + '%</td><td>' + x.secs + '초</td></tr>';
+  }).join('');
+}
+$('#clearHist').onclick = () => {
+  if (!confirm('최근 기록과 누적 통계를 모두 지울까요?')) return;
+  LS.set('zz_typing_en_hist', []); LS.set('zz_typing_en_cum', { key: {}, ch: {} });
+  renderHist(); if (lastResult) drawKb();
+};
+$('#copyBtn').onclick = async () => {
+  if (!lastResult) return;
+  const s = '[English Typing] ' + (lastResult.mode === 'long' ? 'Long' : 'Short') + ' · ' + Math.round(lastResult.cpm) + ' CPM · ' + Math.round(lastResult.wpm) + ' WPM · accuracy ' + lastResult.acc + '% · ' + lastResult.secs + 's';
+  try { await navigator.clipboard.writeText(s); $('#copyBtn').textContent = '복사됨'; setTimeout(() => $('#copyBtn').textContent = '결과 복사', 1200); } catch (e) { prompt('복사하세요', s); }
+};
+
+// ---- 버튼/모드 ----
+function setMode(m) {
+  mode = m; LS.set('zz_typing_en_mode', m);
+  document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === m));
+  $('#transWrap').classList.toggle('hide', m !== 'short');
+  lastKey = '';
+  reset();
+}
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+$('#nextBtn').onclick = $('#nextBtn2').onclick = () => reset();
+$('#resetBtn').onclick = () => reset(false);
+$('#again').onclick = () => reset(false);
+$('#caseFix').addEventListener('change', () => { LS.set('zz_typing_en_casefix', $('#caseFix').checked); inp.focus(); });
+$('#showTrans').addEventListener('change', () => { LS.set('zz_typing_en_trans', $('#showTrans').checked); setTarget(target); inp.focus(); });
+$('#nameInp').addEventListener('input', () => { rawSet('zz_typing_name', $('#nameInp').value.trim()); gate(); });
+$('#nameInp').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.focus(); } });
+
+// ---- 내 지문 (파일로 직접 열었을 때만) ----
+function loadCustom() {
+  const c = LS.get('zz_typing_en_custom', { text: '', use: false, line: false });
+  $('#customTxt').value = c.text; $('#useCustom').checked = c.use; $('#perLine').checked = c.line;
+  $('#showTrans').checked = LS.get('zz_typing_en_trans', true);
+  $('#caseFix').checked = LS.get('zz_typing_en_casefix', true);
+}
+$('#saveCustom').onclick = () => {
+  LS.set('zz_typing_en_custom', { text: $('#customTxt').value, use: $('#useCustom').checked, line: $('#perLine').checked });
+  $('#customMsg').textContent = '저장했습니다.'; setTimeout(() => $('#customMsg').textContent = '', 1500);
+  lastKey = ''; reset();
+};
+
+// ---- 글꼴 / 글자 크기 ----
+const FONTS = {
+  verdana: 'Verdana,"Segoe UI","DejaVu Sans",Arial,sans-serif',
+  segoe: '"Segoe UI",Verdana,"Helvetica Neue",Arial,sans-serif',
+  georgia: 'Georgia,"Times New Roman",serif',
+  consolas: 'Consolas,"Cascadia Mono",Menlo,"Courier New",monospace'
+};
+let fontKey = LS.get('zz_typing_en_font', 'verdana'), fs = LS.get('zz_typing_en_fs', 22);
+function applyFont() {
+  const key = serverMode ? 'verdana' : (FONTS[fontKey] ? fontKey : 'verdana');   // 대회(서버) 접속 시 글꼴 고정
+  const st = document.documentElement.style;
+  st.setProperty('--ff', FONTS[key]); st.setProperty('--fs', fs + 'px');
+  $('#fontSel').value = key;
+}
+$('#fontSel').onchange = () => { fontKey = $('#fontSel').value; LS.set('zz_typing_en_font', fontKey); applyFont(); inp.focus(); };
+$('#fsMinus').onclick = () => { fs = Math.max(16, fs - 2); LS.set('zz_typing_en_fs', fs); applyFont(); inp.focus(); };
+$('#fsPlus').onclick = () => { fs = Math.min(36, fs + 2); LS.set('zz_typing_en_fs', fs); applyFont(); inp.focus(); };
+
+// ---- 지문 읽어 주기 (연습용, 영어 음성) ----
+const TTS = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let userActivated = false, voices = [];
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { userActivated = true; }, true));
+function loadVoices() {
+  if (!TTS) return;
+  voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const sel = $('#ttsVoice'), saved = LS.get('zz_typing_en_voice', '');
+  sel.innerHTML = '';
+  voices.forEach(v => { const o = document.createElement('option'); o.value = v.voiceURI; o.textContent = v.name + ' (' + v.lang + ')'; sel.appendChild(o); });
+  if (saved && voices.some(v => v.voiceURI === saved)) sel.value = saved;
+  else { const p = voices.find(v => /en-US/i.test(v.lang)); if (p) sel.value = p.voiceURI; }
+  $('#ttsMsg').textContent = voices.length ? '' : '영어 음성이 없습니다.';
+  $('#ttsBtn').disabled = !voices.length;
+}
+function stopSpeak() { if (TTS) { try { speechSynthesis.cancel(); } catch (e) { } } }
+function speakCurrent() {
+  if (!TTS || serverMode || !target || !voices.length) return;
+  stopSpeak();
+  const parts = target.match(/[^.!?]+[.!?]+["')]*\s*|[^.!?]+$/g) || [target];
+  const v = voices.find(x => x.voiceURI === $('#ttsVoice').value);
+  const rate = +$('#ttsRate').value || 1;
+  parts.forEach(p => {
+    const u = new SpeechSynthesisUtterance(p.trim());
+    u.lang = v ? v.lang : 'en-US'; if (v) u.voice = v; u.rate = rate;
+    speechSynthesis.speak(u);
+  });
+}
+function ttsAutoOn() { return TTS && !serverMode && userActivated && $('#ttsAuto').checked && voices.length > 0; }
+$('#ttsBtn').onclick = () => { speakCurrent(); inp.focus(); };
+$('#ttsStop').onclick = () => { stopSpeak(); inp.focus(); };
+$('#ttsRate').onchange = () => { LS.set('zz_typing_en_rate', $('#ttsRate').value); inp.focus(); };
+$('#ttsVoice').onchange = () => { LS.set('zz_typing_en_voice', $('#ttsVoice').value); inp.focus(); };
+$('#ttsAuto').onchange = () => { LS.set('zz_typing_en_auto', $('#ttsAuto').checked); inp.focus(); };
+function setHint() {
+  let h = 'Enter: 완료 / 결과 화면에서 다음 지문 · Esc: 다시';
+  if (!serverMode) h += ' · Tab: 건너뛰기';
+  if (TTS && !serverMode && voices.length) h += ' · Ctrl+Enter: 듣기';
+  $('#hint').textContent = h;
+}
+
+// ---- 시작 ----
+async function detectServer() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const ac = new AbortController(); const to = setTimeout(() => ac.abort(), 2000);
+    const r = await fetch('/api/ping', { signal: ac.signal }); clearTimeout(to);
+    if (!r.ok) return;
+    const d = await r.json(); if (!d.ok) return;
+    serverMode = true;
+    try {
+      const t = await (await fetch('/api/texts?lang=en')).json();
+      serverTexts = { long: t.long || null, short: (t.short || null) && t.short.map(s => Array.isArray(s) ? s : [s, '']) };
+    } catch (e) { }
+    $('#serverBar').classList.remove('hide');
+    $('#nameInp').value = rawGet('zz_typing_name') || '';
+    $('#fixWrap').classList.add('hide');       // 대회 모드: 대소문자 교정 ON 고정(선택 불가)
+    $('#customCard').classList.add('hide');   // 네트워크(대회) 버전: 내 지문 입력 차단
+    $('#langLink').href = '/';
+    $('#fontSel').classList.add('hide'); $('#fontLbl').classList.add('hide');   // 대회 모드: 글꼴 고정
+  } catch (e) { }
+}
+(async function init() {
+  loadCustom();
+  await detectServer();
+  applyFont();
+  if (TTS && !serverMode) {
+    $('#ttsRate').value = LS.get('zz_typing_en_rate', '1'); $('#ttsAuto').checked = LS.get('zz_typing_en_auto', false);
+    loadVoices(); speechSynthesis.onvoiceschanged = () => { loadVoices(); setHint(); };
+    $('#ttsBar').classList.remove('hide');
+  }
+  setHint();
+  document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === mode));
+  $('#transWrap').classList.toggle('hide', mode !== 'short');
+  renderHist();
+  reset();
+})();
+</script>
+</body>
+</html>
