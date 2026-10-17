@@ -62,6 +62,14 @@
   .note{margin-top:30px;font-size:12px;color:var(--sub);line-height:1.8}
   .credit{margin-top:22px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25);font-size:11px;color:var(--ink-soft);line-height:1.8;text-align:center}
   .credit a{color:inherit;text-decoration:underline;font-weight:600}
+  /* 하단 한 줄: 왼쪽 = 암기도우미 · 가운데 = 크레딧 · 오른쪽 = 전기계산기 */
+  .credit{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+  .credit .cl{justify-self:start;text-align:left}
+  .credit .cr{justify-self:end;text-align:right}
+  @media (max-width:560px){
+    .credit{grid-template-columns:1fr 1fr;grid-template-areas:"mid mid" "l r"}
+    .credit .cm{grid-area:mid}.credit .cl{grid-area:l}.credit .cr{grid-area:r}
+  }
   @media (max-width:480px){.dm{position:static;margin-bottom:14px}.wrap{padding-top:20px}}
 </style>
 <script>
@@ -302,7 +310,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </p>
 
   <div class="credit">
-    Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer">zzizik</a>, with Claude AI.
+    <a class="cl" href="https://zzizik9751.github.io/leitner-scheduler/" target="_blank" rel="noopener noreferrer">암기도우미</a>
+    <span class="cm">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer">zzizik</a>, with Claude AI.</span>
+    <a class="cr" href="https://zzizik9751.github.io/calculatior" target="_blank" rel="noopener noreferrer">전기계산기</a>
   </div>
 </div>
 </body>
