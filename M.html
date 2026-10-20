@@ -274,6 +274,25 @@ html.mini .cb{font-size:18px}
 html.mini .sidebar{order:2;flex:1 1 auto;min-height:0;width:100%;min-width:0;border-right:none}
 html.mini .tlist{flex:1 1 auto;min-height:0;overflow-y:auto;padding-bottom:20px}
 html.mini .sbar{left:0}
+
+/* ── 가사 직접 넣기 / LRC 저장 ── */
+.lyr-tools{display:flex;justify-content:center;gap:8px;margin-top:10px}
+.lyr-tools button{background:var(--bg3);border:1px solid var(--border);border-radius:16px;color:var(--text2);padding:5px 13px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.lyr-tools button:hover:not(:disabled){color:var(--text);border-color:var(--accent)}
+.lyr-tools button:disabled{opacity:.35;cursor:default}
+.lyr-tools button.hot{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:bold}
+.lyr-ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:none;align-items:center;justify-content:center;padding:16px}
+.lyr-ov.on{display:flex}
+.lyr-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:10px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.lyr-box h3{font-size:15px;color:var(--accent)}
+.lyr-box .sub{font-size:11.5px;color:var(--text3);line-height:1.6}
+.lyr-box textarea{width:100%;height:230px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12.5px;line-height:1.6;font-family:Consolas,'Malgun Gothic',monospace;resize:vertical;outline:none}
+.lyr-box textarea:focus{border-color:var(--accent)}
+.lyr-box .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lyr-box .row button{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.lyr-box .row button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:bold}
+.lyr-box .info{font-size:11.5px;color:var(--text2);min-height:16px}
+body.filedrag .main,body.filedrag #tlist{outline:2px dashed #7aa2ff;outline-offset:-4px}
 </style>
 <style id="zz-standard">
 /* zzizik 디자인 기준 (웹프로그램_디자인기준.md) — 아래 블록이 원본 스타일을 덮어씁니다 */
@@ -299,7 +318,7 @@ input[type=text]{border-radius:12px}
       <div class="sb-row">
         <button class="add-btn" onclick="$('fi').click()">+ 파일</button>
         <button class="add-btn" onclick="$('fd').click()">+ 폴더</button>
-        <input type="file" id="fi" multiple accept="audio/*,.opus,.ogg,.oga,.lrc" onchange="addF(this.files)">
+        <input type="file" id="fi" multiple accept="audio/*,.opus,.ogg,.oga,.lrc,.lyc" onchange="addF(this.files)">
         <input type="file" id="fd" webkitdirectory directory multiple onchange="addF(this.files)">
       </div>
       <div class="sort-bar">
@@ -327,6 +346,7 @@ input[type=text]{border-radius:12px}
       <div class="t-title"  id="ntitle">재생 중인 곡 없음</div>
       <div class="t-artist" id="nartist">음악 파일을 추가해 주세요</div>
       <div class="t-album"  id="nalbum"></div>
+      <div class="lyr-tools"><button id="btnLyrIn" onclick="openLyrModal()" title="가사(.lyc/.lrc/.txt)를 붙여넣거나 파일로 불러와 지금 곡에 바로 적용">✎ 가사 넣기</button><button id="btnLyrSave" onclick="saveLrc()" disabled title="음원과 같은 이름의 .lrc 파일로 같은 폴더에 저장">💾 LRC 저장</button></div>
     </div>
     <div class="controls">
       <div class="prog-wrap">
@@ -347,6 +367,21 @@ input[type=text]{border-radius:12px}
         <input type="range" id="vs" min="0" max="100" value="80" oninput="setVol(this.value)">
         <span style="font-size:14px">🔊</span>
       </div>
+    </div>
+  </div>
+</div>
+<div class="lyr-ov" id="lyrOv" onclick="if(event.target===this)closeLyrModal()">
+  <div class="lyr-box">
+    <h3>✎ 가사 넣기 <span id="lyrFor" style="font-weight:normal;font-size:12px;color:var(--text3)"></span></h3>
+    <div class="sub">알송 등에서 만든 가사 파일(.lyc · .lrc · .txt)을 불러오거나, 내용을 아래에 붙여넣으세요. 적용하면 지금 재생 중인 곡에 바로 표시됩니다. (파일을 이 창에 끌어다 놓아도 됩니다)</div>
+    <textarea id="lyrTa" placeholder="[00:12.34]첫 번째 줄&#10;[00:16.80]두 번째 줄 ..." spellcheck="false"></textarea>
+    <div class="info" id="lyrInfo"></div>
+    <div class="row">
+      <button onclick="$('lyrFile').click()">📂 파일 선택…</button>
+      <input type="file" id="lyrFile" accept=".lyc,.lrc,.txt,.alt,text/*" onchange="lyrPickFile(this.files[0]);this.value=''">
+      <span style="flex:1"></span>
+      <button onclick="closeLyrModal()">취소</button>
+      <button class="pri" onclick="lyrApplyFromModal()">적용</button>
     </div>
   </div>
 </div>
@@ -575,7 +610,7 @@ function applyOggTags(t, c){
 
 // ── LRC 가사 지원 ────────────────────────────────────────────────
 const AUDIO_RE = /\.(mp3|flac|wav|ogg|oga|opus|m4a|aac|wma)$/i;
-const LRC_RE = /\.lrc$/i;
+const LRC_RE = /\.(lrc|lyc)$/i;
 
 // 파일/폴더 선택·드롭 결과를 {file, rel}(상대경로 포함) 배열로 통일
 function toEntries(fileList){
@@ -586,8 +621,14 @@ function toEntries(fileList){
 async function collectDropEntries(dt){
   const items = dt.items;
   if(items && items.length && items[0].webkitGetAsEntry){
-    const roots = Array.from(items).map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
-    if(!roots.length) return toEntries(dt.files);
+    // 드롭 이벤트가 끝나면 dataTransfer가 비워지므로, 필요한 것을 먼저 동기적으로 뽑아 둔다
+    const snapFiles = Array.from(dt.files || []);
+    const snap = Array.from(items).map(it => ({
+      entry: it.webkitGetAsEntry ? it.webkitGetAsEntry() : null,
+      file:  it.kind === 'file' && it.getAsFile ? it.getAsFile() : null
+    }));
+    const roots = snap.filter(x => x.entry || x.file);
+    if(!roots.length) return toEntries(snapFiles);
     const out = [];
     const readDir = entry => new Promise((res,rej)=>{
       const reader = entry.createReader();
@@ -608,7 +649,13 @@ async function collectDropEntries(dt){
         for(const c of children) await walk(c, path + entry.name + '/');
       }
     }
-    for(const r of roots) await walk(r, '');
+    for(const r of roots){
+      try{
+        if(r.file && !(r.entry && r.entry.isDirectory)) out.push({ file: r.file, rel: r.file.name });   // 단일 파일은 entry 없이 바로 사용
+        else if(r.entry) await walk(r.entry, '');
+      }catch(err){ console.warn('드롭 항목 읽기 실패:', err); }
+    }
+    if(!out.length && snapFiles.length) return toEntries(snapFiles);
     return out;
   }
   return toEntries(dt.files);
@@ -625,16 +672,32 @@ function keyOf(rel){
 
 // EUC-KR로 저장된 .lrc도 최대한 읽어내기
 function decodeText(buf){
+  const u = new Uint8Array(buf);
+  if(u.length>=2 && u[0]===0xFF && u[1]===0xFE) return new TextDecoder('utf-16le').decode(buf.slice(2));
+  if(u.length>=2 && u[0]===0xFE && u[1]===0xFF) return new TextDecoder('utf-16be').decode(buf.slice(2));
+  if(u.length>=4 && u[1]===0 && u[3]===0 && u[0]!==0) return new TextDecoder('utf-16le').decode(buf);   // BOM 없는 UTF-16
   let s = new TextDecoder('utf-8').decode(buf);
-  if(s.indexOf('�') !== -1){
-    try{ const alt = new TextDecoder('euc-kr').decode(buf); if(alt.indexOf('�') === -1) s = alt; }catch(e){}
+  if(s.indexOf('\uFFFD') !== -1){
+    try{ const alt = new TextDecoder('euc-kr').decode(buf); if(alt.indexOf('\uFFFD') === -1) s = alt; }catch(e){}
   }
+  return s.replace(/^\uFEFF/,'');
+}
+
+// 알송 서버 형식(<br> 줄바꿈)·HTML 태그·엔티티 정리
+function normLyric(text){
+  let s = String(text||'').replace(/^\uFEFF/,'');
+  s = s.replace(/<br\s*\/?>/gi,'\n');
+  s = s.replace(/<(?!\d)[^>]*>/g,'');
+  s = s.replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
   return s;
 }
 
 function parseLRC(text){
   const lines = text.split(/\r\n|\n|\r/);
   const timeTag = /\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+  const wordTag = /<\d{1,3}:\d{2}(?:[.:]\d{1,3})?>/g;     // 확장 LRC의 단어별 시간 태그
+  let offset = 0;                                           // [offset:±ms]
+  const om = text.match(/\[offset:\s*([+-]?\d+)\s*\]/i); if(om) offset = parseInt(om[1],10)/1000;
   const out = [];
   for(const raw of lines){
     timeTag.lastIndex = 0;
@@ -642,10 +705,10 @@ function parseLRC(text){
     while((m = timeTag.exec(raw))){
       const min = parseInt(m[1],10);
       const sec = parseFloat(m[2] + (m[3] ? '.'+m[3] : ''));
-      times.push(min*60+sec);
+      times.push(Math.max(0, min*60+sec-offset));
     }
     if(!times.length) continue;
-    const text2 = raw.replace(timeTag,'').trim();
+    const text2 = raw.replace(timeTag,'').replace(wordTag,'').trim();
     times.forEach(t => out.push({ time: t, text: text2 }));
   }
   out.sort((a,b)=>a.time-b.time);
@@ -655,14 +718,154 @@ function parseLRC(text){
 // 시간 태그가 있으면 동기화 가사로, 없으면(순수 텍스트) 비동기화 가사로 저장
 // src: 'lrc'(같은 폴더 .lrc 파일) | 'tag'(파일 내장 가사 태그)
 function setLyrics(t, text, src){
+  text = normLyric(text);
   const synced = parseLRC(text);
   if(synced.length){ t.lyrics = synced; t.lyricsSrc = src; t.lyricsSynced = true; return; }
-  const plain = text.split(/\r\n|\n|\r/).map(s=>s.trim()).filter(Boolean);
+  const plain = text.split(/\r\n|\n|\r/).map(s=>s.trim()).filter(s=>s && !/^\[(ti|ar|al|by|offset|length|re|ve):/i.test(s));
   if(plain.length){ t.lyrics = plain.map(s=>({time:-1,text:s})); t.lyricsSrc = src; t.lyricsSynced = false; }
 }
 
 // src가 'tag'일 때만 사용: 이미 가사가 있으면(주로 폴더 .lrc) 덮어쓰지 않음
 function fallbackLyrics(t, text, src){ if(!t.lyrics) setLyrics(t, text, src); }
+
+// ── 가사 직접 넣기 + LRC 저장 (음원과 같은 이름·같은 폴더) ─────────────
+function lyrBlocked(){
+  if(miniActive || (typeof pipWin!=='undefined' && pipWin) || (typeof isMini!=='undefined' && isMini)){ stat('미니 플레이어를 닫고 사용하세요'); return true; }
+  return false;
+}
+function updateLyrBtns(){
+  const b1=$('btnLyrIn'), b2=$('btnLyrSave'); if(!b1||!b2) return;
+  const t = cur>=0 ? tracks[cur] : null;
+  b1.disabled = !t;
+  const has = !!(t && t.lyrics && t.lyrics.length);
+  b2.disabled = !has;
+  b2.classList.toggle('hot', !!(has && t.lyricsDirty));
+}
+function openLyrModal(){
+  if(lyrBlocked()) return;
+  if(cur<0||!tracks[cur]){ stat('먼저 곡을 재생·선택하세요'); return; }
+  const t=tracks[cur];
+  $('lyrFor').textContent = '— ' + (t.file && t.file.name || t.name);
+  $('lyrTa').value=''; $('lyrInfo').textContent='';
+  $('lyrOv').classList.add('on'); $('lyrTa').focus();
+}
+function closeLyrModal(){ $('lyrOv').classList.remove('on'); }
+async function lyrPickFile(f){
+  if(!f) return;
+  try{ const txt = decodeText(await f.arrayBuffer()); $('lyrTa').value = txt; lyrApplyFromModal(f.name); }
+  catch(e){ $('lyrInfo').textContent='파일을 읽지 못했습니다: '+e.message; }
+}
+function lyrApplyFromModal(srcName){
+  const txt = $('lyrTa').value;
+  if(!txt.trim()){ $('lyrInfo').textContent='가사 내용이 비어 있습니다.'; return; }
+  if(applyManualLyrics(txt, typeof srcName==='string' ? srcName : '붙여넣기')) closeLyrModal();
+  else $('lyrInfo').textContent='가사로 인식할 수 있는 줄이 없습니다.';
+}
+(function(){ // 모달에 파일 끌어놓기
+  const ov=document.getElementById('lyrOv'); if(!ov) return;
+  ov.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();});
+  ov.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) lyrPickFile(f); });
+})();
+
+// 현재 곡에 가사 적용 → 바로 가사 화면 표시 (저장은 💾 LRC 저장)
+function applyManualLyrics(text, label){
+  if(lyrBlocked()) return false;
+  if(cur<0||!tracks[cur]) return false;
+  const t = tracks[cur];
+  const bak = { lyrics:t.lyrics, src:t.lyricsSrc, synced:t.lyricsSynced };
+  t.lyrics = null; setLyrics(t, text, 'manual');
+  if(!t.lyrics || !t.lyrics.length){ t.lyrics=bak.lyrics; t.lyricsSrc=bak.src; t.lyricsSynced=bak.synced; return false; }
+  t.lyricsDirty = true;
+  lastActiveLine = -1;
+  updateMain();
+  $('stage').classList.add('lyrics-on');
+  renderLyricsPanel(); syncLyrics(aud.currentTime);
+  updateLyrBtns(); scheduleSave();
+  stat('가사 적용: ' + (label||'') + ' — ' + t.lyrics.length + '줄' + (t.lyricsSynced ? ' (시간 동기화)' : ' (시간 태그 없음 · 비동기화)') + ' · 💾 LRC 저장으로 파일에 남기세요');
+  return true;
+}
+
+// LRC 텍스트 만들기
+function buildLrc(t){
+  const head = [];
+  if(t.title) head.push('[ti:'+t.title+']');
+  if(t.artist) head.push('[ar:'+t.artist+']');
+  if(t.album) head.push('[al:'+t.album+']');
+  const stamp = sec => { const cs=Math.round(sec*100), m=Math.floor(cs/6000), s=Math.floor((cs%6000)/100), c=cs%100;
+    return '['+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(c).padStart(2,'0')+']'; };
+  const body = t.lyricsSynced ? t.lyrics.map(l => stamp(l.time) + (l.text||'')) : t.lyrics.map(l => l.text||'');
+  return head.concat(body).join('\r\n') + '\r\n';
+}
+
+// 저장 폴더 핸들(File System Access API) — 한 번 고르면 같은 폴더 곡은 다시 묻지 않음
+let lrcDirHandles = [];
+async function lrcDirsLoad(){
+  try{
+    const db = await openLibraryDB();
+    const v = await new Promise((res,rej)=>{ const rq=db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get('lrcDirs'); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+    if(Array.isArray(v)) lrcDirHandles = v;
+  }catch(e){}
+}
+async function lrcDirsSave(){
+  try{
+    const db = await openLibraryDB();
+    await new Promise((res,rej)=>{ const tx=db.transaction(DB_STORE,'readwrite'); tx.objectStore(DB_STORE).put(lrcDirHandles.slice(0,8),'lrcDirs'); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
+  }catch(e){}
+}
+async function dirWithAudio(fileName){
+  for(const h of lrcDirHandles){
+    try{
+      let p = await h.queryPermission({mode:'readwrite'});
+      if(p !== 'granted') p = await h.requestPermission({mode:'readwrite'});
+      if(p !== 'granted') continue;
+      await h.getFileHandle(fileName);          // 이 폴더에 같은 이름의 음원이 있어야 함
+      return h;
+    }catch(e){}
+  }
+  return null;
+}
+
+async function saveLrc(){
+  if(lyrBlocked()) return;
+  const t = cur>=0 ? tracks[cur] : null;
+  if(!t || !t.lyrics || !t.lyrics.length) return;
+  if(!t.lyricsSynced && !confirm('시간 태그가 없는 가사입니다. 이대로 저장하면 가사가 곡에 맞춰 넘어가지 않습니다.\n그래도 저장할까요?')) return;
+  const audioName = t.file && t.file.name ? t.file.name : (t.name + '.mp3');
+  const fname = audioName.replace(/\.[^.]+$/,'') + '.lrc';
+  const text = '﻿' + buildLrc(t);                    // UTF-8(BOM) — 윈도우 플레이어·알송 호환
+  if(window.showDirectoryPicker){
+    try{
+      let dir = await dirWithAudio(audioName);
+      if(!dir){
+        stat('"'+audioName+'"이(가) 들어 있는 폴더를 선택하세요 → 같은 폴더에 '+fname+' 저장');
+        try{ dir = await window.showDirectoryPicker({ id:'mplayer-lrc', mode:'readwrite' }); }
+        catch(e){ if(e && e.name==='AbortError'){ stat('저장 취소'); return; } throw e; }
+        try{ await dir.getFileHandle(audioName); }
+        catch(e){ stat('선택한 폴더에 "'+audioName+'"이(가) 없습니다. 음원이 있는 폴더를 다시 선택하세요'); return; }
+        lrcDirHandles = [dir].concat(lrcDirHandles.filter(h=>h!==dir)); lrcDirsSave();
+      }
+      let exists = false; try{ await dir.getFileHandle(fname); exists = true; }catch(e){}
+      if(exists && !confirm('"'+fname+'" 파일이 이미 있습니다. 덮어쓸까요?')) { stat('저장 취소'); return; }
+      const fh = await dir.getFileHandle(fname, { create:true });
+      const w = await fh.createWritable(); await w.write(text); await w.close();
+      t.lyricsDirty = false; t.lyricsSrc = 'lrc'; updateLyrBtns(); scheduleSave();
+      if($('stage').classList.contains('lyrics-on')) renderLyricsPanel();
+      stat('저장 완료: '+fname+' (음원과 같은 폴더)');
+      return;
+    }catch(e){
+      console.warn(e);
+      stat('폴더 저장 실패('+(e && e.message || e)+') → 다운로드로 저장합니다');
+    }
+  }
+  // 대체: 브라우저 다운로드 (폴더 직접 쓰기를 지원하지 않을 때)
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'})); a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  t.lyricsDirty = false; updateLyrBtns();
+  stat('다운로드 저장: '+fname+' — 음원과 같은 폴더로 옮겨 주세요');
+}
+lrcDirsLoad();
+
 
 // ── FLAC 내장 가사 (Vorbis Comment) ────────────────────────────────
 // jsmediatags 번들의 FLAC 리더는 title/artist/album/track/genre/picture만 읽고
@@ -728,6 +931,10 @@ async function ingest(entries){
     catch(err){ /* 읽기 실패한 lrc는 무시 */ }
   }
 
+  if(!audioEntries.length && lrcEntries.length === 1 && cur >= 0){
+    const k0 = keyOf(lrcEntries[0].rel);
+    if(!tracks.some(t => t.lrcKey === k0)){ applyManualLyrics(lrcTextMap[k0], lrcEntries[0].file.name); return; }
+  }
   const prevLen = tracks.length;
   audioEntries.forEach(e => {
     const f = e.file;
@@ -874,6 +1081,7 @@ function resetMain(){
   $('pf').style.width='0%'; showPlay(true);
   $('stage').classList.remove('lyrics-on');
   lastActiveLine=-1;
+  updateLyrBtns();
 }
 
 // ── 드래그로 순서 변경 ────────────────────────────────────────────
@@ -882,7 +1090,7 @@ function bindDragEvents(){
     el.addEventListener('dragstart',function(e){
       dragSrcIdx=parseInt(this.dataset.idx);
       this.classList.add('dragging');
-      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain','m');}catch(_){}
     });
     el.addEventListener('dragover',function(e){
       e.preventDefault();
@@ -922,18 +1130,36 @@ function bindDZ(){
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('ov');});
   dz.addEventListener('dragleave',()=>dz.classList.remove('ov'));
   dz.addEventListener('drop',async e=>{
-    e.preventDefault();dz.classList.remove('ov');
-    ingest(await collectDropEntries(e.dataTransfer));
+    e.preventDefault();dz.classList.remove('ov');   // 실제 처리는 window 캡처 핸들러(handleExternalDrop)
   });
 }
-function bindBodyDrop(body){
-body.addEventListener('dragover',e=>e.preventDefault());
-body.addEventListener('drop',async e=>{
-  if(e.target.closest('#tlist')&&tracks.length)return;
+function isFileDrag(e){
+  const t=e.dataTransfer&&e.dataTransfer.types;
+  return !!t && Array.prototype.indexOf.call(t,'Files')>=0;
+}
+let _dropBusy=false;
+async function handleExternalDrop(e){
+  if(!isFileDrag(e)) return;          // 목록 내부 순서변경(텍스트형 드래그)은 제외
   e.preventDefault();
-  const entries = await collectDropEntries(e.dataTransfer);
-  if(entries.length) ingest(entries);
-});
+  if(_dropBusy) return; _dropBusy=true;
+  setTimeout(()=>{_dropBusy=false;},300);   // 같은 드롭이 두 번 처리되는 것 방지
+  dragSrcIdx=null;
+  document.body.classList.remove('filedrag');
+  try{
+    const entries = await collectDropEntries(e.dataTransfer);
+    if(!entries.length){ $('sbar').textContent='드롭된 파일을 읽지 못했습니다'; return; }
+    const before=tracks.length;
+    await ingest(entries);
+    if(tracks.length===before && !/가사/.test($('sbar').textContent))
+      $('sbar').textContent='추가된 곡 없음 — 지원 형식(mp3/flac/wav/ogg/m4a/aac/wma/opus) 확인';
+  }catch(err){ console.error(err); $('sbar').textContent='드롭 처리 오류: '+(err&&err.message||err); }
+}
+function bindBodyDrop(body){
+  const w=(body.ownerDocument||document).defaultView||window;
+  w.addEventListener('dragenter',e=>{ if(isFileDrag(e)){ e.preventDefault(); body.classList.add('filedrag'); } },true);
+  w.addEventListener('dragover',e=>{ if(isFileDrag(e)){ e.preventDefault(); e.dataTransfer.dropEffect='copy'; } },true);
+  w.addEventListener('dragleave',e=>{ if(!e.relatedTarget) body.classList.remove('filedrag'); },true);
+  w.addEventListener('drop',handleExternalDrop,true);
 }
 bindBodyDrop(document.body);
 bindDZ();
@@ -950,6 +1176,7 @@ function updateMain(){
     + `<div class="lrc-badge" style="display:${hasLyr?'flex':'none'}">가사</div>`;
   lastActiveLine=-1;
   if($('stage').classList.contains('lyrics-on')) renderLyricsPanel();
+  updateLyrBtns();
 }
 
 // ── 가사(.lrc) 패널 ─────────────────────────────────────────────
@@ -964,10 +1191,10 @@ function renderLyricsPanel(){
   const lyr = t && t.lyrics;
   lastActiveLine=-1;
   if(!lyr || !lyr.length){
-    $('lyricsInner').innerHTML = `<div class="lyr-empty">가사 없음<br><span style="opacity:.7">같은 폴더의 .lrc 파일 또는 파일에 내장된<br>가사 태그가 있으면 자동으로 표시됩니다</span></div>`;
+    $('lyricsInner').innerHTML = `<div class="lyr-empty">가사 없음<br><span style="opacity:.7">같은 폴더의 .lrc 파일 또는 파일에 내장된<br>가사 태그가 있으면 자동으로 표시됩니다<br>없으면 아래 <b>✎ 가사 넣기</b>로 직접 넣을 수 있어요</span></div>`;
     return;
   }
-  const srcLabel = t.lyricsSrc === 'tag' ? '파일에 내장된 가사' : '.lrc 파일';
+  const srcLabel = t.lyricsSrc === 'tag' ? '파일에 내장된 가사' : (t.lyricsSrc === 'manual' ? '불러온 가사 · 저장 전 (💾 LRC 저장)' : '.lrc 파일');
   $('lyricsInner').innerHTML =
     `<div class="lyr-src">${srcLabel}${t.lyricsSynced ? '' : ' · 비동기화'}</div>` +
     lyr.map((l,i)=>
