@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music Dedupe</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;background:#f0f0f0;color:#111;font:13px "맑은 고딕","Malgun Gothic",sans-serif}
+.tool{display:flex;align-items:stretch;gap:2px;padding:6px 10px 4px;background:linear-gradient(#fff,#e9edf5);border-bottom:1px solid #c3cad8}
+.brand{display:flex;align-items:center;gap:9px;padding:0 12px 0 2px}
+.brand span{display:flex;flex-direction:column;line-height:1.15}
+.brand b{font-size:14px;color:#1f2a66;letter-spacing:.01em}
+.brand small{font-size:11px;color:#6b7690}
+.vsep{width:1px;background:#c9cfdc;margin:4px 8px;align-self:stretch}
+.sp{flex:1}
+.tb{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:68px;padding:5px 8px 4px;border:1px solid transparent;background:transparent;border-radius:4px;color:#2d3f9c;font-size:12px}
+.tb span{color:#222}
+.tb:hover:not(:disabled){background:#fff;border-color:#9fb0e8;box-shadow:0 1px 3px #2d3f9c22}
+.tb:active:not(:disabled){background:#dfe6fb}
+.tb.dg{color:#b3372b}
+.tb.dg:hover:not(:disabled){border-color:#e2a29b}
+.opt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:5px 12px;background:#f7f8fb;border-bottom:1px solid #c8c8c8;font-size:12.5px}
+.opt .vsep{height:18px;margin:0 4px;align-self:center}
+.opt select,.opt input{padding:2px 6px}
+#hdlg h3{margin:0 0 4px;color:#1f2a66}
+#hdlg ul{margin:8px 0;padding-left:18px;line-height:1.7}
+#hdlg .cr a{color:#2d3f9c;font-weight:700;text-decoration:none}
+#hdlg .cr a:hover{text-decoration:underline}
+#hdlg .cr{margin-top:12px;padding-top:10px;border-top:1px solid #ddd;color:#555;font-size:12px}
+.bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 8px;background:#fff;border-bottom:1px solid #c8c8c8}
+.bar .sep{width:1px;height:20px;background:#ccc;margin:0 4px}
+button,select,input[type=text],input[type=number]{font:inherit;padding:3px 10px;border:1px solid #adadad;background:#e1e1e1;border-radius:2px;color:#111}
+input[type=text],input[type=number]{background:#fff;padding:3px 6px}
+button:hover:not(:disabled){background:#e5f1fb;border-color:#0078d7}
+button:disabled{opacity:.45;cursor:default}
+button.danger{background:#fbe3e3;border-color:#c33}
+label{display:inline-flex;gap:3px;align-items:center;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:4px 6px 0;background:#f0f0f0}
+.tab{padding:3px 22px;border:1px solid #c8c8c8;border-bottom:none;background:#f7f7f7;cursor:pointer;border-radius:2px 2px 0 0}
+.tab.on{background:#fff;font-weight:600}
+.wrap{flex:1;overflow:auto;background:#fff;border:1px solid #c8c8c8;margin:0 6px}
+table{border-collapse:collapse;min-width:100%;table-layout:fixed}
+th{position:relative}
+.rs{position:absolute;right:-3px;top:0;bottom:0;width:7px;cursor:col-resize;z-index:2}
+.rs:hover,.rs.on{background:#0078d755}
+th{position:sticky;top:0;background:#f5f5f5;border:1px solid #d5d5d5;padding:3px 6px;font-weight:400;text-align:center}
+td{border-bottom:1px solid #e3e3e3;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:23px}
+td.c{text-align:center}td.n{text-align:right}
+td.p{cursor:pointer;user-select:none}
+tr.gap td{height:20px;background:#fff}
+tr.win td{background:#e3f4e3}
+tr.win td.p{color:#0a7a0a;font-weight:700}
+tr.sel td{background:#cce4f7}
+.lg{display:inline-block;width:12px;height:12px;background:#e3f4e3;border:1px solid #9c9;vertical-align:middle;margin-right:3px}
+tr.prot td.nm{font-weight:600}
+.status{padding:4px 10px;font-size:12px;color:#444;display:flex;gap:16px;align-items:center}
+.status audio{height:26px;margin-left:auto;max-width:360px}
+#toast{position:fixed;left:50%;bottom:50px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:4px;opacity:0;transition:.2s;pointer-events:none}
+#toast.on{opacity:.95}
+dialog{border:1px solid #888;border-radius:4px;padding:16px 20px;width:min(560px,92vw)}
+dialog::backdrop{background:#0006}
+dialog h3{margin:0 0 10px}
+dialog .row{margin:8px 0}
+fieldset{margin:0 0 10px;border:1px solid #bbb;padding:6px 12px 8px}legend{padding:0 4px}
+.fr{margin:6px 0 0 18px;display:flex;gap:8px;align-items:center}
+.pth{flex:1;border:1px solid #bbb;background:#fff;padding:3px 6px;min-height:24px}
+#log{max-height:160px;overflow:auto;background:#fafafa;border:1px solid #ddd;padding:6px;font-size:12px;white-space:pre-wrap;margin-top:8px}
+progress{width:100%}
+</style>
+</head>
+<body>
+<div class="tool">
+  <div class="brand"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#2d3f9c"/><g fill="#fff"><rect x="5" y="12" width="2.6" height="8" rx="1.3"/><rect x="9.6" y="8" width="2.6" height="16" rx="1.3"/><rect x="14.2" y="5" width="2.6" height="22" rx="1.3"/><rect x="18.8" y="9" width="2.6" height="14" rx="1.3"/><rect x="23.4" y="12" width="2.6" height="8" rx="1.3"/></g></svg><span><b>Music Dedupe</b><small>음원 중복 정리</small></span></div>
+  <span class="vsep"></span>
+  <button class="tb" id="bPick" title="폴더를 선택하고 검색을 시작합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span>폴더 선택</span></button>
+  <button class="tb" id="bRe" disabled title="현재 옵션으로 다시 분석합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg><span>다시 분석</span></button>
+  <span class="vsep"></span>
+  <button class="tb" id="bRule" disabled title="보호 기준을 모든 그룹에 다시 적용합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>기준 재적용</span></button>
+  <button class="tb dg" id="bClean" disabled title="보호되지 않은 파일을 정리합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg><span>정리하기</span></button>
+  <span class="sp"></span>
+  <button class="tb" id="bHelp" title="사용법 및 정보"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg><span>Help</span></button>
+</div>
+<div class="opt">
+  <label>보호 기준
+    <select id="rule">
+      <option value="big">큰 파일 우선</option>
+      <option value="small">작은 파일 우선</option>
+      <option value="new">최근 수정 우선</option>
+      <option value="old">오래된 파일 우선</option>
+      <option value="short">경로 짧은 파일 우선</option>
+    </select>
+  </label>
+  <span class="vsep"></span>
+  <label><input type="checkbox" id="oName" checked>파일명 동일</label>
+  <label><input type="checkbox" id="oHash" checked>내용 동일(해시)</label>
+  <label>유사도 <input type="number" id="oSim" value="85" min="50" max="100" style="width:56px">%</label>
+  <span class="vsep"></span>
+  <label>표시 경로 <input type="text" id="prefix" style="width:150px" placeholder="예: D:\Music"></label>
+</div>
+<div class="tabs">
+  <div class="tab" data-t="single">단독 파일 탭 <span id="c-single"></span></div>
+  <div class="tab on" data-t="dup">중복 파일 탭 <span id="c-dup"></span></div>
+  <div class="tab" data-t="sim">유사 파일 탭 <span id="c-sim"></span></div>
+</div>
+<div class="wrap">
+  <table>
+    <colgroup id="cg"><col><col><col><col><col><col></colgroup>
+    <thead><tr><th>보호</th><th>정리</th><th>크기</th><th>파일이름</th><th>아티스트</th><th>제목</th></tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
+</div>
+<div class="status"><span id="st">폴더를 선택하세요. (Chrome / Edge 필요)</span><span><i class="lg"></i>연두 = 보호 기준(크기 등)이 더 우세해서 보호 · 흰색 = 동률이라 경로 순으로 보호</span><audio id="au" controls></audio></div>
+<div id="toast"></div>
+
+<dialog id="hdlg">
+  <h3>Music Dedupe</h3>
+  <div style="color:#666;font-size:12px">음원 중복 정리 · MP3 / FLAC / OPUS / OGG / M4A</div>
+  <ul>
+    <li><b>폴더 선택</b>: 하위 폴더까지 검색합니다. 이후 옵션을 바꾸면 <b>다시 분석</b>을 누르세요.</li>
+    <li><b>보호</b> 칸을 누르면 보호가 켜지고 꺼집니다. 그룹마다 최소 1개는 보호됩니다.</li>
+    <li>연두색 행은 보호 기준이 더 우세해서, 흰색 행은 동률이라 경로 순서로 보호된 파일입니다.</li>
+    <li>행을 더블클릭하면 미리듣기, 표 머리글 경계를 드래그하면 칸 너비를 조정합니다.</li>
+    <li><b>정리하기</b>는 보호되지 않은 파일(X)을 이동하거나 삭제합니다. 삭제는 휴지통 없이 영구 삭제입니다.</li>
+  </ul>
+  <div class="cr">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer" title="블로그로 이동">zzizik</a>, with Claude AI.</div>
+  <div style="text-align:right;margin-top:8px"><button id="hClose">닫기</button></div>
+</dialog>
+<dialog id="dlg">
+  <h3>정리 설정</h3>
+  <fieldset><legend>중복 파일 처리 방법 <b id="dcnt"></b></legend>
+    <label><input type="radio" name="dm" value="del">삭제 (영구 삭제 · 웹에서는 휴지통 이동 불가)</label><br>
+    <label><input type="radio" name="dm" value="move" checked>지정 폴더로 이동 (폴더 구조 유지하지 않음)</label>
+    <div class="fr">폴더 경로 <span class="pth" id="dn1">미지정</span> <button id="bd1">변경...</button></div>
+  </fieldset>
+  <fieldset><legend>단독 파일 처리 <b id="scnt"></b></legend>
+    <label><input type="radio" name="sm" value="none" checked>처리 안 함</label><br>
+    <label><input type="radio" name="sm" value="move">지정 폴더로 이동</label>
+    <div class="fr">폴더 경로 <span class="pth" id="dn2">미지정</span> <button id="bd2">변경...</button></div>
+  </fieldset>
+  <fieldset><legend>기타</legend>
+    <label><input type="checkbox" id="eEmpty" checked>정리 후 빈 폴더 삭제</label><br>
+    <label><input type="checkbox" id="eStop" checked>파일이 없거나, 제어 불가할 경우 중단</label>
+  </fieldset>
+  <div id="prog" style="display:none"><progress id="pg" value="0" max="1"></progress></div>
+  <div id="log"></div>
+  <div class="row" style="text-align:center;margin-top:10px">
+    <button id="dStart" class="danger">시작(P)</button> <button id="dSave">설정 저장(S)</button> <button id="dClose">취소(C)</button>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+const EXT=['mp3','flac','opus','ogg','m4a'];
+const $=s=>document.querySelector(s);
+const S={root:null,files:[],tab:'dup',dup:[],sim:[],singles:[],prot:{dup:new Set(),sim:new Set()},sel:null,dest:null,gmap:new Map(),win:{dup:new Set(),sim:new Set()},dirs:[],dest:{dup:null,single:null}};
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2400)}
+const tick=()=>new Promise(r=>setTimeout(r,0));
+
+/* ---------- 칸 조정 ---------- */
+(function(){
+  const DEF=[52,52,92,520,200,300],MIN=36;let W=DEF.slice();
+  try{const o=JSON.parse(localStorage.getItem('dedupeCols'));if(Array.isArray(o)&&o.length===6)W=o.map(x=>Math.max(MIN,+x||MIN))}catch(e){}
+  const cols=[...document.querySelectorAll('#cg col')],tbl=document.querySelector('table'),ths=[...document.querySelectorAll('thead th')];
+  const apply=()=>{cols.forEach((c,i)=>c.style.width=W[i]+'px');tbl.style.width=W.reduce((a,b)=>a+b,0)+'px'};
+  const save=()=>{try{localStorage.setItem('dedupeCols',JSON.stringify(W))}catch(e){}};
+  ths.forEach((th,i)=>{
+    const h=document.createElement('span');h.className='rs';h.title='드래그: 칸 너비 조정 / 더블클릭: 기본 너비';th.appendChild(h);
+    h.addEventListener('pointerdown',e=>{e.preventDefault();h.setPointerCapture(e.pointerId);h.classList.add('on');const x0=e.clientX,w0=W[i];
+      const mv=ev=>{W[i]=Math.max(MIN,w0+ev.clientX-x0);apply()};
+      const up=()=>{h.classList.remove('on');h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);save()};
+      h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up)});
+    h.addEventListener('dblclick',()=>{W[i]=DEF[i];apply();save()});
+  });
+  apply();
+})();
+
+/* ---------- 스캔 ---------- */
+async function walk(dir,path,out){
+  for await(const [name,h] of dir.entries()){
+    if(h.kind==='directory'){S.dirs.push({h,parent:dir,name,depth:path.length+1});await walk(h,path.concat(name),out)}
+    else{
+      const i=name.lastIndexOf('.');
+      if(i>0&&EXT.includes(name.slice(i+1).toLowerCase())) out.push({name,path,h,parent:dir});
+      if(out.length%200===0){$('#st').textContent='스캔 중… '+out.length+'개';await tick()}
+    }
+  }
+}
+async function pick(){
+  if(!window.showDirectoryPicker){alert('이 브라우저는 폴더 접근을 지원하지 않습니다. Chrome 또는 Edge를 사용하세요.');return}
+  let root;try{root=await showDirectoryPicker({mode:'readwrite'})}catch(e){return}
+  S.root=root;S.files=[];S.dirs=[];$('#prefix').value=root.name;
+  const out=[];await walk(root,[],out);
+  for(let i=0;i<out.length;i++){
+    const f=out[i];try{const file=await f.h.getFile();f.size=file.size;f.mtime=file.lastModified}catch(e){f.size=0;f.mtime=0}
+    try{const t=await readTags(f);f.artist=t.artist||'';f.title=t.title||''}catch(e){f.artist='';f.title=''}
+    if(i%50===0){$('#st').textContent='정보·태그 읽는 중… '+i+'/'+out.length;await tick()}
+  }
+  S.files=out;await analyze();
+}
+
+/* ---------- 태그(아티스트·제목만) ---------- */
+const dec=(u8,enc)=>{try{return new TextDecoder(enc).decode(u8)}catch(e){return''}};
+const clean=s=>s.replace(/\0+$/,'').replace(/^\uFEFF/,'').replace(/\0/g,' ').trim();
+function legacy(u8){ // ISO-8859-1 로 저장된 한글(CP949) 보정
+  let hi=false;for(const b of u8)if(b>127){hi=true;break}
+  if(!hi)return dec(u8,'utf-8');
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(u8)}catch(e){return dec(u8,'euc-kr')}}
+function id3Text(u8){
+  if(!u8.length)return'';const e=u8[0],b=u8.subarray(1);
+  if(e===0)return clean(legacy(b));
+  if(e===1){if(b[0]===0xFE&&b[1]===0xFF)return clean(dec(b.subarray(2),'utf-16be'));if(b[0]===0xFF&&b[1]===0xFE)return clean(dec(b.subarray(2),'utf-16le'));return clean(dec(b,'utf-16le'))}
+  if(e===2)return clean(dec(b,'utf-16be'));
+  return clean(dec(b,'utf-8'))}
+const u32be=(u,o)=>(u[o]*16777216)+(u[o+1]<<16)+(u[o+2]<<8)+u[o+3];
+const sync=(u,o)=>(u[o]<<21)|(u[o+1]<<14)|(u[o+2]<<7)|u[o+3];
+const ascii=(u,o,n)=>String.fromCharCode(...u.subarray(o,o+n));
+async function tagsMp3(file){
+  const t={},h=new Uint8Array(await file.slice(0,10).arrayBuffer());
+  if(ascii(h,0,3)==='ID3'){
+    const ver=h[3],size=sync(h,6),u=new Uint8Array(await file.slice(10,10+Math.min(size,3e6)).arrayBuffer());
+    let o=0;
+    if(h[5]&0x40){const ex=ver===4?sync(u,0):u32be(u,0);o=ex}
+    while(o<u.length-10){
+      let id,sz,hd;
+      if(ver===2){id=ascii(u,o,3);sz=(u[o+3]<<16)|(u[o+4]<<8)|u[o+5];hd=6}
+      else{id=ascii(u,o,4);sz=ver===4?sync(u,o+4):u32be(u,o+4);hd=10}
+      if(!/^[A-Z0-9]+$/.test(id)||sz<=0||o+hd+sz>u.length)break;
+      const d=u.subarray(o+hd,o+hd+sz);
+      if(id==='TIT2'||id==='TT2')t.title=id3Text(d);
+      if(id==='TPE1'||id==='TP1')t.artist=id3Text(d);
+      o+=hd+sz;if(t.title&&t.artist)break}
+  }
+  if(!(t.title||t.artist)&&file.size>128){
+    const v=new Uint8Array(await file.slice(file.size-128).arrayBuffer());
+    if(ascii(v,0,3)==='TAG'){t.title=clean(legacy(v.subarray(3,33)));t.artist=clean(legacy(v.subarray(33,63)))}}
+  return t}
+function vorbisC(u,o){
+  const t={};const dv=new DataView(u.buffer,u.byteOffset,u.byteLength);
+  try{const vl=dv.getUint32(o,true);o+=4+vl;const n=dv.getUint32(o,true);o+=4;
+    for(let i=0;i<n&&o+4<=u.length;i++){const l=dv.getUint32(o,true);o+=4;if(o+l>u.length)break;
+      const s=dec(u.subarray(o,o+l),'utf-8'),k=s.indexOf('=');o+=l;if(k<1)continue;
+      const key=s.slice(0,k).toUpperCase(),val=s.slice(k+1).trim();
+      if(key==='TITLE'&&!t.title)t.title=val;if(key==='ARTIST'&&!t.artist)t.artist=val;
+      if(t.title&&t.artist)break}}catch(e){}
+  return t}
+async function tagsFlac(file){
+  let o=4;
+  for(let i=0;i<40;i++){
+    const h=new Uint8Array(await file.slice(o,o+4).arrayBuffer());if(h.length<4)break;
+    const last=h[0]&0x80,type=h[0]&0x7f,len=(h[1]<<16)|(h[2]<<8)|h[3];
+    if(type===4){const u=new Uint8Array(await file.slice(o+4,o+4+Math.min(len,4e6)).arrayBuffer());return vorbisC(u,0)}
+    o+=4+len;if(last)break}
+  return{}}
+async function tagsOgg(file){
+  const u=new Uint8Array(await file.slice(0,1.5e6).arrayBuffer()),parts=[];let o=0;
+  for(let p=0;p<12&&o+27<=u.length&&ascii(u,o,4)==='OggS';p++){
+    const ns=u[o+26];let dl=0;for(let i=0;i<ns;i++)dl+=u[o+27+i];
+    parts.push(u.subarray(o+27+ns,o+27+ns+dl));o+=27+ns+dl}
+  const tot=parts.reduce((s,a)=>s+a.length,0),all=new Uint8Array(tot);let k=0;parts.forEach(a=>{all.set(a,k);k+=a.length});
+  const find=m=>{const b=[...m].map(c=>c.charCodeAt(0));outer:for(let i=0;i<all.length-b.length;i++){for(let j=0;j<b.length;j++)if(all[i+j]!==b[j])continue outer;return i+b.length}return-1};
+  let p=find('OpusTags');if(p<0)p=find('\x03vorbis');
+  return p<0?{}:vorbisC(all,p)}
+async function tagsM4a(file){
+  let o=0;
+  for(let i=0;i<60&&o<file.size;i++){
+    const h=new Uint8Array(await file.slice(o,o+16).arrayBuffer());if(h.length<8)break;
+    let sz=u32be(h,0);const ty=ascii(h,4,4);let hd=8;
+    if(sz===1){sz=u32be(h,8)*4294967296+u32be(h,12);hd=16}else if(sz===0)sz=file.size-o;
+    if(ty==='moov'){const u=new Uint8Array(await file.slice(o+hd,o+Math.min(sz,8e6)).arrayBuffer());return mp4ilst(u,0,u.length,0)}
+    if(sz<8)break;o+=sz}
+  return{}}
+function mp4ilst(u,s,e,depth){
+  const t={};
+  while(s+8<=e){
+    const sz=u32be(u,s),ty=ascii(u,s+4,4);if(sz<8||s+sz>e)break;
+    if(ty==='udta')Object.assign(t,mp4ilst(u,s+8,s+sz,depth+1));
+    else if(ty==='meta')Object.assign(t,mp4ilst(u,s+12,s+sz,depth+1));
+    else if(ty==='ilst'){let p=s+8;while(p+8<=s+sz){const cs=u32be(u,p),ck=ascii(u,p+4,4);if(cs<8)break;
+      if(ck==='\xa9nam'||ck==='\xa9ART'){const d=p+8;if(d+16<=p+cs&&ascii(u,d+4,4)==='data'){const v=dec(u.subarray(d+16,p+cs),'utf-8').trim();if(ck==='\xa9nam')t.title=v;else t.artist=v}}
+      p+=cs}}
+    s+=sz}
+  return t}
+async function readTags(f){
+  const file=await f.h.getFile(),ext=f.name.split('.').pop().toLowerCase();
+  if(ext==='mp3')return tagsMp3(file);
+  if(ext==='flac')return tagsFlac(file);
+  if(ext==='ogg'||ext==='opus')return tagsOgg(file);
+  if(ext==='m4a')return tagsM4a(file);
+  return{}}
+
+/* ---------- 분석 ---------- */
+function UF(n){const p=Array.from({length:n},(_,i)=>i);const f=x=>{while(p[x]!==x){p[x]=p[p[x]];x=p[x]}return x};return{p,f,u:(a,b)=>{a=f(a);b=f(b);if(a!==b)p[b]=a}}}
+const base=f=>f.name.slice(0,f.name.lastIndexOf('.'));
+const exactKey=f=>base(f).normalize('NFC').toLowerCase().replace(/\s*\(\d+\)\s*$/,'').replace(/\s+/g,' ').trim();
+const simKey=f=>base(f).normalize('NFC').toLowerCase().replace(/[\(\[\{（【][^\)\]\}）】]*[\)\]\}）】]/g,' ').replace(/^\s*\d{1,3}\s*[.\-_)]\s*/,'').replace(/[^\p{L}\p{N}]+/gu,'');
+function cyrb(u8){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<u8.length;i++){const c=u8[i];h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return(h2>>>0).toString(16)+(h1>>>0).toString(16)}
+async function hashOf(f){
+  if(f.hash)return f.hash;
+  const buf=await (await f.h.getFile()).arrayBuffer();
+  if(crypto&&crypto.subtle){const d=await crypto.subtle.digest('SHA-256',buf);f.hash=[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+  else f.hash=cyrb(new Uint8Array(buf));
+  return f.hash;
+}
+function bigrams(s){const a=new Set();for(let i=0;i<s.length-1;i++)a.add(s.substr(i,2));return a}
+function dice(a,b){let n=0;for(const x of a)if(b.has(x))n++;return 2*n/(a.size+b.size||1)}
+
+async function analyze(){
+  const F=S.files;F.forEach((f,i)=>f.id=i);
+  const n=F.length,u1=UF(n);
+  if($('#oName').checked){const m=new Map();F.forEach(f=>{const k=exactKey(f);if(k)(m.get(k)||m.set(k,[]).get(k)).push(f.id)});m.forEach(a=>a.slice(1).forEach(x=>u1.u(a[0],x)))}
+  if($('#oHash').checked){
+    const bs=new Map();F.forEach(f=>{if(f.size>0)(bs.get(f.size)||bs.set(f.size,[]).get(f.size)).push(f)});
+    const cand=[...bs.values()].filter(a=>a.length>1);let done=0;const tot=cand.reduce((s,a)=>s+a.length,0);
+    for(const a of cand){const hm=new Map();
+      for(const f of a){try{const h=await hashOf(f);(hm.get(h)||hm.set(h,[]).get(h)).push(f.id)}catch(e){}
+        if(++done%5===0){$('#st').textContent='내용 비교(해시) '+done+'/'+tot;await tick()}}
+      hm.forEach(g=>g.slice(1).forEach(x=>u1.u(g[0],x)))}
+  }
+  const r1=F.map((_,i)=>u1.f(i));
+  const u2=UF(n);for(let i=0;i<n;i++)u2.u(r1[i],i);
+  const km=new Map();F.forEach(f=>{const k=simKey(f);f.sk=k;if(k.length>=2)(km.get(k)||km.set(k,[]).get(k)).push(f.id)});
+  km.forEach(a=>a.slice(1).forEach(x=>u2.u(a[0],x)));
+  const th=Math.min(100,Math.max(50,+$('#oSim').value||85))/100;
+  if(th<1){
+    const keys=[...km.keys()].filter(k=>k.length>=3),bk=new Map();
+    keys.forEach(k=>{const b=k.slice(0,2);(bk.get(b)||bk.set(b,[]).get(b)).push(k)});
+    let skipped=0;
+    bk.forEach(a=>{if(a.length>800){skipped++;return}
+      const bg=a.map(bigrams);
+      for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++){
+        const l=a[i].length/a[j].length;if(l<.6||l>1.67)continue;
+        if(dice(bg[i],bg[j])>=th)u2.u(km.get(a[i])[0],km.get(a[j])[0])}});
+    if(skipped)toast('일부 구간은 후보가 많아 유사도 비교를 생략했습니다');
+  }
+  const c1=new Map(),c2=new Map();
+  F.forEach((f,i)=>{const a=u1.f(i),b=u2.f(i);(c1.get(a)||c1.set(a,[]).get(a)).push(f);(c2.get(b)||c2.set(b,[]).get(b)).push({f,a})});
+  S.dup=[...c1.values()].filter(a=>a.length>1);
+  S.sim=[];S.singles=[];
+  c2.forEach(a=>{if(a.length===1){S.singles.push(a[0].f)}else if(new Set(a.map(x=>x.a)).size>1)S.sim.push(a.map(x=>x.f))});
+  applyRule();
+  ['bRe','bRule','bClean'].forEach(id=>$('#'+id).disabled=false);
+  render();
+  $('#st').textContent=`파일 ${n}개 · 중복 그룹 ${S.dup.length} · 유사 그룹 ${S.sim.length} · 단독 ${S.singles.length}`;
+}
+
+/* ---------- 보호 규칙 ---------- */
+const fullPath=f=>{const p=$('#prefix').value.replace(/[\\/]+$/,'');return(p?p+'\\':'')+(f.path.length?f.path.join('\\')+'\\':'')+f.name};
+const RULES={
+  big:(a,b)=>b.size-a.size||fullPath(a).length-fullPath(b).length,
+  small:(a,b)=>a.size-b.size||fullPath(a).length-fullPath(b).length,
+  new:(a,b)=>b.mtime-a.mtime||b.size-a.size,
+  old:(a,b)=>a.mtime-b.mtime||b.size-a.size,
+  short:(a,b)=>fullPath(a).length-fullPath(b).length||b.size-a.size};
+function applyRule(){
+  const rk=$('#rule').value,cmp=RULES[rk];
+  const key={big:f=>f.size,small:f=>f.size,new:f=>f.mtime,old:f=>f.mtime,short:f=>fullPath(f).length}[rk];
+  for(const t of['dup','sim']){
+    S.prot[t]=new Set();S.win[t]=new Set();
+    S[t].forEach(g=>{g.sort(cmp);S.prot[t].add(g[0].id);if(key(g[0])!==key(g[1]))S.win[t].add(g[0].id)});
+    S[t].sort((a,b)=>fullPath(a[0]).localeCompare(fullPath(b[0]),'ko'));
+  }
+  S.singles.sort((a,b)=>fullPath(a).localeCompare(fullPath(b),'ko'));
+}
+
+/* ---------- 화면 ---------- */
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function render(){
+  const t=S.tab,tb=$('#tb');let h='';S.gmap=new Map();
+  document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.dataset.t===t));
+  $('#c-single').textContent='('+S.singles.length+')';$('#c-dup').textContent='('+S.dup.length+')';$('#c-sim').textContent='('+S.sim.length+')';
+  const row=(f,P)=>{const pr=P&&P.has(f.id);
+    return`<tr data-id="${f.id}" class="${pr?'prot':''}${pr&&P&&S.win[S.tab].has(f.id)?' win':''}${S.sel===f.id?' sel':''}"><td class="c p">${P?(pr?'O':''):''}</td><td class="c">${P&&!pr?'X':''}</td><td class="n">${f.size}</td><td class="nm" title="${esc(fullPath(f))}">${esc(fullPath(f))}</td><td title="${esc(f.artist||'')}">${esc(f.artist||'')}</td><td title="${esc(f.title||'')}">${esc(f.title||'')}</td></tr>`};
+  if(t==='single'){h=S.singles.map(f=>row(f,null)).join('')}
+  else{const P=S.prot[t];S[t].forEach(g=>{g.forEach(f=>S.gmap.set(f.id,g));h+=g.map(f=>row(f,P)).join('')+'<tr class="gap"><td colspan="6"></td></tr>'})}
+  tb.innerHTML=h;
+  $('#bClean').disabled=!S.files.length;
+}
+$('#tb').addEventListener('click',e=>{
+  const tr=e.target.closest('tr[data-id]');if(!tr)return;const id=+tr.dataset.id;
+  if(e.target.closest('td.p')&&S.tab!=='single'){
+    const P=S.prot[S.tab],g=S.gmap.get(id);
+    if(P.has(id)){if(g.filter(f=>P.has(f.id)).length<=1){toast('그룹마다 최소 1개는 보호해야 합니다');return}P.delete(id)}
+    else P.add(id);
+    const y=document.querySelector('.wrap').scrollTop;render();document.querySelector('.wrap').scrollTop=y;return;
+  }
+  S.sel=id;document.querySelectorAll('#tb tr.sel').forEach(x=>x.classList.remove('sel'));tr.classList.add('sel');
+});
+$('#tb').addEventListener('dblclick',async e=>{
+  const tr=e.target.closest('tr[data-id]');if(!tr)return;const f=S.files[+tr.dataset.id];
+  try{const file=await f.h.getFile();const a=$('#au');if(a.src)URL.revokeObjectURL(a.src);a.src=URL.createObjectURL(file);a.play()}catch(err){toast('재생할 수 없습니다')}
+});
+document.querySelectorAll('.tab').forEach(e=>e.onclick=()=>{S.tab=e.dataset.t;render()});
+$('#bPick').onclick=pick;
+$('#bHelp').onclick=()=>$('#hdlg').showModal();
+$('#hClose').onclick=()=>$('#hdlg').close();
+$('#bRe').onclick=()=>analyze();
+$('#bRule').onclick=()=>{applyRule();render();toast('보호 기준을 다시 적용했습니다')};
+$('#rule').onchange=()=>{if(S.files.length){applyRule();render()}};
+$('#prefix').onchange=()=>{if(S.files.length){applyRule();render()}};
+
+/* ---------- 정리하기 ---------- */
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('dupcleaner',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+async function hPut(k,v){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('h','readwrite');t.objectStore('h').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}}
+async function hGet(k){try{const d=await idb();return await new Promise((res,rej)=>{const r=d.transaction('h').objectStore('h').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}catch(e){return null}}
+const mb=n=>(n/1048576).toFixed(1)+' MB';
+const srcTab=()=>S.tab==='sim'?'sim':'dup';
+const dupTargets=()=>{const P=S.prot[srcTab()];return S[srcTab()].flat().filter(f=>!P.has(f.id))};
+const radio=n=>document.querySelector(`input[name=${n}]:checked`).value;
+function setRadio(n,v){const e=document.querySelector(`input[name=${n}][value=${v}]`);if(e)e.checked=true}
+function loadSet(){try{const o=JSON.parse(localStorage.getItem('dupSet')||'{}');
+  if(o.dm)setRadio('dm',o.dm);if(o.sm)setRadio('sm',o.sm);if('emp' in o)$('#eEmpty').checked=o.emp;if('stop' in o)$('#eStop').checked=o.stop;
+  $('#dn1').textContent=o.n1||'미지정';$('#dn2').textContent=o.n2||'미지정'}catch(e){}}
+async function saveSet(){
+  try{localStorage.setItem('dupSet',JSON.stringify({dm:radio('dm'),sm:radio('sm'),emp:$('#eEmpty').checked,stop:$('#eStop').checked,n1:S.dest.dup?S.dest.dup.name:$('#dn1').textContent.replace('미지정',''),n2:S.dest.single?S.dest.single.name:$('#dn2').textContent.replace('미지정','')}))}catch(e){}
+  if(S.dest.dup)await hPut('dup',S.dest.dup);if(S.dest.single)await hPut('single',S.dest.single)}
+$('#bClean').onclick=async()=>{
+  loadSet();
+  for(const k of['dup','single'])if(!S.dest[k]){const h=await hGet(k);if(h)S.dest[k]=h}
+  const T=dupTargets();
+  $('#dcnt').textContent=`— ${srcTab()==='sim'?'유사':'중복'} 탭 ${T.length}개 (${mb(T.reduce((s,f)=>s+f.size,0))})`;
+  $('#scnt').textContent=`— 단독 ${S.singles.length}개`;
+  $('#log').textContent='';$('#prog').style.display='none';$('#dStart').disabled=false;$('#dlg').showModal();
+};
+$('#dClose').onclick=()=>$('#dlg').close();
+$('#dSave').onclick=async()=>{await saveSet();toast('설정을 저장했습니다')};
+const chg=(k,id)=>async()=>{try{S.dest[k]=await showDirectoryPicker({mode:'readwrite'});$(id).textContent=S.dest[k].name}catch(e){}};
+$('#bd1').onclick=chg('dup','#dn1');$('#bd2').onclick=chg('single','#dn2');
+async function perm(h){try{return(await h.queryPermission({mode:'readwrite'}))==='granted'||(await h.requestPermission({mode:'readwrite'}))==='granted'}catch(e){return true}}
+async function uniqueHandle(dir,name){
+  const i=name.lastIndexOf('.'),b=name.slice(0,i),x=name.slice(i);let nm=name,k=1;
+  for(;;){try{await dir.getFileHandle(nm);nm=`${b} (${k++})${x}`}catch(e){return{nm,fh:await dir.getFileHandle(nm,{create:true})}}}
+}
+async function moveFile(f,dest){
+  const file=await f.h.getFile();const{nm,fh}=await uniqueHandle(dest,f.name);
+  const w=await fh.createWritable();await file.stream().pipeTo(w);
+  const chk=await fh.getFile();
+  if(chk.size!==file.size){await dest.removeEntry(nm);throw new Error('복사 크기 불일치')}
+  await f.parent.removeEntry(f.name);
+}
+async function removeEmpty(){
+  let n=0;const L=[...S.dirs].sort((a,b)=>b.depth-a.depth);
+  for(const d of L){try{
+    let empty=true;for await(const _ of d.h.entries()){empty=false;break}
+    if(!empty)continue;
+    let skip=false;for(const x of[S.dest.dup,S.dest.single])if(x&&await x.isSameEntry(d.h))skip=true;
+    if(skip)continue;
+    await d.parent.removeEntry(d.name);d.gone=true;n++}catch(e){}}
+  S.dirs=S.dirs.filter(d=>!d.gone);return n}
+$('#dStart').onclick=async()=>{
+  const dm=radio('dm'),sm=radio('sm'),stop=$('#eStop').checked;
+  const jobs=[];
+  dupTargets().forEach(f=>jobs.push({f,mode:dm,dest:S.dest.dup}));
+  if(sm==='move')S.singles.forEach(f=>jobs.push({f,mode:'move',dest:S.dest.single}));
+  if(!jobs.length){toast('처리할 파일이 없습니다');return}
+  if(jobs.some(j=>j.mode==='move'&&!j.dest)){toast('이동할 폴더를 먼저 지정하세요 (변경...)');return}
+  for(const d of[S.dest.dup,S.dest.single])if(d&&jobs.some(j=>j.dest===d)&&!await perm(d)){toast('대상 폴더 쓰기 권한이 필요합니다');return}
+  const nd=jobs.filter(j=>j.mode==='del').length;
+  if(nd&&!confirm(`${nd}개 파일을 영구 삭제합니다(휴지통 없음). 되돌릴 수 없습니다. 계속할까요?`))return;
+  if(!confirm(`총 ${jobs.length}개 파일을 처리합니다. 시작할까요?`))return;
+  $('#dStart').disabled=true;const pg=$('#pg');$('#prog').style.display='block';pg.max=jobs.length;pg.value=0;
+  const ok=new Set(),log=[];let stopped=false;
+  for(const j of jobs){
+    try{if(j.mode==='move')await moveFile(j.f,j.dest);else await j.f.parent.removeEntry(j.f.name);ok.add(j.f.id)}
+    catch(e){log.push('실패: '+fullPath(j.f)+' — '+e.message);if(stop){stopped=true;break}}
+    pg.value++;if(pg.value%5===0)await tick();
+  }
+  S.files=S.files.filter(f=>!ok.has(f.id));
+  let en=0;if($('#eEmpty').checked)en=await removeEmpty();
+  $('#log').textContent=`${stopped?'오류로 중단: ':'완료: '}${ok.size}개 처리, 실패 ${log.length}개`+(en?`, 빈 폴더 ${en}개 삭제`:'')+'\n'+log.join('\n');
+  await analyze();$('#dStart').disabled=false;
+};
+</script>
+</body>
+</html>
