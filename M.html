@@ -134,6 +134,24 @@ input[type=text]:focus{border-color:var(--accent)}
 .sb{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text3);padding:4px 0;font-size:10px;cursor:pointer;text-align:center;font-family:inherit;transition:all 0.15s}
 .sb:hover{color:var(--text)}
 .sb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sb{font-size:12px;font-weight:bold;padding:5px 0}
+/* 검색 옵션(O) 버튼·패널 */
+.opt-btn{flex-shrink:0;width:34px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;transition:all .15s;position:relative}
+.opt-btn:hover{color:var(--text);border-color:var(--accent)}
+.opt-btn.open{background:var(--accent);border-color:var(--accent);color:var(--btxt)}
+.opt-btn.mod::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#e8590c}
+.sopt{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text)}
+.sopt.on{display:block}
+.sopt .sg{font-size:10px;color:var(--text3);margin:6px 0 3px;letter-spacing:.3px}
+.sopt .sg:first-child{margin-top:0}
+.sopt .sl{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px}
+.sopt label{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;white-space:nowrap}
+.sopt input[type=checkbox]{accent-color:var(--accent);margin:0;cursor:pointer}
+.sopt .sr{display:flex;gap:5px;margin-top:8px;align-items:center}
+.sopt .sr button{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);padding:3px 9px;font-size:11px;cursor:pointer;font-family:inherit}
+.sopt .sr button:hover{color:var(--text);border-color:var(--accent)}
+.sopt .sr .si{flex:1;text-align:right;font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm{font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;opacity:.9}
 .tlist{flex:1;overflow-y:auto}
 .tlist::-webkit-scrollbar{width:4px}
 .tlist::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
@@ -306,6 +324,80 @@ body.filedrag .main,body.filedrag #tlist{outline:2px dashed #7aa2ff;outline-offs
 input[type=text]{border-radius:12px}
 
 </style>
+<style id="zz-theme">
+/* ── P 버튼: 테마·글꼴·글자 크기 ───────────────────────────────
+   :root[data-theme] 가 앞의 :root(자동 라이트/다크)보다 우선합니다. 'auto'는 data-theme 없음. */
+:root{--fs:1;--shadow:rgba(0,0,0,.5)}
+:root[data-fs="s"]{--fs:.9}
+:root[data-fs="l"]{--fs:1.15}
+:root[data-font="pretendard"]{--ff:'Pretendard','Malgun Gothic','맑은 고딕',sans-serif}
+:root[data-font="system"]{--ff:system-ui,-apple-system,'Segoe UI','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif}
+:root[data-font="batang"]{--ff:'Batang','바탕','Noto Serif KR','Nanum Myeongjo',serif}
+:root[data-font="mono"]{--ff:'D2Coding','Consolas','Malgun Gothic','맑은 고딕',monospace}
+body{font-family:var(--ff,'Malgun Gothic','맑은 고딕',sans-serif)}
+button,input,select{font-family:inherit}
+
+:root[data-theme="light"]{color-scheme:light;--bg:#F6F6F6;--bg2:#FFFFFF;--bg3:#ECEDEF;--bg4:#DCDEE2;--accent:#555555;--accent2:#333333;--text:#222222;--text2:#5d6672;--text3:#8a94a3;--border:#d6d8dc;--btxt:#ffffff;--shadow:rgba(0,0,0,.14)}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#1A1A1A;--bg2:#232323;--bg3:#2e2e2e;--bg4:#3a3a3a;--accent:#BDBDBD;--accent2:#9E9E9E;--text:#EEEEEE;--text2:#a3a3a3;--text3:#7d7d7d;--border:#3a3a3a;--btxt:#111111}
+:root[data-theme="blue"]{color-scheme:dark;--bg:#0d1b2a;--bg2:#13263b;--bg3:#1b3350;--bg4:#25446a;--accent:#4da3ff;--accent2:#2f8af0;--text:#eaf2ff;--text2:#9db8d6;--text3:#7592b2;--border:#2a4566;--btxt:#06121f}
+:root[data-theme="pink"]{color-scheme:light;--bg:#fff0f5;--bg2:#fff8fb;--bg3:#fde3ec;--bg4:#f8cddd;--accent:#d6336c;--accent2:#b02a5b;--text:#3b1a28;--text2:#855068;--text3:#a87b91;--border:#f2c4d4;--btxt:#ffffff;--shadow:rgba(120,30,70,.16)}
+:root[data-theme="green"]{color-scheme:light;--bg:#effaf3;--bg2:#f8fdfa;--bg3:#dff3e6;--bg4:#c8e8d3;--accent:#2b8a4f;--accent2:#1f6b3c;--text:#16301f;--text2:#4a755a;--text3:#779d86;--border:#bfe0cb;--btxt:#ffffff;--shadow:rgba(20,80,40,.15)}
+:root[data-theme="purple"]{color-scheme:dark;--bg:#1a1425;--bg2:#231a33;--bg3:#2e2342;--bg4:#3d3057;--accent:#b794f6;--accent2:#9f7aea;--text:#f1eaff;--text2:#b5a4d4;--text3:#8d7cae;--border:#3d3057;--btxt:#1a1030}
+:root[data-theme="sepia"]{color-scheme:light;--bg:#f4ecd8;--bg2:#faf4e4;--bg3:#ebe0c6;--bg4:#ddd0b0;--accent:#8b5a2b;--accent2:#6e4520;--text:#3b2f1e;--text2:#75633f;--text3:#988766;--border:#d8c9a6;--btxt:#ffffff;--shadow:rgba(80,55,20,.16)}
+:root[data-theme="black"]{color-scheme:dark;--bg:#000000;--bg2:#0a0a0a;--bg3:#161616;--bg4:#242424;--accent:#1db954;--accent2:#1aa34a;--text:#ffffff;--text2:#b3b3b3;--text3:#707070;--border:#262626;--btxt:#000000}
+
+/* 변수를 거치지 않던 색을 테마에 맞춤 */
+.ti{border-bottom-color:var(--border)}
+.pbar:hover .pfill{background:var(--accent2)}
+.art-wrap,.lyrics-panel{box-shadow:0 8px 32px var(--shadow)}
+.lyr-close{background:var(--bg4)}
+.lyr-close:hover{background:var(--border)}
+.lrc-badge{background:var(--bg2);border:1px solid var(--border)}
+.mini-ov{background:var(--bg);color:var(--text)}
+.mini-ov button,.lyr-tools button.hot,.lyr-box .row button.pri{color:var(--btxt)}
+body.filedrag .main,body.filedrag #tlist{outline-color:var(--accent)}
+.lyr-ov{background:rgba(0,0,0,.55)}
+
+/* 글자 크기(목록·곡 정보·가사·상태줄만 배율 적용, 버튼/패널은 고정) */
+.tn{font-size:calc(12px*var(--fs))}
+.ta,.tm,.tdur,.tnum,.sbar{font-size:calc(10px*var(--fs))}
+.dz strong{font-size:calc(13px*var(--fs))}
+.dz p,.lyr-src,.tt,.t-album{font-size:calc(11px*var(--fs))}
+.t-album{font-size:calc(12px*var(--fs))}
+.t-title{font-size:calc(20px*var(--fs))}
+.t-artist{font-size:calc(14px*var(--fs))}
+.lline{font-size:calc(14px*var(--fs))}
+.lline.active{font-size:calc(15px*var(--fs))}
+.lyr-empty{font-size:calc(13px*var(--fs))}
+html.mini .t-title{font-size:calc(16px*var(--fs))}
+html.mini .t-artist{font-size:calc(12px*var(--fs))}
+html.mini .lline{font-size:calc(13px*var(--fs))}
+html.mini .lline.active{font-size:calc(14px*var(--fs))}
+
+/* P 패널 */
+.popt{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text)}
+.popt.on{display:block}
+.popt .sg{font-size:10px;color:var(--text3);margin:8px 0 4px;letter-spacing:.3px}
+.popt .sg:first-child{margin-top:0}
+.popt .tg{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.popt .chips{display:flex;flex-wrap:wrap;gap:5px}
+.popt .ch{background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:4px 9px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.popt .ch:hover{color:var(--text);border-color:var(--accent)}
+.popt .ch.on{border-color:var(--accent);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+.popt .tg .ch{padding:4px 6px;justify-content:flex-start}
+.popt .sw{width:16px;height:16px;border-radius:50%;border:1px solid rgba(128,128,128,.5);flex-shrink:0}
+.popt .sr{display:flex;gap:5px;margin-top:9px;align-items:center}
+.popt .sr button{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);padding:3px 9px;font-size:11px;cursor:pointer}
+.popt .sr button:hover{color:var(--text);border-color:var(--accent)}
+.popt .sr .si{flex:1;text-align:right;font-size:10px;color:var(--text3)}
+</style>
+<script>
+/* 화면 설정을 첫 화면 그리기 전에 적용(깜빡임 방지) */
+try{ const q = JSON.parse(localStorage.getItem('mplayer-pref') || 'null') || {}; const r = document.documentElement;
+  if(q.theme && q.theme !== 'auto') r.dataset.theme = q.theme;
+  if(q.font && q.font !== 'malgun') r.dataset.font = q.font;
+  if(q.fs && q.fs !== 'm') r.dataset.fs = q.fs; }catch(e){}
+</script>
 </head>
 <body>
 <div class="pw" id="pw">
@@ -313,6 +405,8 @@ input[type=text]{border-radius:12px}
     <div class="sb-head">
       <div class="sb-row">
         <input type="text" id="search" placeholder="검색..." oninput="filt()">
+        <button class="opt-btn" id="optBtn" onclick="toggleSOpt()" title="검색 옵션">O</button>
+        <button class="opt-btn" id="prefBtn" onclick="togglePOpt()" title="화면 설정 — 테마·글꼴·글자 크기">P</button>
         <button class="clr-btn" id="clrAll" onclick="clearAll()" title="목록 전체 삭제" disabled>🗑</button>
       </div>
       <div class="sb-row">
@@ -321,10 +415,12 @@ input[type=text]{border-radius:12px}
         <input type="file" id="fi" multiple accept="audio/*,.opus,.ogg,.oga,.lrc,.lyc" onchange="addF(this.files)">
         <input type="file" id="fd" webkitdirectory directory multiple onchange="addF(this.files)">
       </div>
+      <div class="sopt" id="sopt"></div>
+      <div class="popt" id="popt"></div>
       <div class="sort-bar">
-        <button class="sb on" id="s-title"  onclick="sort('title')">제목</button>
-        <button class="sb"   id="s-artist" onclick="sort('artist')">아티스트</button>
-        <button class="sb"   id="s-file"   onclick="sort('file')">파일명</button>
+        <button class="sb on" id="s-title"  onclick="sort('title')" title="제목순 정렬(다시 누르면 역순)">T</button>
+        <button class="sb"   id="s-artist" onclick="sort('artist')" title="아티스트순 정렬(다시 누르면 역순)">A</button>
+        <button class="sb"   id="s-file"   onclick="sort('file')" title="파일명순 정렬(다시 누르면 역순)">F</button>
       </div>
     </div>
     <div class="tlist" id="tlist">
@@ -438,6 +534,7 @@ async function saveLibrary(){
       tracks: tracks.map(t => ({
         file: t.file, name: t.name, artist: t.artist, title: t.title,
         album: t.album, year: t.year, track: t.track, albumart: t.albumart,
+        genre: t.genre, comment: t.comment, albumartist: t.albumartist, composer: t.composer, tagv: t.tagv,
         lrcKey: t.lrcKey, lyrics: t.lyrics, lyricsSrc: t.lyricsSrc,
         lyricsSynced: t.lyricsSynced, dur: t.dur
       }))
@@ -476,26 +573,69 @@ async function restoreLibrary(){
       updateMain();
     }
     stat(tracks.length+'곡 불러옴 (이전 목록 복원)');
+    tracks.forEach((t,i) => { if(t.tagv !== 2) loadTags(i); });   // 검색용 태그(장르·설명 등) 보충
   }catch(e){ console.warn('라이브러리 복원 실패:', e); }
 }
 
 // ── jsmediatags로 태그 읽기 (서버 불필요) ──────────────────────────
+let _rsT = null;
+function renderSoon(){ clearTimeout(_rsT); _rsT = setTimeout(render, 120); }   // 태그가 줄줄이 들어올 때 목록 재그리기 묶음 처리
+
+// ID3v1 장르 번호 → 이름
+const ID3_GENRES = ['Blues','Classic Rock','Country','Dance','Disco','Funk','Grunge','Hip-Hop','Jazz','Metal','New Age','Oldies','Other','Pop','R&B','Rap','Reggae','Rock','Techno','Industrial','Alternative','Ska','Death Metal','Pranks','Soundtrack','Euro-Techno','Ambient','Trip-Hop','Vocal','Jazz+Funk','Fusion','Trance','Classical','Instrumental','Acid','House','Game','Sound Clip','Gospel','Noise','AlternRock','Bass','Soul','Punk','Space','Meditative','Instrumental Pop','Instrumental Rock','Ethnic','Gothic','Darkwave','Techno-Industrial','Electronic','Pop-Folk','Eurodance','Dream','Southern Rock','Comedy','Cult','Gangsta','Top 40','Christian Rap','Pop/Funk','Jungle','Native American','Cabaret','New Wave','Psychadelic','Rave','Showtunes','Trailer','Lo-Fi','Tribal','Acid Punk','Acid Jazz','Polka','Retro','Musical','Rock & Roll','Hard Rock'];
+function genreOf(g){
+  g = String(g||'').trim();
+  if(/^\d{1,3}$/.test(g)) return ID3_GENRES[+g] || g;                 // "13"
+  const m = g.match(/^\((\d{1,3})\)\s*(.*)$/);                          // "(13)" · "(13)Pop"
+  if(m) return m[2] || ID3_GENRES[+m[1]] || g;
+  return g;
+}
+// 태그 값(문자열 / {text} / {data}) → 문자열
+function tagStr(v){
+  if(v == null) return '';
+  if(typeof v === 'string') return v.trim();
+  if(typeof v === 'number') return String(v);
+  if(typeof v === 'object'){
+    if(v.text != null) return tagStr(v.text);
+    if(v.data != null && typeof v.data !== 'object') return tagStr(v.data);
+    if(v.data && typeof v.data === 'object' && v.data.text != null) return tagStr(v.data.text);
+  }
+  return '';
+}
+// 검색용 보조 태그 저장(장르·설명·앨범 아티스트·작곡가). 값이 있을 때만 덮어씀
+function applyExtraTags(t, o){
+  if(o.genre)       t.genre       = o.genre;
+  if(o.comment)     t.comment     = o.comment;
+  if(o.albumartist) t.albumartist = o.albumartist;
+  if(o.composer)    t.composer    = o.composer;
+  t.tagv = 2;
+}
 function loadTags(i) {
   const t = tracks[i];
   // OPUS·OGG는 jsmediatags가 못 읽으므로 직접 파싱(제목·가수·앨범·앨범 사진·가사)
   if(OGG_RE.test(t.file.name)){
     readOggTags(t.file).then(c => {
+      t.tagv = 2;
       if(!c) return;
       applyOggTags(t, c);
-      render();
+      renderSoon();
       if(tracks[cur] === t) updateMain();
       scheduleSave();
-    }).catch(e => console.warn('OGG 태그 읽기 실패:', e));
+    }).catch(e => { t.tagv = 2; console.warn('OGG 태그 읽기 실패:', e); });
     return;
   }
   jsmediatags.read(t.file, {
     onSuccess: function(tag) {
       const tags = tag.tags;
+      // 일부 태그 편집기는 설명을 COMM 대신 TXXX(comment/description)로 저장, 연도는 TYER 대신 TDRC(ID3v2.4)로 저장
+      const txxx = tags.TXXX && tags.TXXX.data && /^(comment|description)$/i.test(tags.TXXX.data.user_description || '') ? tagStr(tags.TXXX.data.data) : '';
+      if(!t.year){ const y = tagStr(tags.TDRC) || tagStr(tags.TDRL) || tagStr(tags.TDOR); if(y) t.year = y.slice(0,4); }
+      applyExtraTags(t, {
+        genre:       genreOf(tagStr(tags.genre)),
+        comment:     tagStr(tags.comment) || tagStr(tags.COMM) || tagStr(tags['©cmt']) || txxx,
+        albumartist: tagStr(tags.TPE2) || tagStr(tags.TP2) || tagStr(tags.aART),
+        composer:    tagStr(tags.TCOM) || tagStr(tags.TCM) || tagStr(tags['©wrt'])
+      });
       if(tags.title)  t.title  = tags.title;
       if(tags.artist) t.artist = tags.artist;
       if(tags.album)  t.album  = tags.album;
@@ -512,23 +652,31 @@ function loadTags(i) {
         const lyricText = typeof tags.lyrics === 'string' ? tags.lyrics : (tags.lyrics.lyrics || '');
         if(lyricText) setLyrics(t, lyricText, 'tag');
       }
-      render();
-      if(i === cur) updateMain();
+      renderSoon();
+      if(tracks[cur] === t) updateMain();
       scheduleSave();
     },
     onError: function(e) {
       // 태그 없는 파일은 파일명으로 동작
+      t.tagv = 2;
     }
   });
-  // jsmediatags는 FLAC의 Vorbis Comment 가사 필드를 읽지 못해 직접 파싱
-  if(!t.lyrics && /\.flac$/i.test(t.file.name)){
-    readFlacLyrics(t.file).then(text => {
-      if(text && !t.lyrics){
-        setLyrics(t, text, 'tag');
-        render();
-        if(i === cur) updateMain();
-        scheduleSave();
-      }
+  // jsmediatags는 FLAC의 Vorbis Comment(가사·설명·작곡가 등)를 다 읽지 못해 직접 파싱
+  if(/\.flac$/i.test(t.file.name)){
+    readFlacComments(t.file).then(c => {
+      if(!c) return;
+      const one = k => c[k] ? String(c[k]).split('\n').map(s=>s.trim()).filter(Boolean).join(', ') : '';
+      applyExtraTags(t, {
+        genre: genreOf(one('GENRE')),
+        comment: one('COMMENT') || one('DESCRIPTION'),
+        albumartist: one('ALBUMARTIST') || one('ALBUM ARTIST'),
+        composer: one('COMPOSER')
+      });
+      const lk = Object.keys(c).find(k => /^(LYRICS|UNSYNCEDLYRICS|SYNCEDLYRICS|LYRIC)$/i.test(k));
+      if(lk && !t.lyrics) setLyrics(t, c[lk], 'tag');
+      renderSoon();
+      if(tracks[cur] === t) updateMain();
+      scheduleSave();
     }).catch(()=>{});
   }
 }
@@ -600,6 +748,13 @@ function applyOggTags(t, c){
   if(c.ARTIST)      t.artist = String(c.ARTIST).split('\n').map(s=>s.trim()).filter(Boolean).join(', ');
   if(one('ALBUM'))  t.album  = one('ALBUM');
   const d = one('DATE') || one('YEAR'); if(d) t.year = d.slice(0,4);
+  const multi = k => c[k] ? String(c[k]).split('\n').map(s=>s.trim()).filter(Boolean).join(', ') : '';
+  applyExtraTags(t, {
+    genre: genreOf(multi('GENRE')),
+    comment: multi('COMMENT') || multi('DESCRIPTION'),
+    albumartist: multi('ALBUMARTIST') || multi('ALBUM ARTIST'),
+    composer: multi('COMPOSER')
+  });
   if(one('TRACKNUMBER')) t.track = one('TRACKNUMBER');
   const pic = c.METADATA_BLOCK_PICTURE ? oggPicture(c.METADATA_BLOCK_PICTURE) : null;
   if(pic) t.albumart = `data:${pic.mime};base64,${u8ToB64(pic.data)}`;
@@ -870,7 +1025,7 @@ lrcDirsLoad();
 // ── FLAC 내장 가사 (Vorbis Comment) ────────────────────────────────
 // jsmediatags 번들의 FLAC 리더는 title/artist/album/track/genre/picture만 읽고
 // LYRICS 필드는 버리므로, 필요한 블록만 직접 슬라이스해서 파싱한다.
-async function readFlacLyrics(file){
+async function readFlacComments(file){
   const head = new Uint8Array(await file.slice(0,4).arrayBuffer());
   if(String.fromCharCode(head[0],head[1],head[2],head[3]) !== 'fLaC') return null;
   let offset = 4;
@@ -883,14 +1038,19 @@ async function readFlacLyrics(file){
     offset += 4;
     if(blockLen < 0 || offset+blockLen > size) break; // 안전장치
     if(blockType === 4){ // VORBIS_COMMENT
-      const comments = parseVorbisComment(await file.slice(offset, offset+blockLen).arrayBuffer());
-      const key = Object.keys(comments).find(k => /^(LYRICS|UNSYNCEDLYRICS|SYNCEDLYRICS|LYRIC)$/i.test(k));
-      return key ? comments[key] : null;
+      return parseVorbisComment(await file.slice(offset, offset+blockLen).arrayBuffer());
     }
     offset += blockLen;
     if(isLast) break;
   }
   return null;
+}
+
+async function readFlacLyrics(file){
+  const comments = await readFlacComments(file);
+  if(!comments) return null;
+  const key = Object.keys(comments).find(k => /^(LYRICS|UNSYNCEDLYRICS|SYNCEDLYRICS|LYRIC)$/i.test(k));
+  return key ? comments[key] : null;
 }
 
 function parseVorbisComment(buf){
@@ -946,6 +1106,7 @@ async function ingest(entries){
       artist: parts.length>1 ? parts[0].trim() : '',
       title:  parts.length>1 ? parts.slice(1).join(' - ').trim() : name,
       album:'', year:'', track:'', albumart:null,
+      genre:'', comment:'', albumartist:'', composer:'', tagv:0,
       lrcKey: k, lyrics: null, lyricsSrc: null, lyricsSynced: false
     };
     if(lrcTextMap[k]) setLyrics(t, lrcTextMap[k], 'lrc');
@@ -986,14 +1147,16 @@ function sort(k) {
 // ── 렌더 ─────────────────────────────────────────────────────────
 function render() {
   updateClrBtn();
-  const q = $('search').value.toLowerCase();
+  const q = $('search').value;
   if(!tracks.length){
     $('tlist').innerHTML=`<div class="dz" id="dz"><strong>🎵 드래그 또는 클릭</strong><p>MP3 · FLAC · OPUS · OGG · M4A · WAV<br>음악 파일을 추가하세요</p></div>`;
     bindDZ(); return;
   }
-  const filtered = q ? tracks.filter(t=>(t.title+t.artist+t.album).toLowerCase().includes(q)) : tracks;
+  const terms = searchTerms(q);
+  const filtered = terms.length ? tracks.filter(t => trackMatches(t, terms)) : tracks;
   if(!filtered.length){
-    $('tlist').innerHTML=`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">검색 결과 없음</div>`;
+    const none = !SFIELDS.some(f => sOpt[f.k]);
+    $('tlist').innerHTML=`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">${none ? '검색 대상이 없습니다 — <b>O</b> 버튼에서 1개 이상 선택하세요' : '검색 결과 없음'}</div>`;
     return;
   }
   let html='';
@@ -1008,7 +1171,7 @@ function render() {
       <span class="tnum">${i+1}</span><span class="tpic">▶</span>
       <div class="tinfo" onclick="load(${i})">
         <div class="tn">${esc(t.title||t.name)}</div>
-        <div class="ta">${esc(t.artist||'')+( t.album?' — '+esc(t.album):'')}</div>
+        <div class="ta">${esc(t.artist||'')+( t.album?' — '+esc(t.album):'')}</div>${terms.length ? matchLine(t, terms) : ''}
       </div>
       <span class="tdur" onclick="load(${i})">${t.dur?fmt(t.dur):''}</span>
       <button class="del-btn" title="삭제" onclick="delTrack(event,${i})">✕</button>
@@ -1019,6 +1182,186 @@ function render() {
 }
 
 function filt(){ render(); }
+
+// ── 검색 옵션 (O 버튼): 어떤 항목을 검색할지 선택 ────────────────
+// grp: 0 기본 정보 / 1 태그 / 2 가사   shown: 목록 행에 이미 보이는 항목(일치 사유 표시 생략)
+const SFIELDS = [
+  {k:'title',  n:'제목',        grp:0, def:1, shown:1, get:t => t.title},
+  {k:'artist', n:'아티스트',    grp:0, def:1, shown:1, get:t => t.artist},
+  {k:'file',   n:'파일명',      grp:0, def:1,          get:t => (t.file && t.file.name) || t.name},
+  {k:'path',   n:'폴더 경로',   grp:0, def:0,          get:t => String(t.lrcKey||'').split('|')[0]},
+  {k:'album',  n:'앨범',        grp:1, def:1, shown:1, get:t => t.album},
+  {k:'genre',  n:'장르',        grp:1, def:0,          get:t => t.genre},
+  {k:'comment',n:'설명(코멘트)',grp:1, def:0,          get:t => t.comment},
+  {k:'year',   n:'연도',        grp:1, def:0,          get:t => t.year},
+  {k:'albumartist', n:'앨범 아티스트', grp:1, def:0,   get:t => t.albumartist},
+  {k:'composer',n:'작곡가',     grp:1, def:0,          get:t => t.composer},
+  {k:'lyrics', n:'가사',        grp:2, def:0,          get:t => lyricsText(t)}
+];
+const SGROUPS = ['기본 정보', '태그', '가사'];
+const SOPT_KEY = 'mplayer-search-opt';
+let sOpt = {};
+(function initSOpt(){
+  SFIELDS.forEach(f => sOpt[f.k] = !!f.def);
+  try{
+    const saved = JSON.parse(localStorage.getItem(SOPT_KEY) || 'null');
+    if(saved && typeof saved === 'object') SFIELDS.forEach(f => { if(f.k in saved) sOpt[f.k] = !!saved[f.k]; });
+  }catch(e){}
+})();
+function saveSOpt(){ try{ localStorage.setItem(SOPT_KEY, JSON.stringify(sOpt)); }catch(e){} }
+
+const nrm = s => String(s == null ? '' : s).normalize('NFC').toLowerCase();
+function searchTerms(q){ return nrm(q).split(/\s+/).filter(Boolean); }
+// 가사는 줄 배열 → 문자열로 한 번만 합쳐 캐시(가사가 바뀌면 다시 계산)
+function lyricsText(t){
+  if(!t.lyrics || !t.lyrics.length) return '';
+  if(t._lyArr !== t.lyrics){ t._lyArr = t.lyrics; t._lyTxt = t.lyrics.map(l => l.text).join('\n'); }
+  return t._lyTxt;
+}
+// 검색어(공백으로 구분한 여러 단어)가 모두, 선택된 항목들을 합친 텍스트 안에 있으면 일치
+function trackMatches(t, terms){
+  const hay = nrm(SFIELDS.filter(f => sOpt[f.k]).map(f => f.get(t) || '').join('\n'));
+  return hay !== '' && terms.every(w => hay.includes(w));
+}
+// 목록에 안 보이는 항목(장르·설명·파일명·가사 등)으로 걸렸다면 그 사유를 한 줄로 표시
+function matchLine(t, terms){
+  const hits = [];
+  for(const f of SFIELDS){
+    if(!sOpt[f.k] || f.shown) continue;
+    const v = String(f.get(t) || '');
+    if(!v) continue;
+    const nv = nrm(v);
+    if(!terms.some(w => nv.includes(w))) continue;
+    let show = v;
+    if(f.k === 'lyrics'){   // 일치한 가사 한 줄만
+      const line = v.split('\n').find(l => terms.some(w => nrm(l).includes(w)));
+      show = line || v;
+    }
+    show = show.replace(/\s+/g,' ').trim();
+    if(show.length > 60) show = show.slice(0,60) + '…';
+    hits.push(f.n + ': ' + show);
+  }
+  return hits.length ? `<div class="tm">${esc(hits.join(' · '))}</div>` : '';
+}
+function buildSOpt(){
+  const box = $('sopt'); if(!box) return;
+  let h = '';
+  SGROUPS.forEach((g, gi) => {
+    h += `<div class="sg">${g}</div><div class="sl">`;
+    SFIELDS.filter(f => f.grp === gi).forEach(f => {
+      h += `<label><input type="checkbox" data-k="${f.k}" ${sOpt[f.k]?'checked':''} onchange="soptChange(this)">${f.n}</label>`;
+    });
+    h += '</div>';
+  });
+  h += `<div class="sr"><button onclick="soptPreset('def')">기본값</button><button onclick="soptPreset('all')">전체</button><span class="si" id="soptInfo"></span></div>`;
+  box.innerHTML = h;
+  refreshSOptUi();
+}
+function refreshSOptUi(){
+  const on = SFIELDS.filter(f => sOpt[f.k]);
+  const modified = SFIELDS.some(f => !!sOpt[f.k] !== !!f.def);
+  const b = $('optBtn');
+  if(b){
+    b.classList.toggle('mod', modified);
+    b.title = '검색 옵션 — ' + (on.length ? on.map(f=>f.n).join('·') : '선택 없음');
+  }
+  const info = $('soptInfo'); if(info) info.textContent = on.length + '개 항목 검색';
+  DOC.querySelectorAll('#sopt input[data-k]').forEach(c => { c.checked = !!sOpt[c.dataset.k]; });
+}
+function toggleSOpt(){
+  const box = $('sopt'), b = $('optBtn');
+  const open = !box.classList.contains('on');
+  box.classList.toggle('on', open);
+  b.classList.toggle('open', open);
+  if(open){ $('popt').classList.remove('on'); $('prefBtn').classList.remove('open'); }
+}
+
+// ── 화면 설정 (P 버튼): 테마 · 글꼴 · 글자 크기 ─────────────────────
+const THEMES = [
+  {k:'auto',   n:'자동',   bg:'linear-gradient(90deg,#F8F8F8 50%,#1A1A1A 50%)'},
+  {k:'light',  n:'라이트', bg:'linear-gradient(90deg,#F6F6F6 60%,#555 60%)'},
+  {k:'dark',   n:'다크',   bg:'linear-gradient(90deg,#1A1A1A 60%,#BDBDBD 60%)'},
+  {k:'blue',   n:'블루',   bg:'linear-gradient(90deg,#0d1b2a 60%,#4da3ff 60%)'},
+  {k:'pink',   n:'핑크',   bg:'linear-gradient(90deg,#fff0f5 60%,#d6336c 60%)'},
+  {k:'green',  n:'그린',   bg:'linear-gradient(90deg,#effaf3 60%,#2b8a4f 60%)'},
+  {k:'purple', n:'퍼플',   bg:'linear-gradient(90deg,#1a1425 60%,#b794f6 60%)'},
+  {k:'sepia',  n:'세피아', bg:'linear-gradient(90deg,#f4ecd8 60%,#8b5a2b 60%)'},
+  {k:'black',  n:'블랙',   bg:'linear-gradient(90deg,#000 60%,#1db954 60%)'}
+];
+const FONTS = [
+  {k:'malgun',     n:'맑은 고딕',  ff:"'Malgun Gothic','맑은 고딕',sans-serif"},
+  {k:'pretendard', n:'Pretendard', ff:"'Pretendard','Malgun Gothic','맑은 고딕',sans-serif"},
+  {k:'system',     n:'시스템',     ff:"system-ui,'Segoe UI','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif"},
+  {k:'batang',     n:'바탕',       ff:"'Batang','바탕','Noto Serif KR',serif"},
+  {k:'mono',       n:'고정폭',     ff:"'D2Coding','Consolas','Malgun Gothic',monospace"}
+];
+const FSIZES = [{k:'s',n:'작게'},{k:'m',n:'보통'},{k:'l',n:'크게'}];
+const PREF_KEY = 'mplayer-pref';
+const PREF_DEF = {theme:'auto', font:'malgun', fs:'m'};
+let pref = {...PREF_DEF};
+function loadPref(){
+  pref = {...PREF_DEF};
+  try{
+    const q = JSON.parse(localStorage.getItem(PREF_KEY) || 'null');
+    if(q && typeof q === 'object'){
+      if(THEMES.some(x=>x.k===q.theme)) pref.theme = q.theme;
+      if(FONTS.some(x=>x.k===q.font))   pref.font  = q.font;
+      if(FSIZES.some(x=>x.k===q.fs))    pref.fs    = q.fs;
+    }
+  }catch(e){}
+}
+function savePref(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify(pref)); }catch(e){} }
+// 지정한 문서의 <html>에 설정을 반영(미니 플레이어 창에도 사용)
+function applyPrefTo(root){
+  if(!root) return;
+  const set = (a, v, def) => { if(v && v !== def) root.dataset[a] = v; else delete root.dataset[a]; };
+  set('theme', pref.theme, 'auto'); set('font', pref.font, 'malgun'); set('fs', pref.fs, 'm');
+}
+function applyPref(){
+  applyPrefTo(document.documentElement);
+  if(typeof DOC !== 'undefined' && DOC !== document) applyPrefTo(DOC.documentElement);
+  refreshPOptUi();
+}
+function buildPOpt(){
+  const box = $('popt'); if(!box) return;
+  let h = '<div class="sg">테마</div><div class="tg">';
+  THEMES.forEach(t => { h += `<button class="ch" data-th="${t.k}" onclick="setPref('theme','${t.k}')"><span class="sw" style="background:${t.bg}"></span>${t.n}</button>`; });
+  h += '</div><div class="sg">글꼴</div><div class="chips">';
+  FONTS.forEach(f => { h += `<button class="ch" data-fo="${f.k}" style="font-family:${f.ff}" onclick="setPref('font','${f.k}')">${f.n}</button>`; });
+  h += '</div><div class="sg">글자 크기 (목록·곡 정보·가사)</div><div class="chips">';
+  FSIZES.forEach(f => { h += `<button class="ch" data-fz="${f.k}" onclick="setPref('fs','${f.k}')">${f.n}</button>`; });
+  h += `</div><div class="sr"><button onclick="resetPref()">초기화</button><span class="si" id="poptInfo"></span></div>`;
+  box.innerHTML = h;
+  refreshPOptUi();
+}
+function refreshPOptUi(){
+  const modified = pref.theme !== PREF_DEF.theme || pref.font !== PREF_DEF.font || pref.fs !== PREF_DEF.fs;
+  const b = $('prefBtn'); if(b) b.classList.toggle('mod', modified);
+  DOC.querySelectorAll('#popt [data-th]').forEach(e => e.classList.toggle('on', e.dataset.th === pref.theme));
+  DOC.querySelectorAll('#popt [data-fo]').forEach(e => e.classList.toggle('on', e.dataset.fo === pref.font));
+  DOC.querySelectorAll('#popt [data-fz]').forEach(e => e.classList.toggle('on', e.dataset.fz === pref.fs));
+  const info = $('poptInfo');
+  if(info){
+    const t = THEMES.find(x=>x.k===pref.theme), f = FONTS.find(x=>x.k===pref.font), z = FSIZES.find(x=>x.k===pref.fs);
+    info.textContent = t.n + ' · ' + f.n + ' · ' + z.n;
+  }
+}
+function togglePOpt(){
+  const box = $('popt'), b = $('prefBtn');
+  const open = !box.classList.contains('on');
+  box.classList.toggle('on', open);
+  b.classList.toggle('open', open);
+  if(open){ $('sopt').classList.remove('on'); $('optBtn').classList.remove('open'); }
+}
+function setPref(k, v){ pref[k] = v; savePref(); applyPref(); }
+function resetPref(){ pref = {...PREF_DEF}; savePref(); applyPref(); }
+// 다른 창(미니 플레이어 팝업)에서 바꾼 설정을 이 창에도 반영
+window.addEventListener('storage', e => { if(e.key === PREF_KEY){ loadPref(); applyPref(); } });
+function soptChange(cb){ sOpt[cb.dataset.k] = cb.checked; saveSOpt(); refreshSOptUi(); render(); }
+function soptPreset(kind){
+  SFIELDS.forEach(f => sOpt[f.k] = kind === 'all' ? true : !!f.def);
+  saveSOpt(); refreshSOptUi(); render();
+}
 
 // ── 목록 전체 삭제 (2단계 확인: 한 번 누르면 '전체 삭제?'로 바뀌고 3초 안에 다시 눌러야 실행) ──
 let _clrTimer = null;
@@ -1294,7 +1637,7 @@ function miniToggle(){
 // 주소창 없는 작은 창(항상 위). 플레이어 화면 자체를 그 창으로 옮기므로
 // 재생은 끊기지 않고, 닫으면 원래 창으로 그대로 돌아옴.
 let pipWin = null;
-const PIP_FUNCS = ['$','filt','clearAll','addF','sort','toggleLyrics','togShuf','prev','togPlay','next','togRep','miniToggle','setVol','load','delTrack','seekLyric'];
+const PIP_FUNCS = ['$','filt','clearAll','addF','sort','toggleLyrics','togShuf','prev','togPlay','next','togRep','miniToggle','setVol','load','delTrack','seekLyric','toggleSOpt','soptChange','soptPreset','togglePOpt','setPref','resetPref'];
 
 async function openPip(){
   let w;
@@ -1309,6 +1652,7 @@ async function openPip(){
   document.querySelectorAll('style').forEach(st => w.document.head.appendChild(st.cloneNode(true)));
   w.document.title = '♪ 미니 플레이어';
   w.document.documentElement.classList.add('mini');
+  applyPrefTo(w.document.documentElement);
   // 인라인 onclick이 PiP 창 기준으로 실행되므로 함수 연결
   PIP_FUNCS.forEach(n => { try{ w[n] = window[n] || eval(n); }catch(e){} });
   // 플레이어 화면을 PiP 창으로 이동
@@ -1446,6 +1790,8 @@ setInterval(() => {
   }
 }, 1000);
 
+buildSOpt();   // 검색 옵션(O) 패널 생성
+loadPref(); buildPOpt(); applyPref();   // 화면 설정(P) 패널 생성·적용
 if(isMini){
   document.documentElement.classList.add('mini');
   document.title = '♪ 미니 플레이어';
