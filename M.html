@@ -119,9 +119,10 @@ b){(new g(a)).read(b)},Reader:g,Config:q}},{"./ArrayFileReader":3,"./BlobFileRea
 }
 html,body{height:100%;background:var(--bg);font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:var(--text);overflow:hidden}
 .pw{display:flex;height:100vh}
-.sidebar{width:300px;min-width:300px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar{width:330px;min-width:330px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
 .sb-head{padding:10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
 .sb-row{display:flex;gap:6px}
+.sb-row input[type=text]{min-width:0}
 input[type=text]{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 10px;font-size:12px;outline:none;font-family:inherit}
 input[type=text]:focus{border-color:var(--accent)}
 .add-btn{flex:1;background:var(--accent);border:none;border-radius:5px;color:#fff;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;white-space:nowrap}
@@ -152,6 +153,9 @@ input[type=text]:focus{border-color:var(--accent)}
 .sopt .sr button:hover{color:var(--text);border-color:var(--accent)}
 .sopt .sr .si{flex:1;text-align:right;font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tm{font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;opacity:.9}
+.ti{content-visibility:auto;contain-intrinsic-size:auto 49px}   /* 화면 밖 행은 계산·그리기 생략 → 곡이 많아도 가벼움 */
+.ti.miss{opacity:.4}
+.ti.miss .tn{text-decoration:line-through}
 .tlist{flex:1;overflow-y:auto}
 .tlist::-webkit-scrollbar{width:4px}
 .tlist::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
@@ -220,7 +224,7 @@ input[type=text]:focus{border-color:var(--accent)}
 .abtn{color:var(--accent)!important}
 .vwrap{display:flex;align-items:center;gap:10px;justify-content:center}
 input[type=range]{accent-color:var(--accent);width:120px}
-.sbar{position:fixed;bottom:0;left:300px;right:0;padding:3px 16px;font-size:10px;color:var(--text3);background:var(--bg);border-top:1px solid var(--border)}
+.sbar{position:fixed;bottom:0;left:330px;right:0;padding:3px 16px;font-size:10px;color:var(--text3);background:var(--bg);border-top:1px solid var(--border)}
 input[type=file]{display:none}
 
 /* ── 미니 플레이어(팝업) 사용 중 원래 창 가림막 ── */
@@ -411,7 +415,7 @@ try{ const q = JSON.parse(localStorage.getItem('mplayer-pref') || 'null') || {};
       </div>
       <div class="sb-row">
         <button class="add-btn" onclick="$('fi').click()">+ 파일</button>
-        <button class="add-btn" onclick="$('fd').click()">+ 폴더</button>
+        <button class="add-btn" onclick="addFolder()" title="폴더를 스캔해 목록만 등록하고, 재생할 때 원본 파일에 연결합니다(하위폴더 포함)">+ 폴더</button>
         <input type="file" id="fi" multiple accept="audio/*,.opus,.ogg,.oga,.lrc,.lyc" onchange="addF(this.files)">
         <input type="file" id="fd" webkitdirectory directory multiple onchange="addF(this.files)">
       </div>
@@ -507,6 +511,10 @@ const stat = m => $('sbar').textContent = m;
 // ── 라이브러리 로컬 저장(IndexedDB) — 종료 후 다시 열어도 목록 유지 ──
 const DB_NAME = 'musicPlayerDB', DB_VERSION = 1, DB_STORE = 'library';
 let _dbPromise = null;
+// 폴더 연결 방식: 폴더 핸들(roots)만 저장하고 곡은 '폴더id + 상대경로'로 기억 → 재생할 때 원본에 연결
+let roots = [];                 // [{id, name, handle}]
+const dirCache = new Map();     // 'rootId/하위경로' → 디렉터리 핸들
+const tFile = t => t.fname || (t.file && t.file.name) || t.name;
 function openLibraryDB(){
   if(_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
@@ -522,17 +530,20 @@ let _saveTimer = null;
 function scheduleSave(){
   if(miniActive) return;   // 팝업이 재생을 넘겨받은 동안 원래 창은 저장하지 않음(팝업 변경분 덮어쓰기 방지)
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(saveLibrary, 400);
+  _saveTimer = setTimeout(saveLibrary, 1200);
 }
 
 async function saveLibrary(){
   if(miniActive) return;
   try{
     const db = await openLibraryDB();
+    const usedRoots = new Set(tracks.map(t => t.rootId).filter(Boolean));
     const data = {
       cur, shuf, rep,
+      roots: roots.filter(r => usedRoots.has(r.id)).map(r => ({ id:r.id, name:r.name, handle:r.handle })),
       tracks: tracks.map(t => ({
-        file: t.file, name: t.name, artist: t.artist, title: t.title,
+        file: t.file || null, rootId: t.rootId || null, rel: t.rel || null, fname: t.fname || null,
+        size: t.size || 0, mtime: t.mtime || 0, thumb: !!t.thumb, name: t.name, artist: t.artist, title: t.title,
         album: t.album, year: t.year, track: t.track, albumart: t.albumart,
         genre: t.genre, comment: t.comment, albumartist: t.albumartist, composer: t.composer, tagv: t.tagv,
         lrcKey: t.lrcKey, lyrics: t.lyrics, lyricsSrc: t.lyricsSrc,
@@ -561,25 +572,26 @@ async function restoreLibrary(){
     if(!data || !data.tracks || !data.tracks.length){
       tracks = []; cur = -1; aud.removeAttribute('src'); resetMain(); render(); return;
     }
-    tracks = data.tracks.map(t => ({ ...t, url: URL.createObjectURL(t.file) }));
+    roots = Array.isArray(data.roots) ? data.roots : [];
+    tracks = data.tracks.map(t => ({ ...t, url: t.file ? URL.createObjectURL(t.file) : null }));
     cur  = typeof data.cur === 'number' ? data.cur : -1;
     shuf = !!data.shuf; rep = !!data.rep;
     $('shuf').classList.toggle('abtn', shuf);
     $('rep').classList.toggle('abtn', rep);
     render();
     if(cur >= 0 && tracks[cur]){
-      aud.src = tracks[cur].url;
       aud.volume = $('vs').value/100;
       updateMain();
+      await attachCur();
     }
     stat(tracks.length+'곡 불러옴 (이전 목록 복원)');
-    tracks.forEach((t,i) => { if(t.tagv !== 2) loadTags(i); });   // 검색용 태그(장르·설명 등) 보충
+    enqueueTags(tracks.filter(t => t.tagv !== 2));   // 검색용 태그(장르·설명 등) 보충 — 폴더 접근 권한이 없으면 건너뜀
   }catch(e){ console.warn('라이브러리 복원 실패:', e); }
 }
 
 // ── jsmediatags로 태그 읽기 (서버 불필요) ──────────────────────────
 let _rsT = null;
-function renderSoon(){ clearTimeout(_rsT); _rsT = setTimeout(render, 120); }   // 태그가 줄줄이 들어올 때 목록 재그리기 묶음 처리
+function renderSoon(){ if(_rsT) return; _rsT = setTimeout(() => { _rsT = null; render(); }, 300); }   // 태그가 줄줄이 들어올 때 목록 재그리기 묶음 처리
 
 // ID3v1 장르 번호 → 이름
 const ID3_GENRES = ['Blues','Classic Rock','Country','Dance','Disco','Funk','Grunge','Hip-Hop','Jazz','Metal','New Age','Oldies','Other','Pop','R&B','Rap','Reggae','Rock','Techno','Industrial','Alternative','Ska','Death Metal','Pranks','Soundtrack','Euro-Techno','Ambient','Trip-Hop','Vocal','Jazz+Funk','Fusion','Trance','Classical','Instrumental','Acid','House','Game','Sound Clip','Gospel','Noise','AlternRock','Bass','Soul','Punk','Space','Meditative','Instrumental Pop','Instrumental Rock','Ethnic','Gothic','Darkwave','Techno-Industrial','Electronic','Pop-Folk','Eurodance','Dream','Southern Rock','Comedy','Cult','Gangsta','Top 40','Christian Rap','Pop/Funk','Jungle','Native American','Cabaret','New Wave','Psychadelic','Rave','Showtunes','Trailer','Lo-Fi','Tribal','Acid Punk','Acid Jazz','Polka','Retro','Musical','Rock & Roll','Hard Rock'];
@@ -610,75 +622,152 @@ function applyExtraTags(t, o){
   if(o.composer)    t.composer    = o.composer;
   t.tagv = 2;
 }
-function loadTags(i) {
-  const t = tracks[i];
-  // OPUS·OGG는 jsmediatags가 못 읽으므로 직접 파싱(제목·가수·앨범·앨범 사진·가사)
-  if(OGG_RE.test(t.file.name)){
-    readOggTags(t.file).then(c => {
-      t.tagv = 2;
-      if(!c) return;
-      applyOggTags(t, c);
-      renderSoon();
-      if(tracks[cur] === t) updateMain();
-      scheduleSave();
-    }).catch(e => { t.tagv = 2; console.warn('OGG 태그 읽기 실패:', e); });
-    return;
+// ── 앨범아트: 목록용 작은 썸네일만 저장(곡이 많을 때 메모리·저장 부담 감소), 큰 그림은 재생할 때만 읽음 ──
+async function makeThumb(u8, mime){
+  try{
+    const bmp = await createImageBitmap(new Blob([u8], { type: mime || 'image/jpeg' }));
+    const sc = Math.min(1, 128 / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width*sc)), h = Math.max(1, Math.round(bmp.height*sc));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    if(bmp.close) bmp.close();
+    return c.toDataURL('image/jpeg', 0.78);
+  }catch(e){ return null; }
+}
+async function setArt(t, u8, mime){
+  const th = await makeThumb(u8, mime);
+  if(th){ t.albumart = th; t.thumb = true; }
+  else if(u8.length < 400*1024){ t.albumart = `data:${mime || 'image/jpeg'};base64,${u8ToB64(u8)}`; t.thumb = false; }   // 변환 실패 시 작은 그림만 원본 유지
+}
+// 파일에서 앨범아트 원본 바이트 꺼내기 → {data, mime} | null
+async function extractPicture(f){
+  if(OGG_RE.test(f.name || '')){
+    const c = await readOggTags(f);
+    if(!c) return null;
+    let art = c.METADATA_BLOCK_PICTURE ? oggPicture(c.METADATA_BLOCK_PICTURE) : null;
+    return art;
   }
-  jsmediatags.read(t.file, {
-    onSuccess: function(tag) {
-      const tags = tag.tags;
-      // 일부 태그 편집기는 설명을 COMM 대신 TXXX(comment/description)로 저장, 연도는 TYER 대신 TDRC(ID3v2.4)로 저장
-      const txxx = tags.TXXX && tags.TXXX.data && /^(comment|description)$/i.test(tags.TXXX.data.user_description || '') ? tagStr(tags.TXXX.data.data) : '';
-      if(!t.year){ const y = tagStr(tags.TDRC) || tagStr(tags.TDRL) || tagStr(tags.TDOR); if(y) t.year = y.slice(0,4); }
-      applyExtraTags(t, {
-        genre:       genreOf(tagStr(tags.genre)),
-        comment:     tagStr(tags.comment) || tagStr(tags.COMM) || tagStr(tags['©cmt']) || txxx,
-        albumartist: tagStr(tags.TPE2) || tagStr(tags.TP2) || tagStr(tags.aART),
-        composer:    tagStr(tags.TCOM) || tagStr(tags.TCM) || tagStr(tags['©wrt'])
+  return new Promise(res => {
+    try{
+      jsmediatags.read(f, {
+        onSuccess: tag => { const pic = tag.tags.picture; res(pic ? { data: Uint8Array.from(pic.data), mime: pic.format || 'image/jpeg' } : null); },
+        onError: () => res(null)
       });
-      if(tags.title)  t.title  = tags.title;
-      if(tags.artist) t.artist = tags.artist;
-      if(tags.album)  t.album  = tags.album;
-      if(tags.year)   t.year   = tags.year;
-      if(tags.track)  t.track  = String(tags.track);
-      if(tags.picture) {
-        const pic = tags.picture;
-        const mime = pic.format || 'image/jpeg';
-        const b64 = btoa(pic.data.reduce((s,b)=>s+String.fromCharCode(b),''));
-        t.albumart = `data:${mime};base64,${b64}`;
-      }
-      // 폴더의 .lrc가 없을 때 파일 내장 가사 태그로 보충 (MP3 USLT / M4A ©lyr)
-      if(tags.lyrics && !t.lyrics){
-        const lyricText = typeof tags.lyrics === 'string' ? tags.lyrics : (tags.lyrics.lyrics || '');
-        if(lyricText) setLyrics(t, lyricText, 'tag');
-      }
-      renderSoon();
-      if(tracks[cur] === t) updateMain();
-      scheduleSave();
-    },
-    onError: function(e) {
-      // 태그 없는 파일은 파일명으로 동작
-      t.tagv = 2;
-    }
+    }catch(e){ res(null); }
   });
-  // jsmediatags는 FLAC의 Vorbis Comment(가사·설명·작곡가 등)를 다 읽지 못해 직접 파싱
-  if(/\.flac$/i.test(t.file.name)){
-    readFlacComments(t.file).then(c => {
-      if(!c) return;
-      const one = k => c[k] ? String(c[k]).split('\n').map(s=>s.trim()).filter(Boolean).join(', ') : '';
-      applyExtraTags(t, {
-        genre: genreOf(one('GENRE')),
-        comment: one('COMMENT') || one('DESCRIPTION'),
-        albumartist: one('ALBUMARTIST') || one('ALBUM ARTIST'),
-        composer: one('COMPOSER')
-      });
-      const lk = Object.keys(c).find(k => /^(LYRICS|UNSYNCEDLYRICS|SYNCEDLYRICS|LYRIC)$/i.test(k));
-      if(lk && !t.lyrics) setLyrics(t, c[lk], 'tag');
-      renderSoon();
-      if(tracks[cur] === t) updateMain();
-      scheduleSave();
-    }).catch(()=>{});
+}
+let _artOwner = null;
+async function fullArt(t){
+  if(!t || !t.thumb || t.artFull) return;
+  try{
+    const f = await getTrackFile(t, false);
+    const pic = await extractPicture(f);
+    if(!pic) return;
+    if(_artOwner && _artOwner !== t){ try{ URL.revokeObjectURL(_artOwner.artFull); }catch(e){} _artOwner.artFull = null; }
+    t.artFull = URL.createObjectURL(new Blob([pic.data], { type: pic.mime }));
+    _artOwner = t;
+    if(tracks[cur] === t) updateMain();
+  }catch(e){}
+}
+
+// ── 태그 읽기 대기열: 한 번에 4곡씩만 읽음(수천 곡을 동시에 읽어 멈추는 것 방지) ──
+const tagQ = []; let tagRun = 0, tagDone = 0, tagTotal = 0, tagStatT = 0, _permPending = false;
+function enqueueTags(list){
+  for(const t of list){ if(!t || t.tagv === 2 || t._tq || t.missing) continue; t._tq = true; tagQ.push(t); tagTotal++; }
+  pumpTags();
+}
+function pumpTags(){
+  while(tagRun < 4 && tagQ.length){
+    const t = tagQ.shift(); tagRun++;
+    readTagsOne(t).catch(()=>{}).finally(() => { t._tq = false; tagRun--; tagDone++; tagProgress(); pumpTags(); });
   }
+}
+function tagProgress(){
+  if(!tagQ.length && !tagRun){
+    if(tagTotal > 3) stat(tracks.length + '곡 · 태그 읽기 완료');
+    tagDone = tagTotal = 0; renderSoon(); scheduleSave(); return;
+  }
+  const now = Date.now();
+  if(tagTotal > 3 && now - tagStatT > 250){ tagStatT = now; stat('태그 읽는 중 ' + tagDone + ' / ' + tagTotal); }
+}
+async function readTagsOne(t){
+  let f;
+  try{ f = await getTrackFile(t, false); }
+  catch(e){ if(e && e.code === 'perm') _permPending = true; else if(e && e.name === 'NotFoundError') t.missing = true; return; }
+  await loadTagsFor(t, f);
+}
+function afterTag(t){
+  renderSoon();
+  if(tracks[cur] === t) updateMain();
+  scheduleSave();
+}
+function loadTags(i){ if(tracks[i]) enqueueTags([tracks[i]]); }
+
+async function loadTagsFor(t, f) {
+  const fname = f.name || tFile(t);
+  // OPUS·OGG는 jsmediatags가 못 읽으므로 직접 파싱(제목·가수·앨범·앨범 사진·가사)
+  if(OGG_RE.test(fname)){
+    let art = null;
+    try{ const c = await readOggTags(f); if(c) art = applyOggTags(t, c); }
+    catch(e){ console.warn('OGG 태그 읽기 실패:', e); }
+    t.tagv = 2;
+    if(art) await setArt(t, art.data, art.mime);
+    afterTag(t); return;
+  }
+  let pic = null;
+  await new Promise(res => {
+    try{
+      jsmediatags.read(f, {
+        onSuccess: function(tag) {
+          const tags = tag.tags;
+          // 일부 태그 편집기는 설명을 COMM 대신 TXXX(comment/description)로 저장, 연도는 TYER 대신 TDRC(ID3v2.4)로 저장
+          const txxx = tags.TXXX && tags.TXXX.data && /^(comment|description)$/i.test(tags.TXXX.data.user_description || '') ? tagStr(tags.TXXX.data.data) : '';
+          if(!t.year){ const y = tagStr(tags.TDRC) || tagStr(tags.TDRL) || tagStr(tags.TDOR); if(y) t.year = y.slice(0,4); }
+          applyExtraTags(t, {
+            genre:       genreOf(tagStr(tags.genre)),
+            comment:     tagStr(tags.comment) || tagStr(tags.COMM) || tagStr(tags['©cmt']) || txxx,
+            albumartist: tagStr(tags.TPE2) || tagStr(tags.TP2) || tagStr(tags.aART),
+            composer:    tagStr(tags.TCOM) || tagStr(tags.TCM) || tagStr(tags['©wrt'])
+          });
+          if(tags.title)  t.title  = tags.title;
+          if(tags.artist) t.artist = tags.artist;
+          if(tags.album)  t.album  = tags.album;
+          if(tags.year)   t.year   = tags.year;
+          if(tags.track)  t.track  = String(tags.track);
+          if(tags.picture) pic = { data: Uint8Array.from(tags.picture.data), mime: tags.picture.format || 'image/jpeg' };
+          // 폴더의 .lrc가 없을 때 파일 내장 가사 태그로 보충 (MP3 USLT / M4A ©lyr)
+          if(tags.lyrics && !t.lyrics){
+            const lyricText = typeof tags.lyrics === 'string' ? tags.lyrics : (tags.lyrics.lyrics || '');
+            if(lyricText) setLyrics(t, lyricText, 'tag');
+          }
+          res();
+        },
+        onError: function(e) {
+          // 태그 없는 파일은 파일명으로 동작
+          t.tagv = 2; res();
+        }
+      });
+    }catch(e){ t.tagv = 2; res(); }
+  });
+  if(pic) await setArt(t, pic.data, pic.mime);
+  // jsmediatags는 FLAC의 Vorbis Comment(가사·설명·작곡가 등)를 다 읽지 못해 직접 파싱
+  if(/\.flac$/i.test(fname)){
+    try{
+      const c = await readFlacComments(f);
+      if(c){
+        const one = k => c[k] ? String(c[k]).split('\n').map(s=>s.trim()).filter(Boolean).join(', ') : '';
+        applyExtraTags(t, {
+          genre: genreOf(one('GENRE')),
+          comment: one('COMMENT') || one('DESCRIPTION'),
+          albumartist: one('ALBUMARTIST') || one('ALBUM ARTIST'),
+          composer: one('COMPOSER')
+        });
+        const lk = Object.keys(c).find(k => /^(LYRICS|UNSYNCEDLYRICS|SYNCEDLYRICS|LYRIC)$/i.test(k));
+        if(lk && !t.lyrics) setLyrics(t, c[lk], 'tag');
+      }
+    }catch(e){}
+  }
+  afterTag(t);
 }
 
 // ── OPUS·OGG(Vorbis) 태그 직접 파싱 ─────────────────────────────
@@ -756,11 +845,13 @@ function applyOggTags(t, c){
     composer: multi('COMPOSER')
   });
   if(one('TRACKNUMBER')) t.track = one('TRACKNUMBER');
-  const pic = c.METADATA_BLOCK_PICTURE ? oggPicture(c.METADATA_BLOCK_PICTURE) : null;
-  if(pic) t.albumart = `data:${pic.mime};base64,${u8ToB64(pic.data)}`;
-  else if(c.COVERART) t.albumart = `data:${one('COVERARTMIME') || 'image/jpeg'};base64,${one('COVERART')}`;
+  let art = c.METADATA_BLOCK_PICTURE ? oggPicture(c.METADATA_BLOCK_PICTURE) : null;
+  if(!art && c.COVERART){
+    try{ const bin = atob(one('COVERART')); const u = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i] = bin.charCodeAt(i); art = { mime: one('COVERARTMIME') || 'image/jpeg', data: u }; }catch(e){}
+  }
   const lk = Object.keys(c).find(k => /^(LYRICS|UNSYNCEDLYRICS|SYNCEDLYRICS|LYRIC)$/i.test(k));
   if(lk && !t.lyrics) setLyrics(t, c[lk], 'tag');
+  return art;
 }
 
 // ── LRC 가사 지원 ────────────────────────────────────────────────
@@ -900,7 +991,7 @@ function openLyrModal(){
   if(lyrBlocked()) return;
   if(cur<0||!tracks[cur]){ stat('먼저 곡을 재생·선택하세요'); return; }
   const t=tracks[cur];
-  $('lyrFor').textContent = '— ' + (t.file && t.file.name || t.name);
+  $('lyrFor').textContent = '— ' + tFile(t);
   $('lyrTa').value=''; $('lyrInfo').textContent='';
   $('lyrOv').classList.add('on'); $('lyrTa').focus();
 }
@@ -985,7 +1076,7 @@ async function saveLrc(){
   const t = cur>=0 ? tracks[cur] : null;
   if(!t || !t.lyrics || !t.lyrics.length) return;
   if(!t.lyricsSynced && !confirm('시간 태그가 없는 가사입니다. 이대로 저장하면 가사가 곡에 맞춰 넘어가지 않습니다.\n그래도 저장할까요?')) return;
-  const audioName = t.file && t.file.name ? t.file.name : (t.name + '.mp3');
+  const audioName = (t.fname || (t.file && t.file.name)) || (t.name + '.mp3');
   const fname = audioName.replace(/\.[^.]+$/,'') + '.lrc';
   const text = '﻿' + buildLrc(t);                    // UTF-8(BOM) — 윈도우 플레이어·알송 호환
   if(window.showDirectoryPicker){
@@ -1077,6 +1168,150 @@ function parseVorbisComment(buf){
   return comments;
 }
 
+
+// ── 폴더 연결 방식 ──────────────────────────────────────────────
+// 곡 파일을 브라우저에 복사하지 않고, 폴더 핸들 + 상대경로만 저장해 두었다가 재생할 때 원본에 연결한다.
+const linkErr = (code, msg) => { const e = new Error(msg || code); e.code = code; return e; };
+async function getTrackFile(t, interactive){
+  if(t.file) return t.file;
+  const root = roots.find(r => r.id === t.rootId);
+  if(!root || !t.rel) throw linkErr('noroot', '연결된 폴더 정보가 없습니다');
+  let perm = await root.handle.queryPermission({ mode: 'read' });
+  if(perm !== 'granted'){
+    if(!interactive) throw linkErr('perm', '폴더 접근 허용 필요');
+    perm = await root.handle.requestPermission({ mode: 'read' });
+    if(perm !== 'granted') throw linkErr('perm', '폴더 접근이 허용되지 않았습니다');
+  }
+  const parts = t.rel.split('/');
+  let d = root.handle, key = root.id;
+  for(let i = 0; i < parts.length - 1; i++){
+    key += '/' + parts[i];
+    let nd = dirCache.get(key);
+    if(!nd){ nd = await d.getDirectoryHandle(parts[i]); dirCache.set(key, nd); }
+    d = nd;
+  }
+  const fh = await d.getFileHandle(parts[parts.length - 1]);
+  return await fh.getFile();
+}
+const _urlLru = [];
+async function trackUrl(t, interactive){
+  if(t.url) return t.url;
+  const f = await getTrackFile(t, interactive);
+  t.missing = false;
+  t.url = URL.createObjectURL(f);
+  _urlLru.push(t);
+  while(_urlLru.length > 3){            // 연결해서 쓴 곡의 임시 주소는 최근 3곡만 유지
+    const o = _urlLru.shift();
+    if(o !== t && o !== tracks[cur]){ try{ URL.revokeObjectURL(o.url); }catch(e){} o.url = null; }
+  }
+  if(_permPending){ _permPending = false; enqueueTags(tracks); }   // 권한을 얻었으니 밀린 태그 읽기 재개
+  return t.url;
+}
+function noteLinkErr(t, e){
+  if(e && e.code === 'perm') stat('폴더 접근 허용이 필요합니다 — 곡을 누르면 허용 창이 뜹니다');
+  else if(e && (e.name === 'NotFoundError' || e.code === 'noroot')){ t.missing = true; render(); stat('⚠ 파일을 찾을 수 없습니다: ' + tFile(t)); }
+  else stat('⚠ 파일을 열 수 없습니다: ' + (e && e.message || e));
+}
+async function attachCur(){
+  const t = tracks[cur]; if(!t) return;
+  try{ aud.src = await trackUrl(t, false); }catch(e){ noteLinkErr(t, e); }
+}
+
+// 폴더 스캔: 하위폴더까지 훑어 목록만 만들고(파일 내용은 읽지 않음), 태그는 백그라운드에서 천천히 읽음
+async function addFolder(){
+  const W = (typeof pipWin !== 'undefined' && pipWin) || window;
+  if(!W.showDirectoryPicker){ $('fd').click(); return; }      // 미지원 브라우저는 예전 방식
+  if(miniActive) return;
+  let dir;
+  try{ dir = await W.showDirectoryPicker({ id:'mplayer-music', mode:'read' }); }
+  catch(e){ if(e && e.name === 'AbortError') return; stat('폴더를 열지 못했습니다: ' + (e && e.message || e)); return; }
+  await scanDir(dir);
+}
+async function pool(items, n, fn){
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+    while(i < items.length){ const k = i++; try{ await fn(items[k], k); }catch(e){} }
+  }));
+}
+async function scanDir(dirHandle){
+  if(miniActive) return;
+  let root = null;
+  for(const r of roots){ try{ if(await r.handle.isSameEntry(dirHandle)){ root = r; break; } }catch(e){} }
+  if(root){ root.handle = dirHandle; }
+  else{
+    root = { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name: dirHandle.name, handle: dirHandle };
+    roots.push(root);
+  }
+  for(const k of Array.from(dirCache.keys())) if(k === root.id || k.startsWith(root.id + '/')) dirCache.delete(k);
+  stat('폴더 스캔 중…');
+  const audio = [], lrcs = [];
+  let seen = 0;
+  async function walk(dh, path){
+    for await (const [name, h] of dh.entries()){
+      if(h.kind === 'directory'){
+        if(name[0] === '$' || /^System Volume Information$/i.test(name)) continue;
+        await walk(h, path ? path + '/' + name : name);
+      }else{
+        const rel = path ? path + '/' + name : name;
+        if(AUDIO_RE.test(name)) audio.push({ h, rel, name });
+        else if(LRC_RE.test(name)) lrcs.push({ h, rel, name });
+      }
+      if(++seen % 300 === 0){ stat('폴더 스캔 중… 곡 ' + audio.length + '개 발견'); await new Promise(r => setTimeout(r, 0)); }
+    }
+  }
+  try{ await walk(dirHandle, ''); }
+  catch(e){ stat('폴더 스캔 오류: ' + (e && e.message || e)); return; }
+
+  // 파일 크기·수정일(디스크 정보만 확인, 내용은 읽지 않음)
+  await pool(audio, 8, async a => { const f = await a.h.getFile(); a.size = f.size; a.mtime = f.lastModified; });
+
+  const byKey = new Map();
+  tracks.forEach(t => { if(t.rootId === root.id && t.rel) byKey.set(t.rel, t); });
+  const found = new Set(), fresh = [];
+  let added = 0, changed = 0;
+  for(const a of audio){
+    if(a.size == null) continue;
+    found.add(a.rel);
+    const old = byKey.get(a.rel);
+    if(old){
+      old.missing = false;
+      if(old.size !== a.size || old.mtime !== a.mtime){ old.size = a.size; old.mtime = a.mtime; old.tagv = 0; old.albumart = null; old.thumb = false; old.artFull = null; if(old.url){ try{ URL.revokeObjectURL(old.url); }catch(e){} old.url = null; } changed++; }
+      continue;
+    }
+    const base = a.name.replace(/\.[^.]+$/, '');
+    const parts = base.split(' - ');
+    fresh.push({
+      url: null, name: base, fname: a.name, file: null, rootId: root.id, rel: a.rel, size: a.size, mtime: a.mtime, dur: 0,
+      artist: parts.length > 1 ? parts[0].trim() : '',
+      title:  parts.length > 1 ? parts.slice(1).join(' - ').trim() : base,
+      album:'', year:'', track:'', albumart:null, thumb:false,
+      genre:'', comment:'', albumartist:'', composer:'', tagv:0,
+      lrcKey: keyOf(root.name + '/' + a.rel), lyrics: null, lyricsSrc: null, lyricsSynced: false
+    });
+    added++;
+  }
+  let gone = 0;
+  tracks.forEach(t => { if(t.rootId === root.id && t.rel && !found.has(t.rel) && !t.missing){ t.missing = true; gone++; } });
+  const prevLen = tracks.length;
+  fresh.forEach(t => tracks.push(t));
+
+  // .lrc / .lyc 가사 (작은 텍스트 파일만 읽음)
+  const lrcMap = {};
+  await pool(lrcs, 8, async l => { const f = await l.h.getFile(); lrcMap[keyOf(root.name + '/' + l.rel)] = decodeText(await f.arrayBuffer()); });
+  tracks.forEach(t => { if(t.rootId === root.id && lrcMap[t.lrcKey]) setLyrics(t, lrcMap[t.lrcKey], 'lrc'); });
+
+  if(cur === -1 && tracks.length > prevLen){ cur = prevLen; await attachCur(); }
+  render();
+  if(cur >= 0) updateMain();
+  const parts2 = [];
+  if(added) parts2.push(added + '곡 추가');
+  if(changed) parts2.push(changed + '곡 갱신');
+  if(gone) parts2.push(gone + '곡 파일 없음');
+  stat(tracks.length + '곡' + (parts2.length ? ' — ' + parts2.join(' · ') : ' — 변경 없음') + ' (폴더 연결: ' + root.name + ')');
+  scheduleSave();
+  enqueueTags(tracks.filter(t => t.rootId === root.id));
+}
+
 // ── 파일 추가 (일반 선택 / 폴더 선택 / 드래그드롭 공용) ────────────
 function addF(files){ ingest(toEntries(files)); }
 
@@ -1102,10 +1337,10 @@ async function ingest(entries){
     const parts = name.split(' - ');
     const k = keyOf(e.rel);
     const t = {
-      url: URL.createObjectURL(f), name, file: f, dur: 0,
+      url: URL.createObjectURL(f), name, fname: f.name, file: f, rootId: null, rel: null, dur: 0,
       artist: parts.length>1 ? parts[0].trim() : '',
       title:  parts.length>1 ? parts.slice(1).join(' - ').trim() : name,
-      album:'', year:'', track:'', albumart:null,
+      album:'', year:'', track:'', albumart:null, thumb:false,
       genre:'', comment:'', albumartist:'', composer:'', tagv:0,
       lrcKey: k, lyrics: null, lyricsSrc: null, lyricsSynced: false
     };
@@ -1124,7 +1359,7 @@ async function ingest(entries){
   if(cur >= 0) updateMain();
   const withLyrics = tracks.filter(t => t.lyrics && t.lyrics.length).length;
   stat(tracks.length+'곡'+(withLyrics ? ' · 가사 '+withLyrics+'곡 인식' : ''));
-  for(let i=prevLen; i<tracks.length; i++) loadTags(i);
+  enqueueTags(tracks.slice(prevLen));
   scheduleSave();
 }
 
@@ -1160,18 +1395,19 @@ function render() {
     return;
   }
   let html='';
+  const idxOf = new Map(tracks.map((x, k) => [x, k]));
   filtered.forEach(t => {
-    const i = tracks.indexOf(t);
+    const i = idxOf.get(t);
     const art = t.albumart
-      ? `<div class="ti-art"><img src="${t.albumart}" alt=""></div>`
+      ? `<div class="ti-art"><img src="${t.albumart}" alt="" decoding="async"></div>`
       : `<div class="ti-art">🎵</div>`;
-    html += `<div class="ti${i===cur?' on':''}" data-idx="${i}" draggable="true">
+    html += `<div class="ti${i===cur?' on':''}${t.missing?' miss':''}" data-idx="${i}" draggable="true">
       <span class="drag-handle" title="순서 변경">⠿</span>
       ${art}
       <span class="tnum">${i+1}</span><span class="tpic">▶</span>
       <div class="tinfo" onclick="load(${i})">
         <div class="tn">${esc(t.title||t.name)}</div>
-        <div class="ta">${esc(t.artist||'')+( t.album?' — '+esc(t.album):'')}</div>${terms.length ? matchLine(t, terms) : ''}
+        <div class="ta">${esc(t.artist||'')+( t.album?' — '+esc(t.album):'')+(t.missing?' · 파일 없음':'')}</div>${terms.length ? matchLine(t, terms) : ''}
       </div>
       <span class="tdur" onclick="load(${i})">${t.dur?fmt(t.dur):''}</span>
       <button class="del-btn" title="삭제" onclick="delTrack(event,${i})">✕</button>
@@ -1188,7 +1424,7 @@ function filt(){ render(); }
 const SFIELDS = [
   {k:'title',  n:'제목',        grp:0, def:1, shown:1, get:t => t.title},
   {k:'artist', n:'아티스트',    grp:0, def:1, shown:1, get:t => t.artist},
-  {k:'file',   n:'파일명',      grp:0, def:1,          get:t => (t.file && t.file.name) || t.name},
+  {k:'file',   n:'파일명',      grp:0, def:1,          get:t => tFile(t)},
   {k:'path',   n:'폴더 경로',   grp:0, def:0,          get:t => String(t.lrcKey||'').split('|')[0]},
   {k:'album',  n:'앨범',        grp:1, def:1, shown:1, get:t => t.album},
   {k:'genre',  n:'장르',        grp:1, def:0,          get:t => t.genre},
@@ -1387,7 +1623,7 @@ function clearAll(){
   const n = tracks.length;
   aud.pause(); aud.removeAttribute('src'); aud.load();
   tracks.forEach(t => { try{ URL.revokeObjectURL(t.url); }catch(e){} });
-  tracks = []; cur = -1;
+  tracks = []; cur = -1; roots = []; dirCache.clear();
   $('search').value = '';
   resetMain(); render();
   stat(n+'곡 삭제 — 목록이 비었습니다');
@@ -1489,6 +1725,20 @@ async function handleExternalDrop(e){
   dragSrcIdx=null;
   document.body.classList.remove('filedrag');
   try{
+    // 폴더를 끌어다 놓으면 크롬이 폴더 핸들을 줌 → 복사하지 않고 연결 방식으로 스캔
+    const dt = e.dataTransfer;
+    if(window.showDirectoryPicker && dt.items && dt.items.length && dt.items[0].getAsFileSystemHandle){
+      const ps = Array.from(dt.items).filter(it => it.kind === 'file').map(it => it.getAsFileSystemHandle().catch(() => null));
+      const hs = (await Promise.all(ps)).filter(Boolean);
+      const dirs = hs.filter(h => h.kind === 'directory');
+      if(dirs.length){
+        const loose = [];
+        for(const h of hs) if(h.kind === 'file'){ try{ const f = await h.getFile(); loose.push({ file: f, rel: f.name }); }catch(err){} }
+        for(const d of dirs) await scanDir(d);
+        if(loose.length) await ingest(loose);
+        return;
+      }
+    }
     const entries = await collectDropEntries(e.dataTransfer);
     if(!entries.length){ $('sbar').textContent='드롭된 파일을 읽지 못했습니다'; return; }
     const before=tracks.length;
@@ -1515,7 +1765,7 @@ function updateMain(){
   $('nartist').textContent = t.artist || '알 수 없는 아티스트';
   $('nalbum').textContent  = t.album ? `${t.album}${t.year?' ('+t.year+')':''}`:'';
   const hasLyr = !!(t.lyrics && t.lyrics.length);
-  $('aart').innerHTML = (t.albumart ? `<img src="${t.albumart}" alt="">` : '🎵')
+  $('aart').innerHTML = ((t.artFull || t.albumart) ? `<img src="${t.artFull || t.albumart}" alt="">` : '🎵')
     + `<div class="lrc-badge" style="display:${hasLyr?'flex':'none'}">가사</div>`;
   lastActiveLine=-1;
   if($('stage').classList.contains('lyrics-on')) renderLyricsPanel();
@@ -1568,21 +1818,38 @@ function syncLyrics(c){
   lastActiveLine=idx;
 }
 
+let _loadSeq = 0, _skipMissing = 0;
 function loadAudio(i, autoplay){
   if(i<0||i>=tracks.length)return;
   cur=i;
-  aud.src=tracks[cur].url;
-  aud.volume=$('vs').value/100;
-  if(autoplay!==false) aud.play().catch(()=>{});
-  updateMain(); render();
-  stat('재생 중: '+(tracks[cur].title||tracks[cur].name));
-  scheduleSave();
+  const t = tracks[i], seq = ++_loadSeq;
+  const go = url => {
+    if(seq !== _loadSeq) return;           // 그 사이 다른 곡을 눌렀으면 무시
+    _skipMissing = 0;
+    aud.src = url;
+    aud.volume=$('vs').value/100;
+    if(autoplay!==false) aud.play().catch(()=>{});
+    updateMain(); render();
+    stat('재생 중: '+(t.title||t.name));
+    scheduleSave();
+    fullArt(t);
+  };
+  if(t.url){ go(t.url); return; }          // 복사 저장된 곡·이미 연결된 곡은 즉시
+  aud.pause(); updateMain(); render();
+  stat('원본 파일에 연결 중…');
+  trackUrl(t, true).then(go).catch(e => {
+    if(seq !== _loadSeq) return;
+    noteLinkErr(t, e);
+    // 파일이 없는 곡은 자동 재생 중이면 다음 곡으로 넘어감(전부 없는 경우를 대비해 연속 30회까지)
+    if(t.missing && autoplay!==false && _skipMissing < 30 && tracks.length > 1){ _skipMissing++; setTimeout(() => loadAudio((i+1)%tracks.length, true), 0); }
+  });
 }
 
 function load(i){ loadAudio(i,true); }
 
 function togPlay(){
   if(cur===-1){if(tracks.length)load(0);return;}
+  if(!aud.getAttribute('src')){ load(cur); return; }   // 복원 직후 폴더 접근 허용 전이라 아직 연결되지 않은 곡
   aud.paused?aud.play().catch(()=>{}):aud.pause();
 }
 function showPlay(p){ $('picon').textContent=p?'▶':'⏸'; }
@@ -1637,7 +1904,7 @@ function miniToggle(){
 // 주소창 없는 작은 창(항상 위). 플레이어 화면 자체를 그 창으로 옮기므로
 // 재생은 끊기지 않고, 닫으면 원래 창으로 그대로 돌아옴.
 let pipWin = null;
-const PIP_FUNCS = ['$','filt','clearAll','addF','sort','toggleLyrics','togShuf','prev','togPlay','next','togRep','miniToggle','setVol','load','delTrack','seekLyric','toggleSOpt','soptChange','soptPreset','togglePOpt','setPref','resetPref'];
+const PIP_FUNCS = ['$','filt','clearAll','addF','sort','toggleLyrics','togShuf','prev','togPlay','next','togRep','miniToggle','setVol','load','delTrack','seekLyric','toggleSOpt','soptChange','soptPreset','togglePOpt','setPref','resetPref','addFolder'];
 
 async function openPip(){
   let w;
@@ -1710,7 +1977,8 @@ async function exitMiniMode(m){
   if(m && m.vol != null){ $('vs').value = m.vol; aud.volume = m.vol/100; }
   if(m && typeof m.cur === 'number' && m.cur >= 0 && tracks[m.cur]){
     cur = m.cur;
-    aud.src = tracks[cur].url; aud.volume = $('vs').value/100;
+    aud.volume = $('vs').value/100;
+    await attachCur();
     updateMain(); render();
     seekWhenReady(m.time);
     if(m.playing) aud.play().catch(()=>{});
@@ -1790,6 +2058,7 @@ setInterval(() => {
   }
 }, 1000);
 
+window.addEventListener('pagehide', () => { if(_saveTimer){ clearTimeout(_saveTimer); _saveTimer = null; saveLibrary(); } });
 buildSOpt();   // 검색 옵션(O) 패널 생성
 loadPref(); buildPOpt(); applyPref();   // 화면 설정(P) 패널 생성·적용
 if(isMini){
