@@ -390,6 +390,15 @@ html.mini .lline.active{font-size:calc(14px*var(--fs))}
 .popt .ch.on{border-color:var(--accent);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
 .popt .tg .ch{padding:4px 6px;justify-content:flex-start}
 .popt .sw{width:16px;height:16px;border-radius:50%;border:1px solid rgba(128,128,128,.5);flex-shrink:0}
+.popt label{display:flex;align-items:center;gap:5px;cursor:pointer;margin:3px 0;user-select:none}
+.popt input[type=checkbox]{accent-color:var(--accent);margin:0;cursor:pointer}
+.popt .hint{font-size:10px;color:var(--text3);line-height:1.5;margin-top:5px}
+.popt .act{display:flex;gap:5px;margin-top:6px}
+.popt .act button{flex:1;background:var(--accent);border:none;border-radius:5px;color:var(--btxt);padding:6px 8px;font-size:11.5px;font-weight:bold;cursor:pointer}
+.popt .act button.sec{background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-weight:normal}
+.popt .act button:disabled{opacity:.4;cursor:default}
+.popt .lres{max-height:110px;overflow:auto;font-size:10px;color:var(--text3);margin-top:6px;white-space:pre-wrap;word-break:break-all;line-height:1.5}
+.popt .lres b{color:var(--text2)}
 .popt .sr{display:flex;gap:5px;margin-top:9px;align-items:center}
 .popt .sr button{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);padding:3px 9px;font-size:11px;cursor:pointer}
 .popt .sr button:hover{color:var(--text);border-color:var(--accent)}
@@ -416,11 +425,13 @@ try{ const q = JSON.parse(localStorage.getItem('mplayer-pref') || 'null') || {};
       <div class="sb-row">
         <button class="add-btn" onclick="$('fi').click()">+ 파일</button>
         <button class="add-btn" onclick="addFolder()" title="폴더를 스캔해 목록만 등록하고, 재생할 때 원본 파일에 연결합니다(하위폴더 포함)">+ 폴더</button>
+        <button class="opt-btn" id="lstBtn" onclick="toggleLOpt()" title="재생목록(M3U) 불러오기·내보내기">L</button>
         <input type="file" id="fi" multiple accept="audio/*,.opus,.ogg,.oga,.lrc,.lyc" onchange="addF(this.files)">
         <input type="file" id="fd" webkitdirectory directory multiple onchange="addF(this.files)">
       </div>
       <div class="sopt" id="sopt"></div>
       <div class="popt" id="popt"></div>
+      <div class="popt" id="lopt"></div>
       <div class="sort-bar">
         <button class="sb on" id="s-title"  onclick="sort('title')" title="제목순 정렬(다시 누르면 역순)">T</button>
         <button class="sb"   id="s-artist" onclick="sort('artist')" title="아티스트순 정렬(다시 누르면 역순)">A</button>
@@ -1504,13 +1515,14 @@ function refreshSOptUi(){
   const info = $('soptInfo'); if(info) info.textContent = on.length + '개 항목 검색';
   DOC.querySelectorAll('#sopt input[data-k]').forEach(c => { c.checked = !!sOpt[c.dataset.k]; });
 }
-function toggleSOpt(){
-  const box = $('sopt'), b = $('optBtn');
-  const open = !box.classList.contains('on');
-  box.classList.toggle('on', open);
-  b.classList.toggle('open', open);
-  if(open){ $('popt').classList.remove('on'); $('prefBtn').classList.remove('open'); }
+// 사이드바 패널(O 검색옵션 / P 화면설정 / L 재생목록)은 한 번에 하나만 열림
+const PANELS = [['sopt','optBtn'], ['popt','prefBtn'], ['lopt','lstBtn']];
+function togglePanel(id){
+  const opening = !$(id).classList.contains('on');
+  PANELS.forEach(([p, b]) => { const on = opening && p === id; $(p).classList.toggle('on', on); $(b).classList.toggle('open', on); });
 }
+function toggleSOpt(){ togglePanel('sopt'); }
+function toggleLOpt(){ togglePanel('lopt'); }
 
 // ── 화면 설정 (P 버튼): 테마 · 글꼴 · 글자 크기 ─────────────────────
 const THEMES = [
@@ -1582,12 +1594,191 @@ function refreshPOptUi(){
     info.textContent = t.n + ' · ' + f.n + ' · ' + z.n;
   }
 }
-function togglePOpt(){
-  const box = $('popt'), b = $('prefBtn');
-  const open = !box.classList.contains('on');
-  box.classList.toggle('on', open);
-  b.classList.toggle('open', open);
-  if(open){ $('sopt').classList.remove('on'); $('optBtn').classList.remove('open'); }
+function togglePOpt(){ togglePanel('popt'); }
+
+// ── 재생목록 (L 버튼): M3U/M3U8 불러오기·내보내기 ─────────────────────
+// 내보내기: 음원 폴더 기준 상대경로로 기록 → m3u8을 그 폴더 안에 저장하면 폴더째 옮겨도 그대로 열림
+// 불러오기: 줄마다 현재 목록의 곡과 경로(→ 경로 끝부분 → 파일명) 순으로 맞춰 보고 순서를 적용
+let lstMode = 'replace';       // replace: 재생목록 곡만 남김 / front: 재생목록 곡을 앞에 배치(나머지 유지)
+let _lstUndo = null;           // 직전 목록(되돌리기용)
+function buildLOpt(){
+  const box = $('lopt'); if(!box) return;
+  box.innerHTML = `
+    <div class="sg">내보내기 (.m3u8)</div>
+    <label><input type="checkbox" id="lstFilt"> 검색 결과만 내보내기</label>
+    <label><input type="checkbox" id="lstInf" checked> 곡 길이·가수 - 제목 정보 포함</label>
+    <div class="act"><button onclick="lstExport()">⬇ 내보내기</button></div>
+    <div class="hint">등록한 음원 폴더 <b>안에</b> 저장하면 상대경로가 정확히 맞습니다.</div>
+    <div class="sg" style="margin-top:12px">불러오기 (.m3u / .m3u8)</div>
+    <div class="chips">
+      <button class="ch" data-lm="replace" onclick="lstSetMode('replace')">재생목록 곡만 남기기</button>
+      <button class="ch" data-lm="front" onclick="lstSetMode('front')">앞에 배치(나머지 유지)</button>
+    </div>
+    <div class="act"><button onclick="$('lstFile').click()">⬆ 불러오기…</button><button class="sec" id="lstUndoBtn" onclick="lstUndo()" disabled>↩ 되돌리기</button></div>
+    <input type="file" id="lstFile" accept=".m3u,.m3u8,.txt" onchange="lstImportFile(this.files[0]);this.value=''">
+    <div class="hint">목록에 이미 등록된 곡과만 맞춥니다. 곡이 없으면 먼저 <b>+ 폴더</b>로 등록하세요.</div>
+    <div class="lres" id="lstRes"></div>`;
+  lstRefresh();
+}
+function lstRefresh(){
+  DOC.querySelectorAll('#lopt [data-lm]').forEach(e => e.classList.toggle('on', e.dataset.lm === lstMode));
+}
+function lstSetMode(m){ lstMode = m; lstRefresh(); }
+function lstShow(html){ const r = $('lstRes'); if(r) r.innerHTML = html; }
+function lstBlocked(){ if(miniActive){ stat('미니 플레이어를 닫고 사용하세요'); return true; } return false; }
+
+// 내보내기 ─────────────────────────────────────────────
+function buildM3u(list, extinf){
+  const rootIds = Array.from(new Set(list.map(t => t.rootId).filter(Boolean)));
+  const multi = rootIds.length > 1;
+  const rootName = id => (roots.find(r => r.id === id) || {}).name || '';
+  let loose = 0;
+  const lines = ['#EXTM3U'];
+  for(const t of list){
+    let path;
+    if(t.rootId && t.rel) path = multi ? rootName(t.rootId) + '/' + t.rel : t.rel;
+    else { path = tFile(t); loose++; }                      // 복사 방식으로 등록한 곡은 폴더 위치를 몰라 파일명만 기록
+    if(extinf){
+      const sec = t.dur ? Math.round(t.dur) : -1;
+      const label = [t.artist, t.title || t.name].filter(Boolean).join(' - ');
+      lines.push('#EXTINF:' + sec + ',' + label.replace(/[\r\n]+/g, ' '));
+    }
+    lines.push(path);
+  }
+  return { text: lines.join('\r\n') + '\r\n', multi, loose, rootIds };
+}
+async function lstExport(){
+  if(lstBlocked()) return;
+  const filtOnly = $('lstFilt').checked, extinf = $('lstInf').checked;
+  const terms = searchTerms($('search').value);
+  const list = (filtOnly && terms.length) ? tracks.filter(t => trackMatches(t, terms)) : tracks.slice();
+  if(!list.length){ stat('내보낼 곡이 없습니다'); return; }
+  const m = buildM3u(list, extinf);
+  const d = new Date(), z = n => String(n).padStart(2,'0');
+  const name = '재생목록_' + d.getFullYear() + z(d.getMonth()+1) + z(d.getDate()) + '.m3u8';
+  const notes = [];
+  if(m.multi) notes.push('폴더가 여러 개라 경로 앞에 폴더명을 붙였습니다 — 이 폴더들의 상위 폴더에 저장하세요');
+  if(m.loose) notes.push(m.loose + '곡은 파일명만 기록됨(복사 방식으로 등록한 곡 — + 폴더로 다시 등록하면 상대경로가 기록됩니다)');
+  const bytes = new TextEncoder().encode(m.text);        // UTF-8 (BOM 없음, m3u8 표준)
+  const W = (typeof pipWin !== 'undefined' && pipWin) || window;
+  let saved = false;
+  if(W.showSaveFilePicker){
+    const opts = { suggestedName: name, types: [{ description: 'M3U8 재생목록', accept: { 'audio/x-mpegurl': ['.m3u8'] } }] };
+    const startRoot = (!m.multi && m.rootIds.length === 1) ? roots.find(r => r.id === m.rootIds[0]) : null;
+    try{
+      let fh;
+      try{ fh = await W.showSaveFilePicker(startRoot ? { ...opts, startIn: startRoot.handle } : opts); }
+      catch(e){ if(e && e.name === 'TypeError'){ fh = await W.showSaveFilePicker(opts); } else throw e; }
+      const w = await fh.createWritable(); await w.write(bytes); await w.close();
+      saved = true; stat('내보내기 완료: ' + fh.name + ' — ' + list.length + '곡');
+    }catch(e){
+      if(e && e.name === 'AbortError'){ stat('내보내기 취소'); return; }
+      console.warn('저장 창 실패 → 다운로드로 대체', e);
+    }
+  }
+  if(!saved){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([bytes], { type: 'audio/x-mpegurl;charset=utf-8' })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    stat('다운로드로 저장: ' + name + ' — 음원 폴더로 옮겨 주세요');
+  }
+  lstShow('<b>' + list.length + '곡</b> 내보냄' + (notes.length ? '<br>' + notes.map(esc).join('<br>') : ''));
+}
+
+// 불러오기 ─────────────────────────────────────────────
+function m3uNorm(p){
+  p = String(p).trim().replace(/^file:\/+/i, '');
+  p = p.replace(/\\/g, '/').replace(/^[a-z]:/i, '');
+  const parts = [];
+  for(const seg of p.split('/')){
+    if(!seg || seg === '.') continue;
+    if(seg === '..'){ if(parts.length) parts.pop(); continue; }   // 위치를 모르므로 앞쪽 ..은 무시하고 뒷부분으로 맞춤
+    parts.push(seg);
+  }
+  return parts.map(x => x.normalize('NFC').toLowerCase());
+}
+function m3uParse(text){
+  const out = [];
+  for(const raw of String(text).split(/\r\n|\n|\r/)){
+    const line = raw.trim();
+    if(!line || line[0] === '#') continue;
+    out.push(line);
+  }
+  return out;
+}
+// entries → { matched:[track...], missed:[원문 줄...] }
+function m3uMatch(entries){
+  const byName = new Map();
+  tracks.forEach(t => {
+    const segs = m3uNorm((t.rel || '') || tFile(t));
+    const name = m3uNorm(tFile(t)).pop();
+    const o = { t, segs };
+    if(!byName.has(name)) byName.set(name, []);
+    byName.get(name).push(o);
+  });
+  const used = new Set(), matched = [], missed = [];
+  let dups = 0;
+  for(const line of entries){
+    let cands = [line];
+    if(/%[0-9a-f]{2}/i.test(line)){ try{ const dec = decodeURIComponent(line); if(dec !== line) cands.push(dec); }catch(e){} }
+    let best = null, bestScore = 0, dupHit = false;
+    for(const c of cands){
+      const es = m3uNorm(c); if(!es.length) continue;
+      const list = byName.get(es[es.length - 1]);
+      if(!list) continue;
+      for(const o of list){
+        if(used.has(o.t)){ dupHit = true; continue; }
+        let k = 0;                                            // 끝에서부터 같은 경로 조각 수
+        while(k < es.length && k < o.segs.length && es[es.length-1-k] === o.segs[o.segs.length-1-k]) k++;
+        const exact = (k === es.length && k === o.segs.length) ? 1000 : 0;
+        const sc = k + exact;
+        if(sc > bestScore){ best = o.t; bestScore = sc; }
+      }
+    }
+    if(best){ used.add(best); matched.push(best); } else if(dupHit) dups++; else missed.push(line);
+  }
+  return { matched, missed, dups };
+}
+async function lstImportFile(file){
+  if(!file) return;
+  if(lstBlocked()) return;
+  let text;
+  try{ text = decodeText(await file.arrayBuffer()); }
+  catch(e){ stat('재생목록을 읽지 못했습니다: ' + (e && e.message || e)); return; }
+  const entries = m3uParse(text);
+  if(!entries.length){ lstShow('곡 경로가 없는 파일입니다.'); stat('재생목록에 곡이 없습니다'); return; }
+  if(!tracks.length){ lstShow('먼저 <b>+ 폴더</b>로 음원 폴더를 등록하세요.'); stat('등록된 곡이 없습니다 — 먼저 + 폴더로 음원 폴더를 등록하세요'); return; }
+  const { matched, missed, dups } = m3uMatch(entries);
+  if(!matched.length){
+    lstShow('<b>일치하는 곡이 없습니다.</b> (' + entries.length + '줄)<br>음원 폴더를 <b>+ 폴더</b>로 먼저 등록했는지 확인하세요.<br>' + missed.slice(0,8).map(esc).join('<br>'));
+    stat('재생목록과 일치하는 곡이 없습니다'); return;
+  }
+  const keep = new Set(matched);
+  const rest = tracks.filter(t => !keep.has(t));
+  if(lstMode === 'replace' && rest.length && !confirm('현재 목록 ' + tracks.length + '곡 중 ' + rest.length + '곡이 목록에서 빠지고 재생목록 ' + matched.length + '곡만 남습니다.\n(↩ 되돌리기로 복구할 수 있습니다) 계속할까요?')) return;
+  _lstUndo = { tracks: tracks.slice(), curTrack: cur >= 0 ? tracks[cur] : null };
+  const curTrack = cur >= 0 ? tracks[cur] : null;
+  tracks = lstMode === 'replace' ? matched.slice() : matched.concat(rest);
+  if(curTrack && tracks.includes(curTrack)) cur = tracks.indexOf(curTrack);
+  else { cur = -1; aud.pause(); aud.removeAttribute('src'); resetMain(); }
+  $('search').value = '';
+  const ub = $('lstUndoBtn'); if(ub) ub.disabled = false;
+  render(); if(cur >= 0) updateMain(); scheduleSave();
+  stat('재생목록 적용: ' + matched.length + '곡' + (missed.length ? ' · ' + missed.length + '줄 못 찾음' : '') + (dups ? ' · 중복 ' + dups + '줄 건너뜀' : '') + ' — ' + file.name);
+  lstShow('<b>' + matched.length + '곡</b> 적용' + (lstMode === 'replace' ? ' (나머지 ' + rest.length + '곡 제외)' : ' (나머지 ' + rest.length + '곡은 뒤에 유지)') + (dups ? '<br>같은 곡이 반복된 ' + dups + '줄은 한 번만 반영' : '')
+    + (missed.length ? '<br><b>' + missed.length + '줄 못 찾음</b> — 목록에 없는 곡입니다. 해당 폴더를 + 폴더로 등록하세요.<br>' + missed.slice(0, 20).map(esc).join('<br>') + (missed.length > 20 ? '<br>… 외 ' + (missed.length - 20) + '줄' : '') : ''));
+}
+function lstUndo(){
+  if(!_lstUndo || lstBlocked()) return;
+  const u = _lstUndo; _lstUndo = null;
+  const curTrack = cur >= 0 ? tracks[cur] : null;
+  tracks = u.tracks;
+  const keepCur = curTrack && tracks.includes(curTrack) ? curTrack : u.curTrack;
+  cur = keepCur ? tracks.indexOf(keepCur) : -1;
+  if(cur >= 0 && !aud.getAttribute('src')){ /* 다시 누르면 연결됨 */ }
+  const ub = $('lstUndoBtn'); if(ub) ub.disabled = true;
+  render(); if(cur >= 0) updateMain(); else resetMain();
+  scheduleSave(); stat('이전 목록으로 되돌렸습니다 — ' + tracks.length + '곡'); lstShow('이전 목록으로 되돌렸습니다.');
 }
 function setPref(k, v){ pref[k] = v; savePref(); applyPref(); }
 function resetPref(){ pref = {...PREF_DEF}; savePref(); applyPref(); }
@@ -1904,7 +2095,7 @@ function miniToggle(){
 // 주소창 없는 작은 창(항상 위). 플레이어 화면 자체를 그 창으로 옮기므로
 // 재생은 끊기지 않고, 닫으면 원래 창으로 그대로 돌아옴.
 let pipWin = null;
-const PIP_FUNCS = ['$','filt','clearAll','addF','sort','toggleLyrics','togShuf','prev','togPlay','next','togRep','miniToggle','setVol','load','delTrack','seekLyric','toggleSOpt','soptChange','soptPreset','togglePOpt','setPref','resetPref','addFolder'];
+const PIP_FUNCS = ['$','filt','clearAll','addF','sort','toggleLyrics','togShuf','prev','togPlay','next','togRep','miniToggle','setVol','load','delTrack','seekLyric','toggleSOpt','soptChange','soptPreset','togglePOpt','setPref','resetPref','addFolder','toggleLOpt','lstExport','lstSetMode','lstImportFile','lstUndo'];
 
 async function openPip(){
   let w;
@@ -2060,7 +2251,7 @@ setInterval(() => {
 
 window.addEventListener('pagehide', () => { if(_saveTimer){ clearTimeout(_saveTimer); _saveTimer = null; saveLibrary(); } });
 buildSOpt();   // 검색 옵션(O) 패널 생성
-loadPref(); buildPOpt(); applyPref();   // 화면 설정(P) 패널 생성·적용
+loadPref(); buildPOpt(); applyPref(); buildLOpt();   // 화면 설정(P) 패널 생성·적용
 if(isMini){
   document.documentElement.classList.add('mini');
   document.title = '♪ 미니 플레이어';
