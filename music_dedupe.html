@@ -65,6 +65,7 @@ dialog .row{margin:8px 0}
 fieldset{margin:0 0 10px;border:1px solid #bbb;padding:6px 12px 8px}legend{padding:0 4px}
 .fr{margin:6px 0 0 18px;display:flex;gap:8px;align-items:center}
 .pth{flex:1;border:1px solid #bbb;background:#fff;padding:3px 6px;min-height:24px}
+#olog{max-height:200px;overflow:auto;background:#fafafa;border:1px solid #ddd;padding:6px;font-size:12px;white-space:pre-wrap;margin-top:8px}
 #log{max-height:160px;overflow:auto;background:#fafafa;border:1px solid #ddd;padding:6px;font-size:12px;white-space:pre-wrap;margin-top:8px}
 progress{width:100%}
 </style>
@@ -78,6 +79,7 @@ progress{width:100%}
   <span class="vsep"></span>
   <button class="tb" id="bRule" disabled title="보호 기준을 모든 그룹에 다시 적용합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>기준 재적용</span></button>
   <button class="tb dg" id="bClean" disabled title="보호되지 않은 파일을 정리합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg><span>정리하기</span></button>
+  <button class="tb" id="bOrg" disabled title="아티스트 이름으로 하위 폴더를 만들어 음원을 자동 정리합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h3l2 2h4a2 2 0 0 1 2 2v1"/><path d="M3 6v10a2 2 0 0 0 2 2h4"/><path d="M13 12h4M13 12v6M13 15h4M13 18h4"/><rect x="17" y="10.5" width="4" height="3" rx=".6"/><rect x="17" y="13.5" width="4" height="3" rx=".6"/><rect x="17" y="16.5" width="4" height="3" rx=".6"/></svg><span>아티스트 정리</span></button>
   <span class="sp"></span>
   <button class="tb" id="bHelp" title="사용법 및 정보"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg><span>Help</span></button>
 </div>
@@ -120,11 +122,36 @@ progress{width:100%}
     <li><b>폴더 선택</b>: 하위 폴더까지 검색합니다. 이후 옵션을 바꾸면 <b>다시 분석</b>을 누르세요.</li>
     <li><b>보호</b> 칸을 누르면 보호가 켜지고 꺼집니다. 그룹마다 최소 1개는 보호됩니다.</li>
     <li>연두색 행은 보호 기준이 더 우세해서, 흰색 행은 동률이라 경로 순서로 보호된 파일입니다.</li>
+    <li><b>아티스트 정리</b>는 지정 폴더 아래에 아티스트 이름으로 하위 폴더를 만들어 음원을 이동·복사합니다. 미리보기로 결과를 먼저 확인할 수 있습니다.</li>
     <li>행을 더블클릭하면 미리듣기, 표 머리글 경계를 드래그하면 칸 너비를 조정합니다.</li>
     <li><b>정리하기</b>는 보호되지 않은 파일(X)을 이동하거나 삭제합니다. 삭제는 휴지통 없이 영구 삭제입니다.</li>
   </ul>
   <div class="cr">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer" title="블로그로 이동">zzizik</a>, with Claude AI.</div>
   <div style="text-align:right;margin-top:8px"><button id="hClose">닫기</button></div>
+</dialog>
+<dialog id="odlg" style="width:min(640px,94vw)">
+  <h3>아티스트별 정리</h3>
+  <fieldset><legend>대상</legend>
+    <label>범위 <select id="oScope"><option value="keep">정리 후 남는 파일 (정리 대상 X 제외)</option><option value="single">단독 파일만</option><option value="all">전체 파일</option></select></label>
+    <label style="margin-left:10px">기준 <select id="oBy"><option value="artist">아티스트</option><option value="genre" disabled>장르 (준비 중)</option></select></label>
+    <div style="color:#777;font-size:12px;margin-top:4px">‘정리 후 남는 파일’은 현재 탭(중복/유사)의 정리하기 기준으로 제외 대상을 판단합니다.</div>
+  </fieldset>
+  <fieldset><legend>정리 위치</legend>
+    <div class="fr" style="margin:0">대상 폴더 <span class="pth" id="dno">미지정</span> <button id="bdo">변경...</button> <button id="bdr" title="검색한 폴더 안에 그대로 아티스트 폴더를 만듭니다">검색 폴더 사용</button></div>
+    <div style="margin-top:6px"><label><input type="radio" name="om" value="move" checked>이동</label> <label><input type="radio" name="om" value="copy">복사 (원본 유지)</label></div>
+  </fieldset>
+  <fieldset><legend>옵션</legend>
+    <label><input type="checkbox" id="oFeat" checked>feat. 이하·세미콜론 뒤 제외 (예: A feat. B → A)</label><br>
+    <label><input type="checkbox" id="oFb" checked>아티스트 태그가 없으면 파일명(아티스트 - 제목)으로 추정</label><br>
+    <label>아티스트를 알 수 없을 때 폴더명 <input type="text" id="oUnk" value="Unknown Artist" style="width:150px"></label><br>
+    <label><input type="checkbox" id="oEmpty" checked>이동 후 빈 폴더 삭제</label>
+    <label style="margin-left:10px"><input type="checkbox" id="oStop" checked>오류 시 중단</label>
+  </fieldset>
+  <div id="oprog" style="display:none"><progress id="opg" value="0" max="1"></progress></div>
+  <div id="olog"></div>
+  <div class="row" style="text-align:center;margin-top:10px">
+    <button id="oPrev">미리보기</button> <button id="oStart" class="danger">시작(P)</button> <button id="oSave">설정 저장(S)</button> <button id="oClose">닫기(C)</button>
+  </div>
 </dialog>
 <dialog id="dlg">
   <h3>정리 설정</h3>
@@ -340,7 +367,7 @@ async function analyze(){
   S.sim=[];S.singles=[];
   c2.forEach(a=>{if(a.length===1){S.singles.push(a[0].f)}else if(new Set(a.map(x=>x.a)).size>1)S.sim.push(a.map(x=>x.f))});
   applyRule();
-  ['bRe','bRule','bClean'].forEach(id=>$('#'+id).disabled=false);
+  ['bRe','bRule','bClean','bOrg'].forEach(id=>$('#'+id).disabled=false);
   render();
   $('#st').textContent=`파일 ${n}개 · 중복 그룹 ${S.dup.length} · 유사 그룹 ${S.sim.length} · 단독 ${S.singles.length}`;
 }
@@ -432,19 +459,19 @@ async function uniqueHandle(dir,name){
   const i=name.lastIndexOf('.'),b=name.slice(0,i),x=name.slice(i);let nm=name,k=1;
   for(;;){try{await dir.getFileHandle(nm);nm=`${b} (${k++})${x}`}catch(e){return{nm,fh:await dir.getFileHandle(nm,{create:true})}}}
 }
-async function moveFile(f,dest){
+async function moveFile(f,dest,keep){
   const file=await f.h.getFile();const{nm,fh}=await uniqueHandle(dest,f.name);
   const w=await fh.createWritable();await file.stream().pipeTo(w);
   const chk=await fh.getFile();
   if(chk.size!==file.size){await dest.removeEntry(nm);throw new Error('복사 크기 불일치')}
-  await f.parent.removeEntry(f.name);
+  if(!keep)await f.parent.removeEntry(f.name);
 }
 async function removeEmpty(){
   let n=0;const L=[...S.dirs].sort((a,b)=>b.depth-a.depth);
   for(const d of L){try{
     let empty=true;for await(const _ of d.h.entries()){empty=false;break}
     if(!empty)continue;
-    let skip=false;for(const x of[S.dest.dup,S.dest.single])if(x&&await x.isSameEntry(d.h))skip=true;
+    let skip=false;for(const x of[S.dest.dup,S.dest.single,S.dest.org])if(x&&await x.isSameEntry(d.h))skip=true;
     if(skip)continue;
     await d.parent.removeEntry(d.name);d.gone=true;n++}catch(e){}}
   S.dirs=S.dirs.filter(d=>!d.gone);return n}
@@ -470,6 +497,81 @@ $('#dStart').onclick=async()=>{
   let en=0;if($('#eEmpty').checked)en=await removeEmpty();
   $('#log').textContent=`${stopped?'오류로 중단: ':'완료: '}${ok.size}개 처리, 실패 ${log.length}개`+(en?`, 빈 폴더 ${en}개 삭제`:'')+'\n'+log.join('\n');
   await analyze();$('#dStart').disabled=false;
+};
+
+/* ---------- 아티스트별 정리 ---------- */
+const RESV=/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+function safeName(s){
+  s=String(s||'').replace(/[<>:"\/\\|?*\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'');
+  if(s.length>80)s=s.slice(0,80).trim().replace(/[. ]+$/,'');
+  if(s&&RESV.test(s))s+='_';
+  return s}
+function artistOf(f){
+  let a=(f.artist||'').trim();
+  if(!a&&$('#oFb').checked){const m=/^(?:\d{1,3}\s*[.\-)]\s*)?(.+?)\s+-\s+.+$/.exec(base(f).replace(/_/g,' '));if(m&&!/^\d{1,3}$/.test(m[1].trim()))a=m[1].trim()}
+  if(a&&$('#oFeat').checked)a=a.split(/\s*;\s*/)[0].replace(/\s*[\(\[]?\s*\b(feat\.?|ft\.?|featuring)\s+.*$/i,'').trim();
+  return a}
+function groupOf(f){return artistOf(f)} // 나중에 장르 기준 추가 예정
+function orgFiles(){
+  const sc=$('#oScope').value;
+  if(sc==='all')return S.files.slice();
+  if(sc==='single')return S.singles.slice();
+  const rm=new Set(dupTargets().map(f=>f.id));return S.files.filter(f=>!rm.has(f.id))}
+function orgPlan(){
+  const g=new Map();let unk=0,ren=0;
+  for(const f of orgFiles()){
+    const raw=groupOf(f);let a=safeName(raw),key;
+    if(a&&a!==raw.trim())ren++;
+    if(!a){a=safeName($('#oUnk').value)||'Unknown Artist';key='\0unk';unk++}else key=a.normalize('NFC').toLowerCase();
+    let e=g.get(key);if(!e)g.set(key,e={n:{},files:[]});e.n[a]=(e.n[a]||0)+1;e.files.push(f)}
+  g.forEach(e=>{e.name=Object.entries(e.n).sort((x,y)=>y[1]-x[1])[0][0]});
+  return{g,unk,ren}}
+function orgPreview(){
+  if(!S.files.length)return;
+  const{g,unk,ren}=orgPlan(),L=[...g.values()].sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const n=L.reduce((s,e)=>s+e.files.length,0);
+  let t=`파일 ${n}개 → 아티스트 폴더 ${L.length}개`+(unk?` · 아티스트 불명 ${unk}개`:'')+(ren?` · 폴더명 문자 치환 ${ren}개`:'')+'\n\n';
+  t+=L.slice(0,300).map(e=>`${e.name}  (${e.files.length}곡)`).join('\n')+(L.length>300?`\n… 외 ${L.length-300}개 폴더`:'');
+  $('#olog').textContent=t;return{n,L}}
+function loadOrgSet(){try{const o=JSON.parse(localStorage.getItem('orgSet')||'{}');
+  if(o.scope)$('#oScope').value=o.scope;if(o.om)setRadio('om',o.om);
+  ['oFeat','oFb','oEmpty','oStop'].forEach(k=>{if(k in o)$('#'+k).checked=o[k]});if(o.unk)$('#oUnk').value=o.unk;
+  if(o.dn)$('#dno').textContent=o.dn}catch(e){}}
+async function saveOrgSet(){
+  try{localStorage.setItem('orgSet',JSON.stringify({scope:$('#oScope').value,om:radio('om'),oFeat:$('#oFeat').checked,oFb:$('#oFb').checked,oEmpty:$('#oEmpty').checked,oStop:$('#oStop').checked,unk:$('#oUnk').value,dn:S.dest.org?S.dest.org.name:''}))}catch(e){}
+  if(S.dest.org)await hPut('org',S.dest.org)}
+$('#bOrg').onclick=async()=>{
+  loadOrgSet();if(!S.dest.org){const h=await hGet('org');if(h){S.dest.org=h;$('#dno').textContent=h.name}}
+  $('#olog').textContent='';$('#oprog').style.display='none';$('#oStart').disabled=false;$('#odlg').showModal();orgPreview()};
+$('#oClose').onclick=()=>$('#odlg').close();
+$('#oPrev').onclick=orgPreview;
+['oScope','oFeat','oFb','oUnk'].forEach(k=>$('#'+k).onchange=orgPreview);
+$('#oSave').onclick=async()=>{await saveOrgSet();toast('설정을 저장했습니다')};
+$('#bdo').onclick=async()=>{try{S.dest.org=await showDirectoryPicker({mode:'readwrite'});$('#dno').textContent=S.dest.org.name}catch(e){}};
+$('#bdr').onclick=()=>{if(S.root){S.dest.org=S.root;$('#dno').textContent=S.root.name+' (검색 폴더)'}};
+$('#oStart').onclick=async()=>{
+  const dest=S.dest.org;
+  if(!dest){toast('대상 폴더를 먼저 지정하세요');return}
+  if(!await perm(dest)){toast('대상 폴더 쓰기 권한이 필요합니다');return}
+  const{g}=orgPlan(),keep=radio('om')==='copy',stop=$('#oStop').checked;
+  const total=[...g.values()].reduce((s,e)=>s+e.files.length,0);
+  if(!total){toast('정리할 파일이 없습니다');return}
+  if(!confirm(`${total}개 파일을 아티스트 폴더 ${g.size}개로 ${keep?'복사':'이동'}합니다. 시작할까요?`))return;
+  $('#oStart').disabled=true;const pg=$('#opg');$('#oprog').style.display='block';pg.max=total;pg.value=0;
+  const ok=new Set(),log=[];let stopped=false,skip=0;
+  outer:for(const e of g.values()){
+    let sub;try{sub=await dest.getDirectoryHandle(e.name,{create:true})}catch(err){log.push('폴더 생성 실패: '+e.name+' — '+err.message);if(stop){stopped=true;break}pg.value=+pg.value+e.files.length;continue}
+    for(const f of e.files){
+      try{let same=false;try{same=await sub.isSameEntry(f.parent)}catch(x){}
+        if(same){skip++}else{await moveFile(f,sub,keep);if(!keep)ok.add(f.id)}}
+      catch(err){log.push('실패: '+fullPath(f)+' — '+err.message);if(stop){stopped=true;break outer}}
+      pg.value=+pg.value+1;if(pg.value%5===0)await tick()}
+  }
+  if(!keep)S.files=S.files.filter(f=>!ok.has(f.id));
+  let en=0;if(!keep&&$('#oEmpty').checked)en=await removeEmpty();
+  $('#olog').textContent=`${stopped?'오류로 중단: ':'완료: '}${keep?'복사':'이동'} ${keep?total-log.length-skip:ok.size}개, 이미 정리됨 ${skip}개, 실패 ${log.length}개`+(en?`, 빈 폴더 ${en}개 삭제`:'')+(keep?'':'\n(이동 후 목록이 달라졌으므로 폴더를 다시 선택해 확인하세요)')+'\n'+log.join('\n');
+  if(S.files.length)await analyze();else{S.files=[];render()}
+  $('#oStart').disabled=false;
 };
 </script>
 </body>

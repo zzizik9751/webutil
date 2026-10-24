@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Date Folder</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;background:#f0f0f0;color:#111;font:13px "맑은 고딕","Malgun Gothic",sans-serif}
+.tool{display:flex;align-items:stretch;gap:2px;padding:6px 10px 4px;background:linear-gradient(#fff,#e9edf5);border-bottom:1px solid #c3cad8}
+.brand{display:flex;align-items:center;gap:9px;padding:0 12px 0 2px}
+.brand span{display:flex;flex-direction:column;line-height:1.15}
+.brand b{font-size:14px;color:#1f2a66;letter-spacing:.01em}
+.brand small{font-size:11px;color:#6b7690}
+.vsep{width:1px;background:#c9cfdc;margin:4px 8px;align-self:stretch}
+.sp{flex:1}
+.tb{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:68px;padding:5px 8px 4px;border:1px solid transparent;background:transparent;border-radius:4px;color:#2d3f9c;font-size:12px}
+.tb span{color:#222}
+.tb:hover:not(:disabled){background:#fff;border-color:#9fb0e8;box-shadow:0 1px 3px #2d3f9c22}
+.tb:active:not(:disabled){background:#dfe6fb}
+.tb.dg{color:#b3372b}
+.tb.dg:hover:not(:disabled){border-color:#e2a29b}
+.opt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:5px 12px;background:#f7f8fb;border-bottom:1px solid #d8d8d8;font-size:12.5px}
+.opt .vsep{height:18px;margin:0 4px;align-self:center}
+button,select,input[type=text],input[type=number]{font:inherit;padding:3px 10px;border:1px solid #adadad;background:#e1e1e1;border-radius:2px;color:#111}
+input[type=text],input[type=number]{background:#fff;padding:3px 6px}
+button:hover:not(:disabled){background:#e5f1fb;border-color:#0078d7}
+button:disabled{opacity:.45;cursor:default}
+button.danger{background:#fbe3e3;border-color:#c33}
+label{display:inline-flex;gap:3px;align-items:center;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:4px 6px 0;background:#f0f0f0;align-items:flex-end}
+.tab{padding:3px 22px;border:1px solid #c8c8c8;border-bottom:none;background:#f7f7f7;cursor:pointer;border-radius:2px 2px 0 0}
+.tab.on{background:#fff;font-weight:600}
+.tabs .sp{flex:1}
+.tabs .qb{padding-bottom:3px}
+.wrap{flex:1;overflow:auto;background:#fff;border:1px solid #c8c8c8;margin:0 6px}
+table{border-collapse:collapse;min-width:100%;table-layout:fixed}
+th{position:sticky;top:0;background:#f5f5f5;border:1px solid #d5d5d5;padding:3px 6px;font-weight:400;text-align:center}
+td{border-bottom:1px solid #e3e3e3;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:23px}
+td.c{text-align:center}td.n{text-align:right}
+tr.skip td{color:#999}
+.status{padding:4px 10px;font-size:12px;color:#444;display:flex;gap:16px;align-items:center}
+#toast{position:fixed;left:50%;bottom:50px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:4px;opacity:0;transition:.2s;pointer-events:none}
+#toast.on{opacity:.95}
+dialog{border:1px solid #888;border-radius:4px;padding:16px 20px;width:min(580px,92vw)}
+dialog::backdrop{background:#0006}
+dialog h3{margin:0 0 10px;color:#1f2a66}
+#hdlg ul{margin:8px 0;padding-left:18px;line-height:1.7}
+#hdlg .cr a{color:#2d3f9c;font-weight:700;text-decoration:none}
+#hdlg .cr a:hover{text-decoration:underline}
+#hdlg .cr{margin-top:12px;padding-top:10px;border-top:1px solid #ddd;color:#555;font-size:12px}
+#log{max-height:200px;overflow:auto;background:#fafafa;border:1px solid #ddd;padding:6px;font-size:12px;white-space:pre-wrap;margin-top:8px}
+progress{width:100%}
+.pth{border:1px solid #bbb;background:#fff;padding:3px 6px;min-height:24px;min-width:120px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="tool">
+  <div class="brand"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#2d3f9c"/><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="20" height="17" rx="2.5"/><path d="M6 13h20M11 5.5v5M21 5.5v5"/></g><g fill="#fff"><circle cx="12" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/><circle cx="20" cy="18" r="1.4"/><circle cx="12" cy="22" r="1.4"/><circle cx="16" cy="22" r="1.4"/></g></svg><span><b>Date Folder</b><small>최종수정일 기준 폴더 정리</small></span></div>
+  <span class="vsep"></span>
+  <button class="tb" id="bPick" title="정리할 폴더를 선택합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span>폴더 선택</span></button>
+  <button class="tb" id="bRe" disabled title="폴더를 다시 읽습니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg><span>다시 읽기</span></button>
+  <span class="vsep"></span>
+  <button class="tb dg" id="bRun" disabled title="미리보기대로 폴더를 만들어 파일을 정리합니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h3l2 2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13h6M12.5 10.5L15 13l-2.5 2.5"/></svg><span>정리 실행</span></button>
+  <button class="tb" id="bUndo" disabled title="방금 실행한 이동을 되돌립니다"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7L4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12h-2" transform="translate(0 -5)"/></svg><span>되돌리기</span></button>
+  <span class="sp"></span>
+  <button class="tb" id="bHelp" title="사용법 및 정보"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg><span>Help</span></button>
+</div>
+<div class="opt">
+  <b>폴더 단위</b>
+  <select id="oUnit">
+    <option value="month">월 (2026-10)</option>
+    <option value="week">주 (2026-10-19 ~ 2026-10-25)</option>
+    <option value="ym">연 / 월 (2026 \ 2026-10)</option>
+    <option value="day">일 (2026-10-24)</option>
+    <option value="year">연 (2026)</option>
+  </select>
+  <label>주 시작 <select id="oWk"><option value="mon">월요일</option><option value="sun">일요일</option></select></label>
+  <span class="vsep"></span>
+  <label><input type="checkbox" id="oRec">하위 폴더 파일도 포함</label>
+  <label><input type="checkbox" id="oSkipD" checked title="2026-10 같은 날짜 폴더는 이미 정리된 것으로 보고 건너뜁니다">날짜 폴더는 건너뜀</label>
+  <label><input type="checkbox" id="oSys" checked title="Thumbs.db, desktop.ini, .DS_Store 등">시스템 파일 제외</label>
+  <label><input type="checkbox" id="oExe" checked title="exe, msi, bat, lnk 등은 브라우저가 이동·수정 때마다 확인을 요구하므로 건너뜁니다">실행 파일 제외 (exe·bat·lnk 등)</label>
+  <span class="vsep"></span>
+  <label>확장자 <input type="text" id="oExt" style="width:150px" placeholder="비우면 전체 (예: jpg,png,mp4)"></label>
+  <label><input type="checkbox" id="oRecent">최근 <input type="number" id="oDays" value="30" min="1" max="3650" style="width:56px">일 이내 수정 파일 제외</label>
+</div>
+<div class="opt">
+  <b>정리 위치</b>
+  <label><input type="radio" name="dm" value="in" checked>선택한 폴더 안에</label>
+  <label><input type="radio" name="dm" value="other">다른 폴더로</label>
+  <span class="pth" id="dn">미지정</span> <button id="bd">변경...</button>
+  <span class="vsep"></span>
+  <b>처리</b>
+  <label><input type="radio" name="om" value="move" checked>이동</label>
+  <label><input type="radio" name="om" value="copy">복사 (원본 유지)</label>
+  <span class="vsep"></span>
+  <label title="브라우저가 수정일을 유지한 이동을 지원하지 않으면, 복사 후 원본 삭제로 처리합니다. 이 경우 파일의 수정일이 현재 시각으로 바뀝니다."><input type="checkbox" id="oAllow">수정일 변경을 허용 (복사 후 삭제 방식)</label>
+  <label><input type="checkbox" id="oEmpty" checked>하위 폴더가 비면 삭제</label>
+</div>
+<div class="tabs">
+  <div class="tab on" data-t="sum">폴더별 요약 <span id="c-sum"></span></div>
+  <div class="tab" data-t="files">파일 목록 <span id="c-files"></span></div>
+  <span class="sp"></span>
+  <div class="qb"><input type="text" id="flt" placeholder="파일 목록 내 검색" style="width:220px"> <button id="bAll" disabled>모두 포함</button> <button id="bNone" disabled>모두 제외</button></div>
+</div>
+<div class="wrap">
+  <table>
+    <colgroup id="cg"></colgroup>
+    <thead id="th"></thead>
+    <tbody id="tb"></tbody>
+  </table>
+</div>
+<div class="status"><span id="st">폴더를 선택하세요. (Chrome / Edge 필요)</span></div>
+<div id="toast"></div>
+
+<dialog id="hdlg">
+  <h3>Date Folder</h3>
+  <div style="color:#666;font-size:12px">파일의 최종수정일을 기준으로 월·주·연·일 폴더를 만들어 정리합니다. 모든 파일 형식 지원</div>
+  <ul>
+    <li><b>폴더 선택</b> 후 위쪽 옵션을 바꾸면 <b>폴더별 요약</b>과 <b>파일 목록</b> 미리보기가 바로 갱신됩니다. 파일 목록에서 개별 파일은 체크로 제외할 수 있습니다.</li>
+    <li><b>이동</b>은 수정일을 그대로 유지하는 방식을 먼저 시도합니다. 브라우저가 이를 지원하지 않으면 안전을 위해 중단하며, <b>수정일 변경 허용</b>을 켜면 복사 후 원본 삭제로 처리하되 이때 파일 수정일이 현재 시각으로 바뀝니다. <b>복사</b> 모드의 복사본도 수정일이 현재 시각이 됩니다.</li>
+    <li>같은 이름의 파일이 있으면 이름 뒤에 (1)을 붙여 덮어쓰지 않습니다.</li>
+    <li><b>되돌리기</b>는 방금 실행한 이동을 원래 폴더로 되돌립니다(창을 닫으면 사라집니다). 중요한 파일은 먼저 백업하세요.</li>
+  </ul>
+  <div class="cr">Created by <a href="https://blog.naver.com/zzizik" target="_blank" rel="noopener noreferrer" title="블로그로 이동">zzizik</a>, with Claude AI.</div>
+  <div style="text-align:right;margin-top:8px"><button id="hClose">닫기</button></div>
+</dialog>
+<dialog id="rdlg">
+  <h3 id="rtitle">정리 실행</h3>
+  <div id="rsum" style="line-height:1.7"></div>
+  <div id="rprog" style="display:none;margin-top:6px"><progress id="pg" value="0" max="1"></progress></div>
+  <div id="log"></div>
+  <div style="text-align:center;margin-top:10px"><button id="rStart" class="danger">시작(P)</button> <button id="rClose">닫기(C)</button></div>
+</dialog>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const S={root:null,files:[],dirs:[],dest:null,tab:'sum',undo:[],created:[],busy:false};
+const tick=()=>new Promise(r=>setTimeout(r,0));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2600)}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const radio=n=>document.querySelector(`input[name=${n}]:checked`).value;
+function setRadio(n,v){const e=document.querySelector(`input[name=${n}][value=${v}]`);if(e)e.checked=true}
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hms=d=>`${ymd(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtSize=n=>n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';
+const fullPath=f=>(f.path.length?f.path.join('\\')+'\\':'')+f.name;
+
+/* ---------- 폴더 이름 규칙 ---------- */
+function tgtPath(mt){
+  const d=new Date(mt),u=$('#oUnit').value,y=String(d.getFullYear()),m=y+'-'+pad(d.getMonth()+1);
+  if(u==='year')return[y];if(u==='month')return[m];if(u==='ym')return[y,m];if(u==='day')return[ymd(d)];
+  const sun=$('#oWk').value==='sun',diff=sun?d.getDay():(d.getDay()+6)%7;
+  const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()-diff),e=new Date(s.getFullYear(),s.getMonth(),s.getDate()+6);
+  return[ymd(s)+' ~ '+ymd(e)]}
+const DATEDIR=/^\d{4}(-\d{2}){0,2}( ~ \d{4}-\d{2}-\d{2})?$/;
+const DANGER=new Set('ade adp app application appref-ms asp asx bas bash bat cer chm cmd com command cpl crt csh der drv exe fxp gadget grp hlp hta inf ins isp its jar jnlp js jse ksh lnk mad maf mag mam maq mar mas mat mau mav maw mcf mda mdb mde mdt mdw mdz msc msh msh1 msh2 mshxml msh1xml msh2xml msi msp mst ops pcd pif plg prf prg ps1 ps1xml ps2 ps2xml psc1 psc2 pst reg scf scr sct shb shs tmp url vb vbe vbs vsmacros vsw ws wsc wsf wsh xbap xll xnk'.split(' '));
+const SYS=/^(thumbs\.db|desktop\.ini|\.ds_store|\.localized|ehthumbs\.db)$/i;
+
+/* ---------- 읽기 ---------- */
+async function walk(dir,path,out,rec,skipD){
+  for await(const [name,h] of dir.entries()){
+    if(h.kind==='directory'){
+      if(rec&&!(skipD&&DATEDIR.test(name))){S.dirs.push({h,parent:dir,name,depth:path.length+1});await walk(h,path.concat(name),out,rec,skipD)}
+    }else{
+      let size=0,mtime=0;try{const f=await h.getFile();size=f.size;mtime=f.lastModified}catch(e){}
+      out.push({name,path,h,parent:dir,size,mtime,on:true});
+      if(out.length%200===0){$('#st').textContent='읽는 중… '+out.length+'개';await tick()}
+    }
+  }
+}
+async function scan(){
+  if(!S.root)return;
+  const out=[];S.dirs=[];$('#st').textContent='읽는 중…';
+  await walk(S.root,[],out,$('#oRec').checked,$('#oSkipD').checked);
+  out.forEach((f,i)=>f.id=i);S.files=out;
+  ['bRe','bRun','bAll','bNone'].forEach(id=>$('#'+id).disabled=false);
+  plan();render();
+}
+async function pick(){
+  if(!window.showDirectoryPicker){alert('이 브라우저는 폴더 접근을 지원하지 않습니다. Chrome 또는 Edge를 사용하세요.');return}
+  let h;try{h=await showDirectoryPicker({mode:'readwrite'})}catch(e){return}
+  S.root=h;S.undo=[];S.created=[];$('#bUndo').disabled=true;await scan();
+}
+
+/* ---------- 미리보기 계산 ---------- */
+function plan(){
+  const exts=$('#oExt').value.split(/[,\s;]+/).map(x=>x.replace(/^\./,'').toLowerCase()).filter(Boolean);
+  const rec=$('#oRecent').checked,days=Math.max(1,+$('#oDays').value||30),lim=Date.now()-days*864e5;
+  const inplace=radio('dm')==='in';
+  S.files.forEach(f=>{
+    f.tgt=null;f.why='';
+    const ext=f.name.includes('.')?f.name.split('.').pop().toLowerCase():'';
+    if($('#oSys').checked&&SYS.test(f.name)){f.why='시스템 파일';return}
+    if($('#oExe').checked&&DANGER.has(ext)){f.why='실행 파일';return}
+    if(exts.length&&!exts.includes(ext)){f.why='확장자 제외';return}
+    if(rec&&f.mtime>lim){f.why='최근 수정';return}
+    const t=tgtPath(f.mtime);
+    if(inplace&&f.path.join('\\')===t.join('\\')){f.why='이미 정리됨';return}
+    f.tgt=t;
+  });
+}
+function groups(){
+  const g=new Map();
+  S.files.forEach(f=>{if(!f.tgt||!f.on)return;const k=f.tgt.join('\\');let e=g.get(k);if(!e)g.set(k,e={k,n:0,size:0,min:Infinity,max:0});e.n++;e.size+=f.size;e.min=Math.min(e.min,f.mtime);e.max=Math.max(e.max,f.mtime)});
+  return[...g.values()].sort((a,b)=>a.k.localeCompare(b.k))}
+function render(){
+  document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.dataset.t===S.tab));
+  const th=$('#th'),tb=$('#tb'),cg=$('#cg');
+  const G=groups();const tot=S.files.filter(f=>f.tgt&&f.on).length;
+  $('#c-sum').textContent='('+G.length+')';$('#c-files').textContent='('+S.files.length+')';
+  if(S.tab==='sum'){
+    cg.innerHTML='<col style="width:46%"><col style="width:10%"><col style="width:14%"><col style="width:15%"><col style="width:15%">';
+    th.innerHTML='<tr><th>대상 폴더</th><th>파일 수</th><th>크기</th><th>가장 오래된 수정일</th><th>가장 최근 수정일</th></tr>';
+    tb.innerHTML=G.map(e=>`<tr><td title="${esc(e.k)}">${esc(e.k)}</td><td class="n">${e.n}</td><td class="n">${fmtSize(e.size)}</td><td class="c">${ymd(new Date(e.min))}</td><td class="c">${ymd(new Date(e.max))}</td></tr>`).join('');
+  }else{
+    cg.innerHTML='<col style="width:48px"><col style="width:36%"><col style="width:140px"><col style="width:90px"><col>';
+    th.innerHTML='<tr><th>포함</th><th>파일</th><th>최종수정일</th><th>크기</th><th>대상 폴더</th></tr>';
+    const q=$('#flt').value.trim().toLowerCase();
+    const rows=S.files.filter(f=>!q||fullPath(f).toLowerCase().includes(q)).sort((a,b)=>b.mtime-a.mtime);
+    tb.innerHTML=rows.slice(0,3000).map(f=>`<tr data-id="${f.id}" class="${f.tgt&&f.on?'':'skip'}"><td class="c"><input type="checkbox" class="on"${f.on&&f.tgt?' checked':''}${f.tgt?'':' disabled'}></td><td title="${esc(fullPath(f))}">${esc(fullPath(f))}</td><td class="c">${hms(new Date(f.mtime))}</td><td class="n">${fmtSize(f.size)}</td><td>${f.tgt?esc(f.tgt.join('\\')):'('+f.why+')'}</td></tr>`).join('')+(rows.length>3000?`<tr><td colspan="5" style="text-align:center;color:#777">… ${rows.length-3000}개 더 있음 (검색으로 좁혀 보세요)</td></tr>`:'');
+  }
+  const skipped=S.files.filter(f=>!f.tgt).length;
+  $('#st').textContent=S.files.length?`파일 ${S.files.length}개 · 정리 대상 ${tot}개 → 폴더 ${G.length}개`+(skipped?` · 제외/이미 정리됨 ${skipped}개`:''):(S.root?'파일이 없습니다.':'폴더를 선택하세요. (Chrome / Edge 필요)');
+}
+document.querySelectorAll('.tab').forEach(e=>e.onclick=()=>{S.tab=e.dataset.t;render()});
+$('#flt').oninput=()=>{if(S.tab==='files')render()};
+$('#tb').addEventListener('change',e=>{if(!e.target.classList.contains('on'))return;const tr=e.target.closest('tr[data-id]');S.files[+tr.dataset.id].on=e.target.checked;tr.classList.toggle('skip',!e.target.checked);
+  const G=groups();$('#c-sum').textContent='('+G.length+')';$('#st').textContent=`파일 ${S.files.length}개 · 정리 대상 ${S.files.filter(f=>f.tgt&&f.on).length}개 → 폴더 ${G.length}개`});
+$('#bAll').onclick=()=>{S.files.forEach(f=>f.on=true);render()};
+$('#bNone').onclick=()=>{S.files.forEach(f=>f.on=false);render()};
+['oUnit','oWk','oExt','oRecent','oDays','oSys','oExe'].forEach(k=>$('#'+k).onchange=()=>{plan();render()});
+['oRec','oSkipD'].forEach(k=>$('#'+k).onchange=()=>scan());
+document.querySelectorAll('input[name=dm]').forEach(e=>e.onchange=()=>{plan();render()});
+$('#bd').onclick=async()=>{try{S.dest=await showDirectoryPicker({mode:'readwrite'});$('#dn').textContent=S.dest.name;setRadio('dm','other');plan();render()}catch(e){}};
+$('#bPick').onclick=pick;$('#bRe').onclick=scan;
+$('#bHelp').onclick=()=>$('#hdlg').showModal();$('#hClose').onclick=()=>$('#hdlg').close();
+
+/* ---------- 이동·복사 ---------- */
+async function perm(h){try{return(await h.queryPermission({mode:'readwrite'}))==='granted'||(await h.requestPermission({mode:'readwrite'}))==='granted'}catch(e){return true}}
+async function freeName(dir,name){
+  const i=name.lastIndexOf('.'),b=i>0?name.slice(0,i):name,x=i>0?name.slice(i):'';let nm=name,k=1;
+  for(;;){try{await dir.getFileHandle(nm);nm=`${b} (${k++})${x}`}catch(e){return nm}}}
+async function relocate(fh,srcDir,srcName,destDir,keep,allowCopy){
+  const nm=await freeName(destDir,srcName);
+  if(!keep&&typeof fh.move==='function'){try{await fh.move(destDir,nm);return{fh,nm,copied:false}}catch(e){}}
+  if(!keep&&!allowCopy){const er=new Error('이 브라우저는 수정일을 유지한 이동을 지원하지 않습니다');er.code='NEEDCOPY';throw er}
+  const file=await fh.getFile(),nfh=await destDir.getFileHandle(nm,{create:true});
+  const w=await nfh.createWritable();await file.stream().pipeTo(w);
+  const chk=await nfh.getFile();
+  if(chk.size!==file.size){try{await destDir.removeEntry(nm)}catch(e){}throw new Error('복사 크기 불일치')}
+  if(!keep)await srcDir.removeEntry(srcName);
+  return{fh:nfh,nm,copied:true}}
+async function removeEmpty(){
+  let n=0;const L=[...S.dirs].sort((a,b)=>b.depth-a.depth);
+  for(const d of L){try{
+    let empty=true;for await(const _ of d.h.entries()){empty=false;break}
+    if(!empty)continue;await d.parent.removeEntry(d.name);n++}catch(e){}}
+  return n}
+
+$('#bRun').onclick=()=>{
+  const jobs=S.files.filter(f=>f.on&&f.tgt),G=groups(),keep=radio('om')==='copy';
+  const other=radio('dm')==='other';
+  $('#rtitle').textContent='정리 실행';
+  $('#rsum').innerHTML=jobs.length?`<b>${jobs.length}</b>개 파일을 <b>${G.length}</b>개 날짜 폴더로 <b>${keep?'복사':'이동'}</b>합니다.<br>위치: ${other?esc(S.dest?S.dest.name:'(다른 폴더 미지정)'):esc(S.root.name)+' 안'}`+(keep?'':'<br><span style="color:#777;font-size:12px">수정일을 유지한 이동을 먼저 시도합니다. 지원되지 않으면 중단합니다(옵션에서 허용 가능).</span>'):'정리할 파일이 없습니다.';
+  $('#log').textContent='';$('#rprog').style.display='none';$('#rStart').disabled=!jobs.length;$('#rdlg').showModal()};
+$('#rClose').onclick=()=>{if(!S.busy)$('#rdlg').close()};
+$('#rStart').onclick=async()=>{
+  const jobs=S.files.filter(f=>f.on&&f.tgt),keep=radio('om')==='copy',other=radio('dm')==='other',allow=$('#oAllow').checked;
+  const dest=other?S.dest:S.root;
+  if(!dest){toast('다른 폴더를 먼저 지정하세요');return}
+  if(!await perm(dest)){toast('대상 폴더 쓰기 권한이 필요합니다');return}
+  S.busy=true;$('#rStart').disabled=true;$('#rClose').disabled=true;
+  const pg=$('#pg');$('#rprog').style.display='block';pg.max=jobs.length;pg.value=0;
+  const cache=new Map(),log=[],undo=[];let ok=0,skip=0,copied=0,stopped='';
+  async function dirFor(parts){const k=parts.join('\\');if(cache.has(k))return cache.get(k);let d=dest;
+    for(const p of parts){let ex=true;try{await d.getDirectoryHandle(p)}catch(e){ex=false}
+      const par=d;d=await d.getDirectoryHandle(p,{create:true});if(!ex)S.created.push({dir:d,name:p,parent:par})}
+    cache.set(k,d);return d}
+  for(const f of jobs){
+    try{
+      const sub=await dirFor(f.tgt);let same=false;try{same=await sub.isSameEntry(f.parent)}catch(e){}
+      if(same){skip++}
+      else{const r=await relocate(f.h,f.parent,f.name,sub,keep,allow);ok++;if(r.copied)copied++;
+        if(!keep)undo.push({fh:r.fh,destDir:sub,nm:r.nm,srcDir:f.parent,srcName:f.name,copied:r.copied})}
+    }catch(e){
+      if(e.code==='NEEDCOPY'){stopped=e.message+'. 옵션 "수정일 변경을 허용"을 켜면 복사 후 삭제 방식으로 진행할 수 있습니다.';break}
+      log.push('실패: '+fullPath(f)+' — '+e.message);
+    }
+    pg.value=+pg.value+1;if(pg.value%5===0){$('#log').textContent=`진행 ${pg.value}/${jobs.length}`;await tick()}
+  }
+  if(!ok&&S.created.length){for(const c of S.created.slice().reverse()){try{await c.parent.removeEntry(c.name)}catch(e){}}S.created=[]}
+  let en=0;if(!keep&&$('#oEmpty').checked&&$('#oRec').checked&&!other)en=await removeEmpty();
+  S.undo=undo;$('#bUndo').disabled=!undo.length;
+  $('#log').textContent=(stopped?'중단: '+stopped+'\n':'완료: ')+`${keep?'복사':'이동'} ${ok}개, 이미 제자리 ${skip}개, 실패 ${log.length}개`+(copied?`\n※ ${copied}개는 복사 방식으로 처리되어 수정일이 현재 시각으로 바뀌었습니다.`:'')+(en?`\n빈 폴더 ${en}개 삭제`:'')+(keep?'':'\n되돌리기: 위쪽 [되돌리기] 버튼')+'\n'+log.join('\n');
+  S.busy=false;$('#rClose').disabled=false;$('#rStart').disabled=false;
+  await scan();
+};
+
+/* ---------- 되돌리기 ---------- */
+$('#bUndo').onclick=async()=>{
+  if(!S.undo.length)return;
+  if(!confirm(`방금 이동한 ${S.undo.length}개 파일을 원래 폴더로 되돌립니다. 계속할까요?`))return;
+  let ok=0,bad=0,rm=0;
+  for(const r of S.undo.slice().reverse()){
+    try{await relocate(r.fh,r.destDir,r.nm,r.srcDir,false,r.copied||$('#oAllow').checked);ok++}catch(e){bad++}
+  }
+  for(const c of S.created.slice().reverse()){try{await c.parent.removeEntry(c.name);rm++}catch(e){}}
+  S.undo=[];S.created=[];$('#bUndo').disabled=true;
+  toast(`되돌림 ${ok}개`+(bad?`, 실패 ${bad}개`:'')+(rm?`, 빈 폴더 ${rm}개 삭제`:''));
+  await scan();
+};
+</script>
+</body>
+</html>
