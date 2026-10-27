@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+<!--CRV index_webutil r1 20261027 h:48e0cf4c f:폴더정리섹션,flac2mp3카드-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Webutil · zzizik</title>
-<meta name="description" content="브라우저에서 바로 쓰는 작은 웹 도구 모음 — PDF 검색, 문서 스캔, OCR, HTML 문서 편집, 유튜브 자막, 엑셀 수식 계산기, 한글 타자 연습, 특수문자, 정렬, 패스워드, 음악, 음원 중복 정리, 오디오 자르기, 변환, D-day">
+<meta name="description" content="브라우저에서 바로 쓰는 작은 웹 도구 모음 — PDF 검색, 문서 스캔, OCR, HTML 문서 편집, 유튜브 자막, 엑셀 수식 계산기, 한글 타자 연습, 특수문자, 정렬, 패스워드, 음악, 음원 중복 정리, 오디오 자르기, 변환, FLAC→MP3, 사진·파일 날짜별 폴더 정리, D-day">
 <style>
   :root{
     --bg-1:#fafaf9; --bg-2:#f1f0ee;
@@ -221,6 +222,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </section>
 
   <section>
+    <h2>폴더 정리</h2>
+    <div class="grid">
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+        <div class="body">
+          <a class="name" href="photo_folder.html">Photo Folder</a>
+          <p class="desc">사진·동영상을 촬영일(EXIF) 기준으로 연·월·주·일 폴더에 정리. 미리보기와 되돌리기 지원.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="chip">Chrome·Edge</span><span class="file">photo_folder.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 15h.01M12 15h.01"/></svg></div>
+        <div class="body">
+          <a class="name" href="date_folder.html">Date Folder</a>
+          <p class="desc">모든 파일을 최종수정일 기준으로 월·주·연·일 폴더에 정리. 확장자·최근 N일 제외, 되돌리기 지원.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="chip">Chrome·Edge</span><span class="file">date_folder.html</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <h2>오디오 · 시간</h2>
     <div class="grid">
       <div class="tool">
@@ -245,6 +268,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <a class="name" href="music_dedupe.html">Music Dedupe</a>
           <p class="desc">폴더를 고르면 하위 폴더까지 검색해 중복·유사 음원(MP3·FLAC·OPUS·OGG·M4A)을 찾고, 큰 파일을 남기고 이동·정리.</p>
           <div class="meta"><span class="chip">오프라인</span><span class="chip">Chrome·Edge</span><span class="file">music_dedupe.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><circle cx="9" cy="12" r="1.6"/><path d="M17 9l4 3-4 3"/></svg></div>
+        <div class="body">
+          <a class="name" href="flac2mp3.html">FLAC to MP3</a>
+          <p class="desc">FLAC 파일·폴더를 한꺼번에 MP3(최대 320kbps)로 변환. 태그와 앨범 커버를 옮기고 ZIP이나 폴더로 저장.</p>
+          <div class="meta"><span class="chip">오프라인</span><span class="file">flac2mp3.html</span></div>
         </div>
       </div>
       <div class="tool">
