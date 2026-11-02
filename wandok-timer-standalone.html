@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>완독 타이머</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: 넓은 화면은 왼쪽에 지금 목표와 타이머, 오른쪽에 시각별 목표표와 회차 기록. 좁은 화면은 한 열. */
+:root {
+  --bg: #F5F4ED;
+  --surface: #FAF9F5;
+  --fg: #141413;
+  --muted: #6F6E68;
+  --line: #E3E0D3;
+  --accent: #C6613F;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #F2E1D8;
+  --warn: #9A6A12;
+  --warn-soft: #F3E7C8;
+  --bad: #B0352F;
+  --bad-soft: #F5DAD5;
+  --good: #3F7A4A;
+  --good-soft: #E0EDDA;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #262624; --surface: #30302E; --fg: #FAF9F5; --muted: #A6A49B; --line: #43413C;
+    --accent: #D97757; --accent-fg: #1F1E1D; --accent-soft: #46302A;
+    --warn: #E0B050; --warn-soft: #3E3420; --bad: #EE8A80; --bad-soft: #44231F;
+    --good: #8FC47A; --good-soft: #26341F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #262624; --surface: #30302E; --fg: #FAF9F5; --muted: #A6A49B; --line: #43413C;
+  --accent: #D97757; --accent-fg: #1F1E1D; --accent-soft: #46302A;
+  --warn: #E0B050; --warn-soft: #3E3420; --bad: #EE8A80; --bad-soft: #44231F;
+  --good: #8FC47A; --good-soft: #26341F;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { width: 100%; max-width: 1120px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 1.5rem; margin: 0; letter-spacing: -0.015em; text-wrap: balance; line-height: 1.2; }
+.sub { color: var(--muted); font-size: 0.88rem; margin: 2px 0 0; }
+.now { text-align: right; }
+.now .num { font-size: 1.35rem; font-weight: 600; display: block; line-height: 1.2; }
+.layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 880px) { .layout.two { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); } }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.label { font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; font-weight: 500; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.err { color: var(--bad); font-size: 0.92rem; margin: 0; }
+.between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* 설정 */
+.grid3 { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { .grid3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr); } }
+.field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.field > label, .field > .lab { font-size: 0.88rem; color: var(--muted); font-weight: 500; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+input[type="number"] {
+  font: inherit; font-family: var(--font-num); font-size: 1.4rem; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; width: 100%; min-height: 54px;
+}
+.row input[type="number"] { width: 6em; }
+input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.opts { display: flex; flex-direction: column; gap: 14px; }
+.check { display: flex; gap: 12px; align-items: flex-start; font-size: 0.98rem; cursor: pointer; }
+.check input { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+.check .hint { display: block; }
+
+/* 버튼 */
+.btn {
+  font: inherit; font-weight: 700; min-height: 50px; border-radius: 10px; padding: 0 20px;
+  border: 1px solid transparent; cursor: pointer; flex: 1; touch-action: manipulation;
+}
+.btn.primary { background: var(--accent); color: var(--accent-fg); }
+.btn.sec { background: var(--accent-soft); color: var(--accent); }
+.btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.big { min-height: 68px; font-size: 1.2rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btns { display: flex; gap: 10px; }
+.msg { background: var(--accent-soft); border-radius: 10px; padding: 16px; font-size: 1rem; line-height: 1.7; }
+.msg b { font-weight: 700; }
+
+/* 실행 */
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 700; padding: 3px 12px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.chip.pause, .chip.due { background: var(--warn-soft); color: var(--warn); }
+.hero .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.big { font-family: var(--font-num); font-weight: 600; line-height: 1; font-size: clamp(2.6rem, 9vw, 4.2rem); font-variant-numeric: tabular-nums; }
+.big small { font-size: 0.34em; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.stat .cap { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+.pill { display: inline-flex; align-self: flex-start; font-weight: 700; font-size: 0.98rem; padding: 6px 14px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.track { position: relative; height: 14px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); margin-block: 10px 2px; }
+.track .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 99px; width: 0; transition: width 0.3s; }
+.track .mark { position: absolute; top: -7px; bottom: -7px; width: 3px; margin-left: -1.5px; background: var(--warn); border-radius: 2px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.stats2 { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 520px) { .stats2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.timer { font-size: clamp(2.8rem, 10vw, 3.8rem); font-weight: 600; line-height: 1; }
+.timer.dim { opacity: 0.45; }
+.fin { font-size: clamp(1.9rem, 6vw, 2.4rem); font-weight: 600; line-height: 1.1; }
+.bar { height: 8px; border-radius: 99px; background: var(--bg); overflow: hidden; border: 1px solid var(--line); }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.bar.over > i { background: var(--bad); }
+.bad { color: var(--bad); }
+.good { color: var(--good); }
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 14px 16px; font-weight: 500; }
+.switchrow { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.switchrow .t { font-weight: 500; }
+.switch { width: 54px; height: 32px; border-radius: 99px; border: 1px solid var(--line); background: var(--bg); position: relative; cursor: pointer; flex: none; padding: 0; transition: background 0.2s; }
+.switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--muted); transition: transform 0.2s, background 0.2s; }
+.switch[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); background: var(--accent-fg); }
+
+/* 표 */
+.scroll { max-height: 380px; overflow: auto; border-radius: 8px; border: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; font-size: 0.94rem; }
+th { text-align: left; font-size: 0.75rem; color: var(--muted); font-weight: 500; letter-spacing: 0.04em; padding: 8px 10px; position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--line); z-index: 1; }
+td { padding: 8px 10px; border-top: 1px solid var(--line); }
+tbody tr:first-child td { border-top: 0; }
+tr.next td { background: var(--accent-soft); font-weight: 700; }
+tr.brk td { color: var(--muted); font-size: 0.85rem; background: var(--bg); }
+td .delta { font-size: 0.8rem; margin-left: 6px; }
+.empty { color: var(--muted); font-size: 0.9rem; padding: 12px; }
+.sum { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; font-size: 1rem; margin: 0; }
+.sum dt { color: var(--muted); }
+.sum dd { margin: 0; text-align: right; }
+.pg { font-size: 1.7rem; font-weight: 600; }
+.toast {
+  position: fixed; left: 50%; transform: translate(-50%, -20px); top: calc(env(safe-area-inset-top, 0px) + 12px);
+  background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-weight: 500; font-size: 0.95rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; max-width: calc(100% - 32px); text-align: center; z-index: 20;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.btn.small { flex: none; min-height: 40px; padding: 0 14px; font-size: 0.9rem; }
+.setpage { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.setpage label { font-weight: 500; flex: 1 1 100%; }
+.setpage input[type="number"] { width: 7em; flex: none; min-height: 48px; }
+.setpage .btn { flex: none; min-height: 48px; }
+.alert { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: var(--accent); animation: blink 0.9s ease-in-out infinite;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.alert[hidden] { display: none; }
+.alert-in { background: var(--surface); color: var(--fg); border-radius: 20px; padding: 32px 24px; max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 16px; text-align: center; }
+.alert-title { font-size: 1.7rem; font-weight: 700; text-wrap: balance; line-height: 1.3; }
+.alert-in p { margin: 0; color: var(--muted); }
+@keyframes blink { 0%, 100% { background: var(--accent); } 50% { background: var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { .alert { animation: none; } }
+.modal { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(20, 20, 19, 0.6);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.modal[hidden] { display: none; }
+.modal .alert-in { text-align: left; }
+.modal .alert-title { font-size: 1.3rem; }
+.rv { display: flex; flex-direction: column; gap: 10px; font-size: 1rem; line-height: 1.6; }
+select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-height: 44px; }
+@media (prefers-reduced-motion: reduce) { .bar > i, .track .fill, .toast, .switch, .switch::after { transition: none; } }
+</style>
+
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>완독 타이머</h1>
+      <p class="sub" id="topSub">전체 분량을 시간으로 나눠 시각별 목표 페이지를 알려 줍니다</p>
+    </div>
+    <div class="now"><span class="label">현재 시각</span><span class="num" id="nowClock">00:00:00</span></div>
+  </header>
+
+  <!-- 설정 화면 -->
+  <section id="vSetup" class="col">
+    <div class="card" id="resumeCard" hidden>
+      <div class="label">진행 중인 기록</div>
+      <div id="resumeText" class="num"></div>
+      <div class="btns">
+        <button class="btn primary" id="btnResume" type="button">이어하기</button>
+        <button class="btn ghost" id="btnDiscard" type="button">삭제</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid3">
+        <div class="field">
+          <label for="pages">전체 페이지</label>
+          <input id="pages" type="number" inputmode="numeric" min="1" value="200">
+        </div>
+        <div class="field">
+          <span class="lab">공부 시간 (휴식 제외)</span>
+          <div class="row">
+            <input id="hh" type="number" inputmode="numeric" min="0" value="4" aria-label="시간"><span>시간</span>
+            <input id="mm" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="분"><span>분</span>
+          </div>
+        </div>
+        <div class="opts">
+          <label class="check"><input id="rest" type="checkbox" checked><span>휴식 포함<span class="hint">50분 공부마다 10분 휴식을 권장합니다.</span></span></label>
+          <label class="check"><input id="auto" type="checkbox"><span>페이지 완료 자동 넘김<span class="hint">한 장당 시간이 지나면 완료로 체크하고 다음 장으로 넘어갑니다.</span></span></label>
+          <div class="field">
+            <span class="lab">휴식 알림</span>
+            <label class="check"><input id="snd" type="checkbox" checked><span>소리 (종소리, 시작 벨)</span></label>
+            <div class="row"><label for="vol" class="hint">볼륨</label><select id="vol"><option value="0.5">작게</option><option value="1" selected>보통</option><option value="1.6">크게</option></select></div>
+            <label class="check"><input id="vib" type="checkbox" checked><span>진동<span class="hint" id="vibHint">휴대폰에서 휴식 시작과 끝나기 전에 진동합니다.</span></span></label>
+            <div><button class="btn ghost small" id="btnSound" type="button">알림 미리듣기</button></div>
+            <p class="hint">휴식이 시작되면 화면이 깜박이고, 끝나기 5초 전에 다시 알립니다.</p>
+          </div>
+        </div>
+      </div>
+      <p class="err" id="err" hidden></p>
+      <div class="btns" id="startRow"><button class="btn primary big" id="btnStart" type="button">시작</button></div>
+    </div>
+
+    <div class="card" id="confirm" hidden>
+      <div class="label">계산 결과</div>
+      <div class="msg" id="confirmMsg"></div>
+      <div class="btns">
+        <button class="btn primary" id="btnYes" type="button">네</button>
+        <button class="btn ghost" id="btnNo" type="button">아니오</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 실행, 휴식 화면 -->
+  <div class="layout two" id="vMain" hidden>
+    <div class="col">
+      <section id="vRun" class="col">
+        <div class="card hero">
+          <div class="between"><span class="label">지금 목표</span><span class="chip" id="chip">공부 중</span></div>
+          <div class="cols">
+            <div class="stat"><div class="big"><span id="tgtPages">0</span><small>장</small></div><div class="cap" id="tgtCap">까지 끝냈어야 합니다</div></div>
+            <div class="stat"><div class="big"><span id="myPages">0</span><small>장</small></div><div class="cap">내가 끝낸 페이지</div></div>
+          </div>
+          <div class="between"><span class="pill" id="gapPill">목표와 일치</span><button class="btn sec small" id="btnSetPage" type="button">현재 페이지 입력</button></div>
+          <form class="setpage" id="setPageForm" hidden>
+            <label for="setPageInput">지금 몇 장까지 봤나요?</label>
+            <input id="setPageInput" type="number" inputmode="numeric" min="0" value="0">
+            <button class="btn primary" type="submit">확인</button>
+            <button class="btn ghost" id="setPageCancel" type="button">취소</button>
+          </form>
+          <div>
+            <div class="track" aria-hidden="true"><div class="fill" id="trFill"></div><div class="mark" id="trMark"></div></div>
+            <div class="legend"><span><i style="background:var(--accent)"></i>내 진도</span><span><i style="background:var(--warn)"></i>지금 목표 위치</span></div>
+          </div>
+          <p class="hint" id="nextCp"></p>
+        </div>
+
+        <div class="stats2">
+          <div class="card">
+            <div class="between"><span class="label">이번 장</span><span class="hint">한 장당 <span class="num" id="perPage"></span></span></div>
+            <div class="timer num" id="pageTimer">00:00</div>
+            <div class="bar" id="pageBarWrap" aria-hidden="true"><i id="pageBar"></i></div>
+            <div class="hint num" id="pageLeft"></div>
+          </div>
+          <div class="card">
+            <span class="label">완료 예상시간</span>
+            <div class="fin num" id="finClock">00:00:00</div>
+            <div class="hint num" id="finLeft"></div>
+            <div class="hint">현재 <span class="num"><span id="pgNow">1</span> / <span id="pgAll">200</span></span> 페이지</div>
+          </div>
+        </div>
+
+        <div class="banner" id="dueBanner" hidden>공부 50분이 지났습니다. 이 장을 마치면 휴식 화면으로 넘어갑니다.</div>
+
+        <div class="card">
+          <button class="btn primary big" id="btnNext" type="button">이 장 완료</button>
+          <div class="btns">
+            <button class="btn sec" id="btnPause" type="button">일시정지</button>
+            <button class="btn ghost exitBtn" type="button">나가기</button>
+          </div>
+          <div class="switchrow">
+            <div><div class="t">자동 넘김</div><div class="hint" id="autoHint">꺼짐. 완료 버튼을 직접 눌러 넘깁니다.</div></div>
+            <button class="switch" id="autoSw" type="button" role="switch" aria-checked="false" aria-label="자동 넘김"></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="vBreak" class="col" hidden>
+        <div class="card">
+          <div class="between"><span class="label">휴식 시간</span><span class="chip pause">휴식 중</span></div>
+          <div class="timer num" id="brClock">10:00</div>
+          <div class="msg" id="brMsg">50분 공부를 마쳤습니다. 자리에서 일어나 쉬어 주세요.</div>
+          <div class="hint" id="brTarget"></div>
+          <div class="hint">완료 예상시간 <span class="num" id="brFin"></span></div>
+          <div class="between"><span class="hint">쉬는 동안 현재 페이지를 확인해 보세요.</span><button class="btn sec small" id="btnSetPage2" type="button">현재 페이지 입력</button></div>
+          <form class="setpage" id="setPageForm2" hidden>
+            <label for="setPageInput2">지금 몇 장까지 봤나요?</label>
+            <input id="setPageInput2" type="number" inputmode="numeric" min="0" value="0">
+            <button class="btn primary" type="submit">확인</button>
+            <button class="btn ghost" id="setPageCancel2" type="button">취소</button>
+          </form>
+        </div>
+        <div class="btns">
+          <button class="btn primary big" id="btnResumeStudy" type="button">다시시작</button>
+        </div>
+        <div class="btns"><button class="btn ghost exitBtn" type="button">나가기</button></div>
+      </section>
+
+      <section class="card" id="exitBox" hidden>
+        <div>기록을 지우고 나갈까요? 지금까지의 진행은 복구되지 않습니다.</div>
+        <div class="btns">
+          <button class="btn danger" id="exitYes" type="button">나가기</button>
+          <button class="btn ghost" id="exitNo" type="button">계속하기</button>
+        </div>
+      </section>
+    </div>
+
+    <aside class="col">
+      <div class="card">
+        <div class="between"><span class="label">시각별 목표 페이지</span><span class="hint">일시정지한 시간은 목표에서 제외됩니다</span></div>
+        <div class="scroll" id="schedScroll">
+          <table>
+            <thead><tr><th>목표 시각</th><th>페이지</th><th>상태</th></tr></thead>
+            <tbody id="sched"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <span class="label">회차 기록</span>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>회차</th><th>누적 시간</th><th>완료</th></tr></thead>
+            <tbody id="laps"></tbody>
+          </table>
+          <div class="empty" id="lapsEmpty">아직 완료한 장이 없습니다.</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 완료 화면 -->
+  <section id="vDone" class="col" hidden>
+    <div class="card">
+      <div class="label">완독</div>
+      <div class="pg" id="doneTitle"></div>
+      <dl class="sum" id="doneSum"></dl>
+    </div>
+    <div class="btns"><button class="btn primary big" id="btnHome" type="button">처음으로</button></div>
+  </section>
+</div>
+<div class="alert" id="alertBox" role="alertdialog" aria-modal="true" aria-labelledby="alertTitle" hidden>
+  <div class="alert-in">
+    <div class="alert-title" id="alertTitle"></div>
+    <p id="alertMsg"></p>
+    <button class="btn primary big" id="alertOk" type="button">확인</button>
+  </div>
+</div>
+<div class="modal" id="reBox" role="dialog" aria-modal="true" aria-labelledby="reTitle" hidden>
+  <div class="alert-in">
+    <div class="alert-title" id="reTitle">페이스 재분석</div>
+    <div class="rv" id="rvBody"></div>
+    <div class="btns">
+      <button class="btn primary" id="rvAdopt" type="button">이 페이스로 반영</button>
+      <button class="btn ghost" id="rvKeep" type="button">원래대로</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var KEY = 'wandok-timer-v2';
+  var BLOCK = 3000, BREAK = 600;
+  var $ = function (id) { return document.getElementById(id); };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var S = null, timer = null, last = 0, saveCtr = 0, toastT = null, cfg = null, schedSig = '', nextKey = '';
+  var CHEERS = ['화이팅! 10장 지났습니다.', '좋은 페이스입니다. 계속 가볼까요.', '꾸준함이 이깁니다. 한 장씩 갑니다.', '목표 표를 한 번 확인해 보세요.'];
+
+  function fmtMS(s) { s = Math.max(0, Math.round(s)); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); }
+  function fmtHMS(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 3600) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60); }
+  function fmtDur(s) {
+    s = Math.round(s);
+    var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = s % 60, o = [];
+    if (h) o.push(h + '시간');
+    if (m) o.push(m + '분');
+    if (r && !h) o.push(r + '초');
+    return o.join(' ') || '0초';
+  }
+  function clock(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+  function hm(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function breaksFor(study, on) { return on ? Math.max(0, Math.ceil(study / BLOCK - 1e-9) - 1) : 0; }
+  function store(v) {
+    try { if (v) { v.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(v)); } else localStorage.removeItem(KEY); } catch (e) {}
+  }
+  function load() { try { var t = localStorage.getItem(KEY); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+  function toast(t) {
+    var el = $('toast'); el.textContent = t; el.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('show'); }, 3200);
+  }
+  function curSet() {
+    if (S) return { sound: S.sound !== false, vol: S.vol || 1, vib: S.vib !== false };
+    return { sound: $('snd').checked, vol: parseFloat($('vol').value) || 1, vib: $('vib').checked };
+  }
+  function buzz(pat) { try { if (curSet().vib && navigator.vibrate) navigator.vibrate(pat || [200, 100, 200]); } catch (e) {} }
+
+  /* ---------- 소리와 알림 화면 ---------- */
+  var AC = null, alertMode = null, alertRepeat = null;
+  function audio() {
+    try {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      if (AC.state === 'suspended') AC.resume();
+    } catch (e) { AC = null; }
+    return AC;
+  }
+  document.addEventListener('pointerdown', audio);
+  function tone(f, t0, dur, vol, type) {
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.min(0.9, vol * curSet().vol), t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  /* 수업 종료 느낌의 네 음 종소리 */
+  function chime() {
+    if (!curSet().sound || !audio()) return;
+    var t = AC.currentTime + 0.05, notes = [659.25, 523.25, 587.33, 392.0];
+    notes.forEach(function (f, i) {
+      var at = t + i * 0.75, d = i === 3 ? 2.2 : 1.3;
+      tone(f, at, d, 0.3); tone(f * 2, at, d * 0.6, 0.08); tone(f * 3, at, d * 0.4, 0.04);
+    });
+  }
+  /* 수업 시작 느낌의 따르릉 벨 */
+  function bell() {
+    if (!curSet().sound || !audio()) return;
+    var t = AC.currentTime + 0.05;
+    for (var i = 0; i < 16; i++) tone(i % 2 ? 784 : 988, t + i * 0.11, 0.1, 0.22, 'square');
+  }
+  function showAlert(mode) {
+    alertMode = mode;
+    var brk = mode === 'break';
+    $('alertTitle').textContent = brk ? '휴식 시간입니다' : '곧 공부를 시작합니다';
+    $('alertMsg').textContent = brk ? '50분 공부를 마쳤습니다. 자리에서 일어나 쉬어 주세요.' : '휴식이 곧 끝납니다. 자리에 앉아 준비하세요.';
+    $('alertOk').textContent = brk ? '확인' : '다시시작';
+    $('alertBox').hidden = false;
+    clearInterval(alertRepeat);
+    var n = 0, max = brk ? 5 : 3, pat = brk ? [500, 200, 500, 200, 500] : [250, 120, 250, 120, 250, 120, 250];
+    if (brk) chime(); else bell();
+    buzz(pat);
+    alertRepeat = setInterval(function () {
+      if (++n > max) { clearInterval(alertRepeat); return; }
+      if (brk) chime(); else bell();
+      buzz(pat);
+    }, brk ? 8000 : 6000);
+  }
+  function hideAlert() { $('alertBox').hidden = true; clearInterval(alertRepeat); alertMode = null; }
+  function lockScreen() { try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {} }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && S && S.mode !== 'finished') lockScreen(); });
+  setInterval(function () { $('nowClock').textContent = clock(Date.now()); }, 1000);
+  $('nowClock').textContent = clock(Date.now());
+
+  /* ---------- 설정 ---------- */
+  function readSetup() {
+    var N = parseInt($('pages').value, 10);
+    var h = parseInt($('hh').value || '0', 10), m = parseInt($('mm').value || '0', 10);
+    var study = ((h || 0) * 60 + (m || 0)) * 60;
+    var err = $('err');
+    if (!(N >= 1)) { err.textContent = '전체 페이지를 1 이상으로 입력하세요.'; err.hidden = false; return null; }
+    if (!(study > 0)) { err.textContent = '공부 시간을 입력하세요.'; err.hidden = false; return null; }
+    err.hidden = true;
+    return { N: N, study: study, on: $('rest').checked, auto: $('auto').checked, sound: $('snd').checked, vol: parseFloat($('vol').value) || 1, vib: $('vib').checked };
+  }
+  function clearConfirm() { $('confirm').hidden = true; $('startRow').hidden = false; }
+  ['pages', 'hh', 'mm', 'rest', 'auto', 'snd', 'vol', 'vib'].forEach(function (id) {
+    $(id).addEventListener('input', clearConfirm);
+    $(id).addEventListener('change', clearConfirm);
+  });
+  $('btnStart').addEventListener('click', function () {
+    cfg = readSetup(); if (!cfg) return;
+    var per = cfg.study / cfg.N, b = breaksFor(cfg.study, cfg.on);
+    var total = cfg.study + b * BREAK;
+    var fin = clock(Date.now() + total * 1000);
+    var html = '전체 <b>' + cfg.N + '장</b>을 공부 시간 <b>' + fmtDur(cfg.study) + '</b>으로 나누면 <b>한 장당 ' + fmtDur(per) + '</b>입니다.<br>';
+    if (cfg.on) html += '50분마다 10분씩 휴식 <b>' + b + '회(' + (b * 10) + '분)</b>를 넣으면 총 <b>' + fmtDur(total) + '</b>이 걸립니다. 지금 시작하면 <b>' + fin + '</b>쯤 끝납니다.<br>';
+    else html += '휴식 없이 진행하면 지금 시작할 때 <b>' + fin + '</b>쯤 끝납니다.<br>';
+    html += '페이지 자동 넘김은 <b>' + (cfg.auto ? '켜짐' : '꺼짐') + '</b>, 휴식 알림 소리는 <b>' + (cfg.sound ? '켜짐' : '꺼짐') + '</b>, 진동은 <b>' + (cfg.vib ? '켜짐' : '꺼짐') + '</b>입니다. 시작하면 시각별 목표 페이지 표가 만들어집니다.<br><br>이대로 진행할까요?';
+    $('confirmMsg').innerHTML = html;
+    $('confirm').hidden = false;
+    $('startRow').hidden = true;
+    $('confirm').scrollIntoView({ block: 'nearest' });
+  });
+  $('btnNo').addEventListener('click', clearConfirm);
+  $('btnYes').addEventListener('click', function () {
+    if (!cfg) return;
+    S = { N: cfg.N, study: cfg.study, perPage: cfg.study / cfg.N, on: cfg.on, auto: cfg.auto, mode: 'study',
+      done: 0, pageEl: 0, blockEl: 0, studyTot: 0, breakEl: 0, breaks: 0, pausedTot: 0, laps: [], startedAt: Date.now(), origPer: cfg.study / cfg.N, sound: cfg.sound, vol: cfg.vol, vib: cfg.vib,
+      pb: 0, sb: 0, x0: 0, pt0: 0, dueNotified: false, breakNotified: false };
+    begin();
+  });
+
+  /* ---------- 계획 계산 ---------- */
+  function wallOff(studySec) { return studySec + breaksFor(studySec, S.on) * BREAK; }
+  function P() { return { t0: S.t0 || S.startedAt, pt0: S.pt0 || 0, x0: S.x0 || 0, pb: S.pb || 0, sb: S.sb || 0 }; }
+  function studyEnd() { var q = P(); return q.sb + (S.N - q.pb) * S.perPage; }
+  function pausedDelta() { return (S.pausedTot || 0) - P().pt0; }
+  function planAt(p) { var q = P(); return q.t0 + (wallOff(q.sb + (p - q.pb) * S.perPage) - q.x0 + pausedDelta()) * 1000; }
+  function stepFor(N) {
+    var nice = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+    for (var i = 0; i < nice.length; i++) if (N / nice[i] <= 20) return nice[i];
+    return 1000;
+  }
+  function planState() {
+    var q = P();
+    var X = Math.max(0, q.x0 + (Date.now() - q.t0) / 1000 - pausedDelta());
+    var ps;
+    if (S.on) { var c = Math.floor(X / (BLOCK + BREAK)); ps = c * BLOCK + Math.min(X - c * (BLOCK + BREAK), BLOCK); }
+    else ps = X;
+    ps = Math.min(ps, studyEnd());
+    var tf = Math.min(S.N, q.pb + Math.max(0, ps - q.sb) / S.perPage);
+    return { tf: tf, pages: Math.min(S.N, Math.floor(tf + 1e-9)) };
+  }
+  function buildSchedule() {
+    var now = Date.now(), items = [], st = stepFor(S.N), q = P(), p, k, ms = [];
+    for (p = st; p < S.N; p += st) ms.push(p);
+    ms.push(S.N);
+    ms.forEach(function (n) {
+      if (n <= q.pb) items.push({ off: n - 1e9, t: 0, p: n, at: null });
+      else items.push({ off: wallOff(q.sb + (n - q.pb) * S.perPage), t: 0, p: n, at: planAt(n) });
+    });
+    if (S.on) for (k = 1; k * BLOCK < studyEnd() - 1; k++) {
+      var o = k * BLOCK + (k - 1) * BREAK;
+      if (o >= q.x0 - 1) items.push({ off: o, t: 1, at: q.t0 + (o - q.x0 + pausedDelta()) * 1000 });
+    }
+    items.sort(function (a, b) { return (a.off - b.off) || (a.t - b.t); });
+    var next = -1;
+    items.forEach(function (it, i) { if (it.t === 0 && next < 0 && S.done < it.p) next = i; });
+    var html = items.map(function (it, i) {
+      if (it.t === 1) return '<tr class="brk"><td class="num">' + hm(it.at) + '</td><td colspan="2">휴식 10분</td></tr>';
+      var lap = null, j;
+      for (j = 0; j < S.laps.length; j++) if (S.laps[j].n === it.p) { lap = S.laps[j]; break; }
+      if (it.at === null) return '<tr><td class="num">' + (lap && lap.at ? hm(lap.at) : '--:--') + '</td><td class="num">' + it.p + '장</td><td><span class="good">달성</span></td></tr>';
+      var st2;
+      if (S.done >= it.p) {
+        if (lap && lap.at) {
+          var d = (it.at - lap.at) / 1000;
+          if (Math.abs(d) < 30) st2 = '<span class="good">달성 · 예정대로</span>';
+          else if (d > 0) st2 = '<span class="good">달성 · ' + fmtDur(d) + ' 빠름</span>';
+          else st2 = '<span class="bad">달성 · ' + fmtDur(-d) + ' 늦음</span>';
+        } else st2 = '<span class="good">달성</span>';
+      } else if (it.at < now) st2 = '<span class="bad">지연 · ' + (it.p - S.done) + '장 남음</span>';
+      else st2 = '<span style="color:var(--muted)">예정</span>';
+      return '<tr' + (i === next ? ' class="next"' : '') + '><td class="num">' + hm(it.at) + '</td><td class="num">' + it.p + '장</td><td>' + st2 + '</td></tr>';
+    }).join('');
+    return { html: html, next: next >= 0 ? items[next] : null, nextIdx: next };
+  }
+
+  /* ---------- 실행 ---------- */
+  function begin() {
+    last = Date.now();
+    clearInterval(timer); timer = setInterval(tick, 250);
+    $('topSub').textContent = '완독 진행 중';
+    schedSig = ''; nextKey = '';
+    renderLaps(); setView(); render(); lockScreen(); store(S);
+  }
+  function setView() {
+    var m = S ? S.mode : null;
+    $('vSetup').hidden = !!S;
+    $('vMain').hidden = !(m === 'study' || m === 'paused' || m === 'break');
+    $('vRun').hidden = !(m === 'study' || m === 'paused');
+    $('vBreak').hidden = m !== 'break';
+    $('vDone').hidden = m !== 'finished';
+    $('exitBox').hidden = true;
+    if (m !== 'break') hideAlert();
+    if (!(m === 'study' || m === 'paused' || m === 'break')) $('reBox').hidden = true;
+  }
+  function tick() {
+    if (!S) return;
+    var now = Date.now(), dt = (now - last) / 1000; last = now;
+    if (S.mode === 'study') {
+      S.pageEl += dt; S.blockEl += dt; S.studyTot += dt;
+      if (S.on && !S.dueNotified && S.blockEl >= BLOCK && S.done < S.N) {
+        S.dueNotified = true; buzz(); toast('50분이 지났습니다. 이 장을 마치면 쉬세요.');
+      }
+      if (S.auto) {
+        var g = 0;
+        while (S.mode === 'study' && S.pageEl >= S.perPage && g++ < 1000) completePage(true);
+      }
+    } else if (S.mode === 'paused') {
+      S.pausedTot = (S.pausedTot || 0) + dt;
+    } else if (S.mode === 'break') {
+      S.breakEl += dt;
+      if (!S.preNotified && S.breakEl >= BREAK - 5) { S.preNotified = true; showAlert('start'); }
+      if (!S.breakNotified && S.breakEl >= BREAK) { S.breakNotified = true; toast('휴식 시간이 끝났습니다.'); }
+    }
+    if (!S || S.mode === 'finished') return;
+    render();
+    if (++saveCtr % 4 === 0) store(S);
+  }
+  function completePage(auto) {
+    var carry = auto ? S.pageEl - S.perPage : 0;
+    S.laps.unshift({ n: S.done + 1, cum: S.studyTot - carry, sec: auto ? S.perPage : S.pageEl, at: Date.now() - carry * 1000 });
+    S.done++; S.pageEl = auto ? carry : 0;
+    renderLaps();
+    if (S.done >= S.N) { finish(); return; }
+    if (S.done % 10 === 0) toast(CHEERS[(S.done / 10 - 1) % CHEERS.length]);
+    if (S.on && S.blockEl >= BLOCK) {
+      S.mode = 'break'; S.breaks++; S.blockEl = 0; S.breakEl = 0; S.pageEl = 0; S.dueNotified = false; S.breakNotified = false; S.preNotified = false;
+      setView(); showAlert('break');
+    }
+  }
+  function projFin(per, pageEl) {
+    var rem = Math.max(0, per - pageEl) + Math.max(0, S.N - S.done - 1) * per;
+    var fut = S.on ? Math.max(0, Math.ceil((S.studyTot + rem) / BLOCK - 1e-9) - 1 - S.breaks) : 0;
+    var cur = S.mode === 'break' ? Math.max(0, BREAK - S.breakEl) : 0;
+    var tot = rem + fut * BREAK + cur;
+    return { rem: tot, ms: Date.now() + tot * 1000 };
+  }
+  function finishInfo() {
+    var r = projFin(S.perPage, S.pageEl), txt = clock(r.ms);
+    if (new Date(r.ms).getDate() !== new Date().getDate()) txt += ' (+1일)';
+    return { rem: r.rem, text: txt };
+  }
+  function render() {
+    if (!S || S.mode === 'finished') return;
+    var f = finishInfo(), pl = planState();
+    var gapF = pl.tf - S.done, gapP = pl.pages - S.done;
+    var sch = buildSchedule();
+    if (sch.html !== schedSig) { schedSig = sch.html; $('sched').innerHTML = sch.html; }
+    var nk = String(sch.nextIdx);
+    if (nk !== nextKey) {
+      nextKey = nk;
+      var row = $('sched').querySelector('tr.next'), sc = $('schedScroll');
+      if (row) sc.scrollTop = Math.max(0, row.offsetTop - sc.clientHeight / 3);
+    }
+    if (S.mode === 'break') {
+      var left = BREAK - S.breakEl;
+      $('brClock').textContent = fmtMS(left);
+      $('brMsg').textContent = left > 0 ? '50분 공부를 마쳤습니다. 자리에서 일어나 쉬어 주세요.' : '휴식 시간이 끝났습니다. 준비되면 다시시작을 누르세요.';
+      $('brTarget').textContent = '지금 시각 목표 ' + pl.pages + '장 · 내가 끝낸 페이지 ' + S.done + '장';
+      $('brFin').textContent = f.text;
+      return;
+    }
+    var paused = S.mode === 'paused';
+    var due = S.on && S.blockEl >= BLOCK;
+    var chip = $('chip');
+    chip.textContent = paused ? '일시정지' : (due ? '이 장 후 휴식' : '공부 중');
+    chip.className = 'chip' + (paused ? ' pause' : (due ? ' due' : ''));
+    $('tgtPages').textContent = pl.pages;
+    $('tgtCap').textContent = hm(Date.now()) + ' 현재, 여기까지 끝냈어야 합니다';
+    $('myPages').textContent = S.done;
+    var pill = $('gapPill');
+    if (gapF >= 0.5 || (gapP >= 1)) { pill.textContent = Math.max(1, Math.round(gapF)) + '장 뒤처짐 · 약 ' + fmtDur(gapF * S.perPage) + ' 분량'; pill.className = 'pill bad'; }
+    else if (gapF <= -0.5) { pill.textContent = Math.round(-gapF) + '장 앞섬 · 약 ' + fmtDur(-gapF * S.perPage) + ' 여유'; pill.className = 'pill good'; }
+    else { pill.textContent = '목표와 일치'; pill.className = 'pill'; }
+    $('trFill').style.width = (S.done / S.N * 100) + '%';
+    $('trMark').style.left = Math.min(100, pl.tf / S.N * 100) + '%';
+    $('nextCp').textContent = sch.next ? '다음 체크포인트 ' + hm(sch.next.at) + '까지 ' + sch.next.p + '장 (앞으로 ' + (sch.next.p - S.done) + '장)' : '';
+    $('finClock').textContent = f.text;
+    $('finLeft').textContent = '남은 시간 ' + fmtHMS(f.rem);
+    $('pgNow').textContent = Math.min(S.done + 1, S.N);
+    $('pgAll').textContent = S.N;
+    $('perPage').textContent = fmtMS(S.perPage);
+    var pt = $('pageTimer'); pt.textContent = fmtMS(S.pageEl); pt.classList.toggle('dim', paused);
+    var over = S.pageEl > S.perPage;
+    $('pageBar').style.width = Math.min(100, S.pageEl / S.perPage * 100) + '%';
+    $('pageBarWrap').classList.toggle('over', over);
+    var pL = $('pageLeft'); pL.textContent = over ? '목표 초과 +' + fmtMS(S.pageEl - S.perPage) : '목표까지 ' + fmtMS(S.perPage - S.pageEl);
+    pL.className = 'hint num' + (over ? ' bad' : '');
+    $('dueBanner').hidden = !due;
+    $('btnPause').textContent = paused ? '계속' : '일시정지';
+    $('btnNext').disabled = paused;
+    $('autoSw').setAttribute('aria-checked', S.auto ? 'true' : 'false');
+    $('autoHint').textContent = S.auto ? '켜짐. 한 장당 ' + fmtMS(S.perPage) + '이 지나면 자동으로 넘어갑니다.' : '꺼짐. 완료 버튼을 직접 눌러 넘깁니다.';
+  }
+  function renderLaps() {
+    var rows = S.laps.map(function (l) {
+      if (l.manual) return '<tr><td class="num">' + l.n + '</td><td class="num">' + fmtHMS(l.cum) + '</td><td>✎ 직접 입력' + (l.jump > 0 ? ' · +' + l.jump + '장' : '') + '</td></tr>';
+      var d = Math.round(l.sec - S.perPage), cls = d <= 0 ? 'good' : 'bad';
+      var ds = (d > 0 ? '+' : (d < 0 ? '−' : '±')) + Math.abs(d) + '초';
+      return '<tr><td class="num">' + l.n + '</td><td class="num">' + fmtHMS(l.cum) + '</td><td class="num">✓ ' + fmtMS(l.sec) + '<span class="delta ' + cls + '">' + ds + '</span></td></tr>';
+    });
+    $('laps').innerHTML = rows.join('');
+    $('lapsEmpty').hidden = S.laps.length > 0;
+  }
+  $('btnNext').addEventListener('click', function () {
+    if (!S || S.mode !== 'study') return;
+    completePage(false);
+    if (S && S.mode !== 'finished') { render(); store(S); }
+  });
+  function openSetPage(n, open) {
+    var f = $('setPageForm' + n), i = $('setPageInput' + n);
+    f.hidden = !open;
+    if (open) { i.max = S.N; i.value = S.done; i.focus(); i.select(); }
+  }
+  ['', '2'].forEach(function (n) {
+    $('btnSetPage' + n).addEventListener('click', function () { if (S) openSetPage(n, $('setPageForm' + n).hidden); });
+    $('setPageCancel' + n).addEventListener('click', function () { openSetPage(n, false); });
+    $('setPageForm' + n).addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!S || S.mode === 'finished') return;
+      var v = parseInt($('setPageInput' + n).value, 10);
+      if (isNaN(v) || v < 0 || v > S.N) { toast('0부터 ' + S.N + ' 사이로 입력하세요.'); return; }
+      openSetPage(n, false);
+      applyPage(v);
+    });
+  });
+  function applyPage(v) {
+    var old = S.done;
+    if (v !== old) {
+      if (v < old) S.laps = S.laps.filter(function (l) { return l.n <= v; });
+      else S.laps.unshift({ n: v, cum: S.studyTot, sec: 0, at: Date.now(), manual: true, jump: v - old });
+      S.done = v; S.pageEl = 0;
+      renderLaps();
+      if (v >= S.N) { finish(); return; }
+      toast(v + '장까지로 맞췄습니다.');
+    }
+    render(); store(S);
+    showReview();
+  }
+  var pendingPace = 0;
+  function showReview() {
+    if (!S || S.mode === 'finished') return;
+    if (S.done < 1 || S.studyTot < 30) { toast('공부 기록이 조금 더 쌓이면 페이스를 분석할 수 있습니다.'); return; }
+    var pace = S.studyTot / S.done;
+    var plan = projFin(S.perPage, 0), mine = projFin(pace, 0);
+    var d = (mine.ms - plan.ms) / 1000, dt;
+    if (d >= 30) dt = fmtDur(d) + ' 늦습니다'; else if (d <= -30) dt = fmtDur(-d) + ' 빠릅니다'; else dt = '거의 같습니다';
+    pendingPace = pace;
+    $('rvBody').innerHTML =
+      '<div>지금까지 평균 한 장당 <b>' + fmtDur(pace) + '</b> (현재 계획 ' + fmtDur(S.perPage) + ')</div>' +
+      '<div>이 페이스로 가면 <b>' + clock(mine.ms) + '</b>에 끝납니다. 현재 계획보다 ' + dt + '.</div>' +
+      '<div>현재 계획대로 가면 <b>' + clock(plan.ms) + '</b>에 끝납니다.</div>' +
+      '<div class="hint">반영하면 한 장당 시간과 시각별 목표표를 이 페이스로 다시 계산합니다. 원래대로를 누르면 지금 계획을 그대로 씁니다.</div>';
+    $('reBox').hidden = false;
+  }
+  function adoptPace() {
+    $('reBox').hidden = true;
+    if (!S || S.mode === 'finished' || !(pendingPace > 0)) return;
+    S.pb = S.done; S.sb = S.studyTot - S.pageEl; S.perPage = pendingPace;
+    S.t0 = Date.now(); S.pt0 = S.pausedTot || 0;
+    S.x0 = wallOff(S.studyTot) - (S.mode === 'break' ? BREAK - Math.min(S.breakEl, BREAK) : 0);
+    schedSig = ''; nextKey = '';
+    toast('한 장당 ' + fmtDur(S.perPage) + '으로 목표를 다시 계산했습니다.');
+    render(); store(S);
+  }
+  $('rvAdopt').addEventListener('click', adoptPace);
+  $('rvKeep').addEventListener('click', function () { $('reBox').hidden = true; });
+  $('btnPause').addEventListener('click', function () {
+    if (!S) return;
+    if (S.mode === 'study') S.mode = 'paused';
+    else if (S.mode === 'paused') { S.mode = 'study'; last = Date.now(); }
+    render(); store(S);
+  });
+  $('autoSw').addEventListener('click', function () {
+    if (!S) return;
+    S.auto = !S.auto;
+    toast(S.auto ? '자동 넘김을 켰습니다.' : '자동 넘김을 껐습니다.');
+    render(); store(S);
+  });
+  function resumeStudy() {
+    if (!S || S.mode !== 'break') return;
+    S.mode = 'study'; last = Date.now(); setView(); render(); store(S);
+  }
+  $('btnResumeStudy').addEventListener('click', function () { hideAlert(); resumeStudy(); });
+  $('alertOk').addEventListener('click', function () {
+    var m = alertMode; hideAlert();
+    if (m === 'start') resumeStudy();
+  });
+  $('btnSound').addEventListener('click', function () { buzz([300, 150, 300]); chime(); setTimeout(bell, 4200); });
+  function finish() {
+    S.mode = 'finished'; clearInterval(timer);
+    var wall = (Date.now() - S.startedAt) / 1000;
+    $('doneTitle').textContent = '총 ' + S.N + '장 완독';
+    $('doneSum').innerHTML =
+      '<dt>순 공부 시간</dt><dd class="num">' + fmtDur(S.studyTot) + '</dd>' +
+      '<dt>휴식</dt><dd class="num">' + S.breaks + '회</dd>' +
+      '<dt>전체 걸린 시간</dt><dd class="num">' + fmtDur(wall) + '</dd>' +
+      '<dt>한 장 평균</dt><dd class="num">' + fmtDur(S.studyTot / S.N) + '</dd>' +
+      '<dt>목표 한 장당</dt><dd class="num">' + fmtDur(S.origPer || S.perPage) + '</dd>';
+    store(null); setView();
+  }
+
+  /* ---------- 나가기, 처음으로, 이어하기 ---------- */
+  function reset() {
+    clearInterval(timer); S = null; cfg = null; store(null);
+    $('topSub').textContent = '전체 분량을 시간으로 나눠 시각별 목표 페이지를 알려 줍니다';
+    clearConfirm(); $('resumeCard').hidden = true;
+    setView();
+  }
+  document.querySelectorAll('.exitBtn').forEach(function (b) {
+    b.addEventListener('click', function () { $('exitBox').hidden = false; $('exitBox').scrollIntoView({ block: 'nearest' }); });
+  });
+  $('exitNo').addEventListener('click', function () { $('exitBox').hidden = true; });
+  $('exitYes').addEventListener('click', reset);
+  $('btnHome').addEventListener('click', reset);
+  $('btnDiscard').addEventListener('click', function () { store(null); $('resumeCard').hidden = true; });
+  $('btnResume').addEventListener('click', function () {
+    var saved = load(); if (!saved) { $('resumeCard').hidden = true; return; }
+    S = saved;
+    S.pausedTot = S.pausedTot || 0; S.auto = !!S.auto;
+    var gap = Math.max(0, (Date.now() - (S.savedAt || Date.now())) / 1000);
+    if (S.mode === 'break') S.breakEl += gap;
+    else { S.mode = 'paused'; S.pausedTot += gap; }
+    begin();
+  });
+
+  if (!('vibrate' in navigator)) {
+    $('vib').checked = false; $('vib').disabled = true;
+    $('vibHint').textContent = '이 기기나 브라우저는 진동을 지원하지 않습니다. 아이폰 사파리는 지원하지 않습니다.';
+  }
+  var saved = load();
+  if (saved && saved.mode && saved.mode !== 'finished' && saved.N) {
+    $('resumeText').textContent = saved.done + ' / ' + saved.N + '장 · 누적 공부 ' + fmtHMS(saved.studyTot);
+    $('resumeCard').hidden = false;
+  }
+})();
+</script>
+
+</body>
+</html>
