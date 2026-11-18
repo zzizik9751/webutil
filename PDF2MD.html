@@ -26,7 +26,8 @@
   .panes{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:60vh}
   @media (max-width:860px){.panes{grid-template-columns:1fr}}
   .pane{background:var(--card);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
-  .pane h2{font-size:12px;letter-spacing:.04em;color:var(--sub);margin:0;padding:9px 14px;border-bottom:1px solid var(--line);font-weight:600;display:flex;justify-content:space-between}
+  .pane h2{font-size:12px;letter-spacing:.04em;color:var(--sub);margin:0;padding:9px 14px;border-bottom:1px solid var(--line);font-weight:600;display:flex;justify-content:space-between;align-items:center;min-height:50px}
+  #count{font-weight:400;margin-left:6px}
   textarea{flex:1;border:0;resize:none;padding:14px;font:13px/1.6 ui-monospace,"D2Coding",Consolas,monospace;outline:none;min-height:55vh}
   #preview{flex:1;padding:6px 18px 18px;overflow:auto;font-size:14.5px;line-height:1.75;max-height:75vh}
   #preview h1,#preview h2,#preview h3{line-height:1.35;margin:18px 0 6px}
@@ -53,13 +54,19 @@ window.MathJax={tex:{inlineMath:[['$','$']],processEscapes:true,packages:{'[+]':
       <label><input type="checkbox" id="optMath" checked>수식 → LaTeX</label>
       <label><input type="checkbox" id="optHF" checked>머릿말·꼬릿말 제거</label>
       <label><input type="checkbox" id="optHead" checked>큰 글씨 → 제목(#)</label>
+      <label><input type="checkbox" id="optSplit" checked>붙은 항목 나누기</label>
       <label><input type="checkbox" id="optLines">원래 줄바꿈 유지</label>
     </div>
   </div>
   <div id="status"></div>
   <div class="panes">
     <section class="pane">
-      <h2><span>MARKDOWN (직접 수정 가능)</span><span id="count"></span></h2>
+      <h2><span>MARKDOWN (직접 수정 가능) <span id="count"></span></span>
+        <span class="actions">
+          <button id="reflow" title="문장 중간에 강제로 끊긴 줄을 이어 붙입니다">줄바꿈 정리</button>
+          <button id="split" title="한 줄에 붙어 있는 가. 나. 다. / 1) 2) 3) 항목을 줄마다 나눕니다">항목 나누기</button>
+          <button id="undo" disabled>되돌리기</button>
+        </span></h2>
       <textarea id="md" spellcheck="false" placeholder="변환 결과가 여기에 나옵니다."></textarea>
     </section>
     <section class="pane">
@@ -154,12 +161,16 @@ function pageToLines(page){
 
 /* 2) 머릿말·꼬릿말 제거: 페이지 위/아래 여백 영역에서 반복되는 줄, 쪽번호 줄 */
 const normHF = t => t.replace(/[\u0001\u0002]/g,'').replace(/\d+/g,'#').replace(/\s+/g,'');
-const PAGE_NUM = /^[-–—\s\[\(]*(page|p\.)?\s*\d{1,4}\s*((\/|of)\s*\d{1,4})?\s*(쪽|페이지|면)?[-–—\s\]\)]*$/i;
+const PAGE_NUM = /^[-–—\s\[\(]*(page|p\.)?\s*\d{1,4}\s*((\/|of|-|–)\s*\d{1,4})?\s*(쪽|페이지|면)?[-–—\s\]\)]*$/i;
 function removeHeaderFooter(pages, body){
   const n=pages.length, count={};
   const cands=pages.map(P=>{
     const L=P.lines, h=P.yMax-P.yMin, set=new Set(), list=[];
     L.forEach((ln,i)=>{
+      // 쪽번호 형태의 줄은 넓은 범위(위 15%, 아래 30%)에서 제거
+      if((i<2 && ln.y > P.yMax-0.15*h) || (i>=L.length-2 && ln.y < P.yMin+0.3*h)){
+        if(PAGE_NUM.test(ln.text.replace(/[\u0001\u0002^_]/g,''))){ list.push([ln,'#PN']); return; }
+      }
       const top = i<3 && ln.y > P.yMax-0.09*h;
       const bot = i>=L.length-3 && ln.y < P.yMin+0.09*h;
       if(top||bot){ const k=(top?'T':'B')+normHF(ln.text); list.push([ln,k]); set.add(k); }
@@ -171,7 +182,7 @@ function removeHeaderFooter(pages, body){
   pages.forEach((P,pi)=>{
     const drop=new Set();
     for(const [ln,k] of cands[pi]){
-      if(PAGE_NUM.test(ln.text.replace(/[\u0001\u0002^_]/g,'')) || (n>=2 && count[k]>=need && ln.size<=body*1.1)) drop.add(ln);
+      if(k==='#PN' || (n>=2 && count[k]>=need && ln.size<=body*1.1)) drop.add(ln);
     }
     P.lines=P.lines.filter(l=>!drop.has(l));
   });
@@ -274,7 +285,8 @@ function convertMath(text){
 }
 
 /* 4) 전체 조립 */
-const LIST_START=/^\s*([\u2460-\u2473\u3260-\u326D\u24D0-\u24E9]|\(?\d{1,3}[.)]\s|\(\d{1,3}\)|[가-하][.)]\s|[ㄱ-ㅎ][.)]\s|[•▪■□○●◦◆◇※▶►]\s?|[-–*]\s|[A-Za-z][.)]\s|\[\d{1,3}\]|문\s*\d|【|〔)/;
+const LIST_START=/^\s*([①-⑳㉠-㉭ⓐ-ⓩ]|\d{1,3}\)|\d{1,3}\.\s|\(\d{1,3}\)|[가-하]\)|[가-하]\.\s|\([가-하]\)|[ㄱ-ㅎ][.)]|[•▪■□○●◦◆◇※▶►◎△▲▷]|[-–*]\s|[A-Za-z][.)]\s|\[\d{1,3}\]|문\s*\d|【|〔)/;
+const JOSA=/^(에서|에게|으로|하시오|하여|한다|이다|합니다|입니다|된다|되는|에|의|을|를|은|는|이|가|와|과|로|도|만)([\s.,)!?]|$)/;
 function buildMarkdown(rawPages, opts){
   const pages=rawPages.map(p=>({lines:pageToLines(p), yMin:p.yMin, yMax:p.yMax}));
   // 본문 글자 크기 (글자 수 가중 최빈값)
@@ -285,7 +297,7 @@ function buildMarkdown(rawPages, opts){
   const blocks=[];
   for(const P of pages){
     const L=P.lines;
-    const gaps=[]; for(let i=1;i<L.length;i++){ const g=L[i-1].y-L[i].y; if(g>0 && g<3*L[i].size) gaps.push(g); }
+    const gaps=[]; for(let i=1;i<L.length;i++){ const g=L[i-1].y-L[i].y; if(g>=1.0*L[i].size && g<3*L[i].size) gaps.push(g); }
     gaps.sort((a,b)=>a-b);
     const mg=gaps.length? gaps[Math.floor(gaps.length*0.2)] : body*1.4;
     let cur=null;
@@ -298,7 +310,7 @@ function buildMarkdown(rawPages, opts){
       }
       const prev=L[i-1];
       const gap=prev? prev.y-ln.y : 0;
-      const newBlock = !cur || level || cur.level || gap>1.35*mg || gap<0 || LIST_START.test(ln.text)
+      const newBlock = !cur || level || cur.level || gap>1.35*mg || gap<0 || isItemStart(ln.text, prev&&prev.text)
                         || (prev && Math.abs(prev.size-ln.size)>0.15*body);
       if(newBlock){ cur={level, lines:[ln.text]}; blocks.push(cur); }
       else cur.lines.push(ln.text);
@@ -311,15 +323,83 @@ function buildMarkdown(rawPages, opts){
     else t=b.lines.reduce((acc,s)=>{
       if(!acc) return s;
       if(/[a-z]-$/.test(acc) && /^[a-z]/.test(s)) return acc.slice(0,-1)+s;
+      // 한글 단어가 줄 끝에서 잘린 경우(다음 줄이 조사·어미로 시작) 붙여 쓴다
+      if(/[\uAC00-\uD7A3)]$/.test(acc) && JOSA.test(s)) return acc+s;
       return acc+' '+s;
     },'');
+    if(opts.splitItems && !b.level) t=splitItems(t).text;
     t = opts.math ? t.split('\n').map(convertMath).join('\n') : escText(t);
     if(b.level) md.push('#'.repeat(b.level)+' '+t);
     else md.push(t.replace(/^#/,'\\#'));
   }
   return md.join('\n\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
 }
-if(typeof module!=='undefined') module.exports={buildMarkdown, convertMath, toLatex, pageToLines};
+/* 5) 줄바꿈 정리: 문장 중간에 강제로 끊긴 줄을 이어 붙임 */
+const KEEP_START=/^\s*(#{1,6}\s|>|\||```|\$\$|<!--)/;
+function reflowText(md){
+  const out=[]; let joined=0;
+  for(const cur of md.split('\n')){
+    if(!out.length){ out.push(cur); continue; }
+    const prev=out[out.length-1];
+    if(!prev.trim() || !cur.trim() || isItemStart(cur,prev) || KEEP_START.test(cur) || KEEP_START.test(prev)
+       || /([.!?。:;]|[.!?]["'”’)\]])\s*$/.test(prev)){ out.push(cur); continue; }
+    const a=prev.replace(/\s+$/,''), b=cur.replace(/^\s+/,'');
+    let j;
+    if(/[a-z]-$/.test(a) && /^[a-z]/.test(b)) j=a.slice(0,-1)+b;
+    else if(/[가-힣)]$/.test(a) && JOSA.test(b)) j=a+b;
+    else j=a+' '+b;
+    out[out.length-1]=j; joined++;
+  }
+  return {text:out.join('\n'), joined};
+}
+/* 6) 붙여 쓴 항목 나누기: "… 적용한다. 나.이 시방서는 …" → 항목마다 줄바꿈 */
+const KSEQ='가나다라마바사아자차카타파하';
+const CIRC='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+// 줄 맨 앞에서 띄어쓰기 없이 붙은 "가.이" 형태 (앞 줄이 짧거나 문장이 끝났을 때만 항목으로 봄)
+const LOOSE_START=/^\s*([가-하]\.|\d{1,3}\.(?!\d))(?=[가-힣A-Za-z(“‘"'])/;
+function isItemStart(cur, prev){
+  if(LIST_START.test(cur)) return true;
+  if(!LOOSE_START.test(cur)) return false;
+  const p=(prev||'').trim();
+  return !p || /[.!?:;。)」’”]$/.test(p) || p.length<=40;
+}
+function splitItems(text){
+  let count=0;
+  const lines=text.split('\n').map(line=>{
+    if(/^\s*(#{1,6}\s|\||```|\$\$)/.test(line)) return line;
+    const re=/(^|\s)(\d{1,3}\.\d{1,3}(?:\.\d{1,3})*\s|[가-하]\.|[가-하]\)|\(([가-하])\)|(\d{1,3})\)|\((\d{1,3})\)|[①-⑳])/g;
+    const last={}, cuts=[]; let m;
+    while((m=re.exec(line))){
+      const pos=m.index+m[1].length, tok=m[2];
+      const before=line.slice(0,pos);
+      if(((before.match(/(^|[^\\])\$/g)||[]).length)%2) continue;      // 수식 안은 건너뜀
+      let type, val;
+      if(/^\d/.test(tok) && /\.\d/.test(tok)){ type='sec'; val=0; }
+      else if(/^[가-하]\.$/.test(tok)){ type='K.'; val=KSEQ.indexOf(tok[0]); }
+      else if(/^[가-하]\)$/.test(tok)){ type='K)'; val=KSEQ.indexOf(tok[0]); }
+      else if(m[3]){ type='(K)'; val=KSEQ.indexOf(m[3]); }
+      else if(m[4]){ type='N)'; val=+m[4]-1; }
+      else if(m[5]){ type='(N)'; val=+m[5]-1; }
+      else { type='C'; val=CIRC.indexOf(tok); }
+      if(val<0) continue;
+      const prevText=before.trim();
+      if(!prevText) { last[type]=val; continue; }                         // 줄 맨 앞
+      if(type==='sec') continue;                                          // 절 번호는 줄 맨 앞에서만
+      const sentEnd=/[.!?:;。)」’”]$/.test(prevText);
+      const segStart=cuts.length?cuts[cuts.length-1]:0;
+      const shortHead=line.slice(segStart,pos).trim().length<=40;
+      const ok = (val===0 && (sentEnd || shortHead)) || (last[type]!==undefined && val===last[type]+1);
+      if(ok){ cuts.push(pos); last[type]=val; }
+    }
+    if(!cuts.length) return line;
+    count+=cuts.length;
+    let out='', st=0;
+    for(const c of cuts){ out+=line.slice(st,c).replace(/\s+$/,'')+'\n'; st=c; }
+    return out+line.slice(st);
+  });
+  return {text:lines.join('\n'), split:count};
+}
+if(typeof module!=='undefined') module.exports={splitItems, reflowText, buildMarkdown, convertMath, toLatex, pageToLines};
 /* ===== 변환 로직 끝 ===== */
 
 </script>
@@ -362,8 +442,8 @@ async function loadPdf(file){
 }
 function run(){
   if(!rawPages) return;
-  const md=buildMarkdown(rawPages,{math:$('optMath').checked, dropHF:$('optHF').checked, headings:$('optHead').checked, keepLines:$('optLines').checked});
-  $('md').value=md;
+  const md=buildMarkdown(rawPages,{math:$('optMath').checked, dropHF:$('optHF').checked, headings:$('optHead').checked, keepLines:$('optLines').checked, splitItems:$('optSplit').checked});
+  $('md').value=md; undoText=null; $('undo').disabled=true;
   const chars=rawPages.reduce((s,p)=>s+p.items.reduce((a,it)=>a+(it.str||'').trim().length,0),0);
   const nMath=(md.match(/(^|[^\\])\$[^$\n]+\$/g)||[]).length;
   if(chars<20*rawPages.length) setStatus(`${rawPages.length}쪽 — 글자 정보가 거의 없습니다. 스캔(이미지) PDF로 보이며, 이 방식으로는 변환되지 않습니다(OCR 필요).`,true);
@@ -377,9 +457,13 @@ function render(){
   $('count').textContent=md ? md.length.toLocaleString()+'자' : '';
   $('copy').disabled=$('save').disabled=!md.trim();
   const html=md.split(/\n{2,}/).map(b=>{
-    const m=b.match(/^(#{1,6})\s+(.*)$/s);
-    if(m) return `<h${m[1].length}>${esc(m[2])}</h${m[1].length}>`;
-    return `<p>${esc(b).replace(/\n/g,'<br>')}</p>`;
+    let out='', para=[];
+    const flush=()=>{ if(para.length){ out+=`<p>${para.map(esc).join('<br>')}</p>`; para=[]; } };
+    for(const ln of b.split('\n')){
+      const m=ln.match(/^(#{1,6})\s+(.*)$/);
+      if(m){ flush(); out+=`<h${m[1].length}>${esc(m[2])}</h${m[1].length}>`; } else para.push(ln);
+    }
+    flush(); return out;
   }).join('');
   const pv=$('preview'); pv.innerHTML=html;
   if(window.MathJax && MathJax.typesetPromise){ MathJax.typesetClear&&MathJax.typesetClear([pv]); MathJax.typesetPromise([pv]).catch(()=>{}); }
@@ -387,8 +471,22 @@ function render(){
 // MathJax가 늦게 로드되면 다시 그림
 (function waitMJ(){ if(window.MathJax&&MathJax.typesetPromise){ if($('md').value) render(); } else setTimeout(waitMJ,300); })();
 
+let undoText=null;
+$('reflow').addEventListener('click',()=>{
+  const ta=$('md'), r=reflowText(ta.value);
+  if(!r.joined){ setStatus('이어 붙일 줄이 없습니다.'); return; }
+  undoText=ta.value; ta.value=r.text; $('undo').disabled=false;
+  setStatus(`줄바꿈 정리: ${r.joined}곳을 이어 붙였습니다. 결과가 이상하면 [되돌리기]를 누르세요.`); render();
+});
+$('split').addEventListener('click',()=>{
+  const ta=$('md'), r=splitItems(ta.value);
+  if(!r.split){ setStatus('나눌 항목이 없습니다.'); return; }
+  undoText=ta.value; ta.value=r.text; $('undo').disabled=false;
+  setStatus(`항목 나누기: ${r.split}곳을 나눴습니다. 결과가 이상하면 [되돌리기]를 누르세요.`); render();
+});
+$('undo').addEventListener('click',()=>{ if(undoText==null) return; $('md').value=undoText; undoText=null; $('undo').disabled=true; setStatus('줄바꿈 정리를 되돌렸습니다.'); render(); });
 $('md').addEventListener('input',()=>{ clearTimeout(renderTimer); renderTimer=setTimeout(render,400); });
-['optMath','optHF','optHead','optLines'].forEach(id=>$(id).addEventListener('change',run));
+['optMath','optHF','optHead','optLines','optSplit'].forEach(id=>$(id).addEventListener('change',run));
 const drop=$('drop'), fileIn=$('file');
 drop.addEventListener('click',()=>fileIn.click());
 fileIn.addEventListener('change',()=>{ if(fileIn.files[0]) loadPdf(fileIn.files[0]); fileIn.value=''; });
