@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이미지 → DXF 변환기 (중심선 추출)</title>
+<style>
+  :root{--bg:#f4f5f3;--card:#fff;--ink:#1c1d1f;--sub:#6a6c70;--line:#dfe1dd;--acc:#1f6f5c;--acc2:#e3f1ec;--red:#d23b2f;--warn:#b5541c}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:20px 24px 8px}
+  h1{font-size:20px;margin:0 0 4px}
+  header p{margin:0;color:var(--sub);font-size:13px}
+  .wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;padding:10px 24px 24px}
+  @media (max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:14px;align-self:start}
+  #drop{border:2px dashed #c4c7c1;border-radius:10px;padding:16px 10px;text-align:center;color:var(--sub);cursor:pointer;font-size:13.5px}
+  #drop.over{border-color:var(--acc);background:var(--acc2);color:var(--acc)}
+  #drop b{color:var(--ink)}
+  .ctl{display:flex;flex-direction:column;gap:5px;font-size:13px}
+  .ctl .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .ctl small{color:var(--sub);font-size:11.5px;line-height:1.4}
+  .val{font-variant-numeric:tabular-nums;color:var(--acc);font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--acc)}
+  input[type=number],select{font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;width:110px}
+  label.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+  button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  button:disabled{opacity:.45;cursor:default}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  hr{border:0;border-top:1px solid var(--line);margin:0}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60vh}
+  #status{font-size:13px;color:var(--sub);min-height:18px}
+  #status.warn{color:var(--warn)}
+  .canvasBox{flex:1;overflow:auto;background:repeating-conic-gradient(#f3f3f3 0 25%,#fff 0 50%) 0 0/16px 16px;border-radius:8px;display:flex;align-items:flex-start;justify-content:center}
+  canvas{max-width:100%;height:auto;display:block}
+  canvas.pick{cursor:crosshair}
+  #calibBox{display:none;background:var(--acc2);border-radius:8px;padding:8px 10px;font-size:13px;gap:6px;align-items:center;flex-wrap:wrap}
+  #calibBox.on{display:flex}
+  .stats{font-size:12.5px;color:var(--sub)}
+</style>
+</head>
+<body>
+<header>
+  <h1>이미지 → DXF 변환기</h1>
+  <p>흑백 선 도면 이미지의 선 중심을 따라 폴리라인으로 바꿔 DXF(R12)로 저장합니다. AutoCAD에서 열어 DWG로 저장할 수 있습니다. 이미지는 브라우저 밖으로 나가지 않습니다.</p>
+</header>
+<div class="wrap">
+  <aside class="panel">
+    <div id="drop"><b>이미지를 끌어다 놓기</b><br>또는 클릭해서 선택 (PNG·JPG 등)<input id="file" type="file" accept="image/*" hidden></div>
+
+    <div class="ctl">
+      <div class="row"><span>흑백 기준값</span><span class="val" id="thV"></span></div>
+      <input type="range" id="th" min="1" max="254" value="128">
+      <div class="row"><button id="auto">자동 맞춤</button><label class="chk"><input type="checkbox" id="inv">밝은 선 / 어두운 배경</label></div>
+    </div>
+    <div class="ctl">
+      <div class="row"><span>잡티 제거</span><span class="val" id="noiseV"></span></div>
+      <input type="range" id="noise" min="0" max="300" value="15">
+      <small>이 면적(px)보다 작은 점·얼룩은 지웁니다.</small>
+    </div>
+    <div class="ctl">
+      <div class="row"><span>짧은 선 제거</span><span class="val" id="minLenV"></span></div>
+      <input type="range" id="minLen" min="0" max="60" value="6">
+    </div>
+    <div class="ctl">
+      <div class="row"><span>단순화 정도</span><span class="val" id="tolV"></span></div>
+      <input type="range" id="tol" min="0.3" max="6" step="0.1" value="1.2">
+      <small>클수록 점이 줄고 선이 곧게 펴집니다.</small>
+    </div>
+    <div class="ctl">
+      <div class="row"><span>작업 해상도(긴 변)</span>
+        <select id="maxSide"><option value="1200">1200 px</option><option value="2000" selected>2000 px</option><option value="3000">3000 px</option><option value="0">원본 그대로</option></select></div>
+    </div>
+    <hr>
+    <div class="ctl">
+      <div class="row"><span>축척 (mm / 원본 px)</span><input type="number" id="scale" value="1" step="any" min="0"></div>
+      <button id="calib" disabled>두 점 찍어서 실제 길이로 맞추기</button>
+      <small>도면의 치수가 적힌 선 양 끝을 찍고 실제 길이를 넣으면 축척이 맞춰집니다.</small>
+    </div>
+    <hr>
+    <div class="ctl">
+      <label class="chk"><input type="checkbox" id="showOrig" checked>원본 겹쳐 보기</label>
+      <label class="chk"><input type="checkbox" id="showBin">흑백 결과 보기</label>
+    </div>
+    <div class="btns">
+      <button id="saveDxf" class="primary" disabled>DXF 저장</button>
+      <button id="saveSvg" disabled>SVG 저장</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </aside>
+
+  <section class="stage">
+    <div id="status">이미지를 넣으면 빨간 선으로 변환 결과가 표시됩니다.</div>
+    <div id="calibBox"><span id="calibMsg">첫 번째 점을 찍으세요.</span>
+      <span id="calibInput" style="display:none">실제 길이 <input type="number" id="realLen" step="any" style="width:90px"> mm <button id="calibOk" class="primary">적용</button></span>
+      <button id="calibCancel">취소</button></div>
+    <div class="canvasBox"><canvas id="cv" width="10" height="10"></canvas></div>
+  </section>
+</div>
+
+<script>
+/* ========== 처리 엔진 ========== */
+const $=id=>document.getElementById(id);
+let img=null, imgName='drawing', W=0, H=0, k=1, gray=null, result=null;
+
+function otsu(g){
+  const h=new Array(256).fill(0); for(let i=0;i<g.length;i++) h[g[i]]++;
+  const tot=g.length; let sum=0; for(let i=0;i<256;i++) sum+=i*h[i];
+  let sB=0,wB=0,best=0,th=128;
+  for(let t=0;t<256;t++){ wB+=h[t]; if(!wB) continue; const wF=tot-wB; if(!wF) break;
+    sB+=t*h[t]; const mB=sB/wB, mF=(sum-sB)/wF, v=wB*wF*(mB-mF)*(mB-mF); if(v>best){best=v;th=t;} }
+  return th;
+}
+function loadGray(){
+  const ms=+$('maxSide').value, ow=img.naturalWidth, oh=img.naturalHeight;
+  k = ms && Math.max(ow,oh)>ms ? ms/Math.max(ow,oh) : 1;
+  W=Math.max(1,Math.round(ow*k)); H=Math.max(1,Math.round(oh*k));
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H); x.drawImage(img,0,0,W,H);
+  const d=x.getImageData(0,0,W,H).data; gray=new Uint8Array(W*H);
+  for(let i=0,j=0;i<gray.length;i++,j+=4) gray[i]=(d[j]*299+d[j+1]*587+d[j+2]*114)/1000|0;
+}
+// 패딩(가장자리 1px)이 있는 2진 이미지: 1 = 선
+function binarize(th, inv, minArea){
+  const w=W+2, b=new Uint8Array(w*(H+2));
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const v=gray[y*W+x]; b[(y+1)*w+x+1]= inv ? (v>th?1:0) : (v<th?1:0); }
+  if(minArea>0){ // 작은 덩어리 제거 (8방향 연결)
+    const seen=new Uint8Array(b.length), st=[], comp=[];
+    const nb=[-w-1,-w,-w+1,-1,1,w-1,w,w+1];
+    for(let i=0;i<b.length;i++){ if(!b[i]||seen[i]) continue;
+      st.length=0; comp.length=0; st.push(i); seen[i]=1;
+      while(st.length){ const p=st.pop(); comp.push(p); for(const o of nb){ const q=p+o; if(b[q]&&!seen[q]){seen[q]=1; st.push(q);} } }
+      if(comp.length<minArea) for(const p of comp) b[p]=0;
+    }
+  }
+  return b;
+}
+// Zhang-Suen 세선화 + 계단 모서리 정리
+function thin(b){
+  const w=W+2; let pts=[]; for(let i=0;i<b.length;i++) if(b[i]) pts.push(i);
+  const del=[]; let changed=true;
+  while(changed){
+    changed=false;
+    for(let step=0;step<2;step++){
+      del.length=0;
+      for(const i of pts){ if(!b[i]) continue;
+        const p2=b[i-w],p3=b[i-w+1],p4=b[i+1],p5=b[i+w+1],p6=b[i+w],p7=b[i+w-1],p8=b[i-1],p9=b[i-w-1];
+        const B=p2+p3+p4+p5+p6+p7+p8+p9; if(B<2||B>6) continue;
+        const A=(!p2&&p3?1:0)+(!p3&&p4?1:0)+(!p4&&p5?1:0)+(!p5&&p6?1:0)+(!p6&&p7?1:0)+(!p7&&p8?1:0)+(!p8&&p9?1:0)+(!p9&&p2?1:0);
+        if(A!==1) continue;
+        if(step===0){ if(p2&&p4&&p6) continue; if(p4&&p6&&p8) continue; }
+        else { if(p2&&p4&&p8) continue; if(p2&&p6&&p8) continue; }
+        del.push(i);
+      }
+      for(const i of del) b[i]=0;
+      if(del.length) changed=true;
+    }
+    pts=pts.filter(i=>b[i]);
+  }
+  // 남은 2px 두께(대각선 계단) 정리: 지워도 이웃끼리 연결이 유지되는 점은 제거
+  const ring=[-w,-w+1,1,w+1,w,w-1,-1,-w-1];
+  for(let pass=0;pass<6;pass++){
+    let removed=0;
+    for(const i of pts){ if(!b[i]) continue;
+      const on=ring.map(o=>b[i+o]); let B=0; for(const v of on) B+=v; if(B<2) continue;
+      const par=[0,1,2,3,4,5,6,7], find=x=>{while(par[x]!==x)x=par[x]=par[par[x]];return x;};
+      for(let a=0;a<8;a++){ if(!on[a]) continue;
+        const nx=(a+1)%8; if(on[nx]) par[find(a)]=find(nx);
+        if(a%2===0){ const n2=(a+2)%8; if(on[n2]) par[find(a)]=find(n2); } }
+      const roots=new Set(); for(let a=0;a<8;a++) if(on[a]) roots.add(find(a));
+      if(roots.size===1){ b[i]=0; removed++; }
+    }
+    if(!removed) break;
+    pts=pts.filter(i=>b[i]);
+  }
+  return b;
+}
+// 골격 → 폴리라인 (끝점·분기점 사이를 따라감, 남은 것은 닫힌 고리)
+function trace(b){
+  const w=W+2, nb=[-w,1,w,-1,-w+1,w+1,w-1,-w-1];
+  const deg=new Uint8Array(b.length), nodes=[];
+  for(let i=0;i<b.length;i++) if(b[i]){ let d=0; for(const o of nb) if(b[i+o]) d++; deg[i]=d; if(d!==2) nodes.push(i); }
+  const isNode=i=>deg[i]!==2, used=new Uint8Array(b.length), pairs=new Set(), paths=[];
+  const walk=(s,f,loop)=>{
+    const path=[s,f]; if(isNode(f)) return path;
+    used[f]=1; let prev=s, cur=f;
+    for(;;){
+      let nx=-1;
+      for(const o of nb){ const n=cur+o; if(!b[n]||n===prev) continue;
+        if(loop && n===s && path.length>3){ nx=n; break; }
+        if(isNode(n)||!used[n]){ nx=n; break; } }
+      if(nx<0) break;
+      path.push(nx);
+      if(nx===s || isNode(nx)) break;
+      used[nx]=1; prev=cur; cur=nx;
+    }
+    return path;
+  };
+  for(const s of nodes) for(const o of nb){ const n=s+o; if(!b[n]) continue;
+    if(isNode(n)){ const key=s<n?s+','+n:n+','+s; if(!pairs.has(key)){ pairs.add(key); paths.push([s,n]); } }
+    else if(!used[n]) paths.push(walk(s,n,false)); }
+  for(let i=0;i<b.length;i++) if(b[i] && !isNode(i) && !used[i]){
+    used[i]=1; let f=-1; for(const o of nb) if(b[i+o]){ f=i+o; break; }
+    if(f>=0) paths.push(walk(i,f,true));
+  }
+  return paths.map(p=>p.map(i=>[i%w-0.5, Math.floor(i/w)-0.5]));
+}
+function dp(pts,tol){
+  if(pts.length<3) return pts;
+  const keep=new Uint8Array(pts.length); keep[0]=keep[pts.length-1]=1;
+  const st=[[0,pts.length-1]];
+  while(st.length){ const [a,z]=st.pop(); const [x1,y1]=pts[a],[x2,y2]=pts[z];
+    const dx=x2-x1, dy=y2-y1, L=Math.hypot(dx,dy)||1e-9; let md=-1, mi=-1;
+    for(let i=a+1;i<z;i++){ const d = (dx===0&&dy===0) ? Math.hypot(pts[i][0]-x1,pts[i][1]-y1) : Math.abs(dy*pts[i][0]-dx*pts[i][1]+x2*y1-y2*x1)/L; if(d>md){md=d;mi=i;} }
+    if(md>tol){ keep[mi]=1; st.push([a,mi],[mi,z]); } }
+  return pts.filter((_,i)=>keep[i]);
+}
+const plen=p=>{ let s=0; for(let i=1;i<p.length;i++) s+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]); return s; };
+
+function process(){
+  if(!img) return;
+  const t0=performance.now();
+  const bin=binarize(+$('th').value, $('inv').checked, +$('noise').value);
+  const binCopy=bin.slice();
+  const sk=thin(bin);
+  const raw=trace(sk);
+  const minLen=+$('minLen').value, tol=+$('tol').value;
+  const paths=raw.filter(p=>plen(p)>=minLen && p.length>=2).map(p=>dp(p,tol));
+  result={paths, bin:binCopy};
+  const nV=paths.reduce((s,p)=>s+p.length,0);
+  $('stats').textContent=`폴리라인 ${paths.length.toLocaleString()}개 · 점 ${nV.toLocaleString()}개 · 작업 크기 ${W}×${H}px`;
+  const on=paths.length>0; $('saveDxf').disabled=$('saveSvg').disabled=!on;
+  const ink=binCopy.reduce((s,v)=>s+v,0)/(W*H);
+  setStatus(`변환 완료 (${Math.round(performance.now()-t0)} ms)`+(ink>0.35?' — 검은 영역이 너무 많습니다. 기준값을 낮추거나 "밝은 선 / 어두운 배경"을 바꿔 보세요.':''), ink>0.35);
+  draw();
+}
+
+/* ========== 화면 ========== */
+const cv=$('cv'), cx=cv.getContext('2d');
+let calib=null;
+function draw(){
+  if(!img) return;
+  cv.width=W; cv.height=H;
+  cx.fillStyle='#fff'; cx.fillRect(0,0,W,H);
+  if($('showOrig').checked){ cx.globalAlpha=0.35; cx.drawImage(img,0,0,W,H); cx.globalAlpha=1; }
+  if($('showBin').checked && result){
+    const id=cx.getImageData(0,0,W,H), d=id.data, w=W+2;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(result.bin[(y+1)*w+x+1]){ const j=(y*W+x)*4; d[j]=d[j+1]=d[j+2]=170; }
+    cx.putImageData(id,0,0);
+  }
+  if(result){
+    cx.strokeStyle='#d23b2f'; cx.lineWidth=Math.max(1,Math.max(W,H)/900); cx.lineJoin='round';
+    cx.beginPath();
+    for(const p of result.paths){ cx.moveTo(p[0][0],p[0][1]); for(let i=1;i<p.length;i++) cx.lineTo(p[i][0],p[i][1]); }
+    cx.stroke();
+  }
+  if(calib){
+    cx.fillStyle='#1f6f5c'; cx.strokeStyle='#1f6f5c'; cx.lineWidth=Math.max(2,W/500);
+    calib.pts.forEach(([x,y])=>{ cx.beginPath(); cx.arc(x,y,Math.max(4,W/250),0,7); cx.fill(); });
+    if(calib.pts.length===2){ cx.beginPath(); cx.moveTo(...calib.pts[0]); cx.lineTo(...calib.pts[1]); cx.stroke(); }
+  }
+}
+function setStatus(t,warn){ const s=$('status'); s.textContent=t; s.className=warn?'warn':''; }
+let timer=null; const schedule=()=>{ clearTimeout(timer); setStatus('처리 중…'); timer=setTimeout(process,200); };
+const showVals=()=>{ $('thV').textContent=$('th').value; $('noiseV').textContent=$('noise').value+' px'; $('minLenV').textContent=$('minLen').value+' px'; $('tolV').textContent=(+$('tol').value).toFixed(1)+' px'; };
+['th','noise','minLen','tol'].forEach(id=>$(id).addEventListener('input',()=>{showVals(); schedule();}));
+$('inv').addEventListener('change',schedule);
+$('maxSide').addEventListener('change',()=>{ if(img){ loadGray(); schedule(); } });
+['showOrig','showBin'].forEach(id=>$(id).addEventListener('change',draw));
+$('auto').addEventListener('click',()=>{ if(!gray) return; $('th').value=Math.min(254,Math.max(1,otsu(gray))); showVals(); schedule(); });
+showVals();
+
+function openFile(f){
+  if(!f || !/^image\//.test(f.type)){ setStatus('이미지 파일만 넣을 수 있습니다.',true); return; }
+  imgName=f.name.replace(/\.[^.]+$/,'')||'drawing';
+  const u=URL.createObjectURL(f), im=new Image();
+  im.onload=()=>{ img=im; loadGray(); $('th').value=Math.min(254,Math.max(1,otsu(gray)));
+    // 배경이 어두우면 자동 반전
+    let s=0; for(let i=0;i<gray.length;i+=7) s+=gray[i]; $('inv').checked = s/(gray.length/7) < 110;
+    showVals(); $('calib').disabled=false; schedule(); };
+  im.onerror=()=>setStatus('이미지를 열 수 없습니다.',true);
+  im.src=u;
+}
+const drop=$('drop'), fileIn=$('file');
+drop.addEventListener('click',()=>fileIn.click());
+fileIn.addEventListener('change',()=>{ openFile(fileIn.files[0]); fileIn.value=''; });
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>openFile([...e.dataTransfer.files][0]));
+document.addEventListener('dragover',e=>e.preventDefault()); document.addEventListener('drop',e=>e.preventDefault());
+document.addEventListener('paste',e=>{ const it=[...(e.clipboardData||{}).items||[]].find(i=>i.type.startsWith('image/')); if(it) openFile(it.getAsFile()); });
+
+/* 축척 맞추기 */
+$('calib').addEventListener('click',()=>{ calib={pts:[]}; cv.classList.add('pick'); $('calibBox').classList.add('on'); $('calibMsg').textContent='첫 번째 점을 찍으세요.'; $('calibInput').style.display='none'; });
+const endCalib=()=>{ calib=null; cv.classList.remove('pick'); $('calibBox').classList.remove('on'); draw(); };
+$('calibCancel').addEventListener('click',endCalib);
+cv.addEventListener('click',e=>{
+  if(!calib || calib.pts.length>=2) return;
+  const r=cv.getBoundingClientRect(); calib.pts.push([(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]);
+  if(calib.pts.length===1) $('calibMsg').textContent='두 번째 점을 찍으세요.';
+  else { const [a,b]=calib.pts; const dPx=Math.hypot(a[0]-b[0],a[1]-b[1])/k;
+    $('calibMsg').textContent=`두 점 거리: 원본 ${dPx.toFixed(1)} px.`; $('calibInput').style.display=''; $('realLen').focus(); calib.dPx=dPx; }
+  draw();
+});
+$('calibOk').addEventListener('click',()=>{ const L=+$('realLen').value; if(!(L>0)||!calib||!calib.dPx) return;
+  $('scale').value=+(L/calib.dPx).toPrecision(6); setStatus(`축척 적용: 1 px = ${$('scale').value} mm`); endCalib(); });
+
+/* ========== 내보내기 ========== */
+function toUnits(){ const s=(+$('scale').value||1)/k; return result.paths.map(p=>p.map(([x,y])=>[x*s,(H-y)*s])); }
+function buildDxf(){
+  const P=toUnits(), o=[], f=v=>(Math.round(v*10000)/10000).toString(), L='IMG2DXF';
+  o.push('0','SECTION','2','TABLES',
+    '0','TABLE','2','LTYPE','70','1','0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0','0','ENDTAB',
+    '0','TABLE','2','LAYER','70','1','0','LAYER','2',L,'70','0','62','7','6','CONTINUOUS','0','ENDTAB',
+    '0','ENDSEC');
+  o.push('0','SECTION','2','ENTITIES');
+  for(const p of P){
+    const closed = p.length>3 && p[0][0]===p[p.length-1][0] && p[0][1]===p[p.length-1][1];
+    if(p.length===2){ o.push('0','LINE','8',L,'10',f(p[0][0]),'20',f(p[0][1]),'30','0','11',f(p[1][0]),'21',f(p[1][1]),'31','0'); continue; }
+    const q = closed ? p.slice(0,-1) : p;
+    o.push('0','POLYLINE','8',L,'66','1','10','0','20','0','30','0','70',closed?'1':'0');
+    for(const [x,y] of q) o.push('0','VERTEX','8',L,'10',f(x),'20',f(y),'30','0');
+    o.push('0','SEQEND','8',L);
+  }
+  o.push('0','ENDSEC','0','EOF');
+  return o.join('\r\n')+'\r\n';
+}
+function buildSvg(){
+  const s=(+$('scale').value||1)/k, w=W*s, h=H*s;
+  const d=result.paths.map(p=>'M'+p.map(([x,y])=>(x*s).toFixed(3)+' '+(y*s).toFixed(3)).join('L')).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm" viewBox="0 0 ${w.toFixed(3)} ${h.toFixed(3)}"><path d="${d}" fill="none" stroke="#000" stroke-width="${Math.max(w,h)/1500}" stroke-linejoin="round" stroke-linecap="round"/></svg>\n`;
+}
+// 무압축 zip (claude.ai 안에서는 .dxf를 직접 저장할 수 없어 zip으로 감쌈)
+function zipOne(name,str){
+  const enc=new TextEncoder(), data=enc.encode(str), fn=enc.encode(name);
+  let c, crc=-1; const T=zipOne.T||(zipOne.T=Array.from({length:256},(_,n)=>{c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;return c>>>0;}));
+  for(let i=0;i<data.length;i++) crc=T[(crc^data[i])&255]^(crc>>>8); crc=(crc^-1)>>>0;
+  const lh=new DataView(new ArrayBuffer(30)), ch=new DataView(new ArrayBuffer(46)), ed=new DataView(new ArrayBuffer(22));
+  [[0,0x04034b50,4],[4,20,2],[6,0x0800,2],[8,0,2],[10,0,2],[12,0x21,2],[14,crc,4],[18,data.length,4],[22,data.length,4],[26,fn.length,2],[28,0,2]]
+    .forEach(([o,v,n])=>n===4?lh.setUint32(o,v,true):lh.setUint16(o,v,true));
+  [[0,0x02014b50,4],[4,20,2],[6,20,2],[8,0x0800,2],[10,0,2],[12,0,2],[14,0x21,2],[16,crc,4],[20,data.length,4],[24,data.length,4],[28,fn.length,2],[30,0,2],[32,0,2],[34,0,2],[36,0,2],[38,0,4],[42,0,4]]
+    .forEach(([o,v,n])=>n===4?ch.setUint32(o,v,true):ch.setUint16(o,v,true));
+  const cdOff=30+fn.length+data.length, cdLen=46+fn.length;
+  [[0,0x06054b50,4],[4,0,2],[6,0,2],[8,1,2],[10,1,2],[12,cdLen,4],[16,cdOff,4],[20,0,2]]
+    .forEach(([o,v,n])=>n===4?ed.setUint32(o,v,true):ed.setUint16(o,v,true));
+  return new Blob([lh,fn,data,ch,fn,ed],{type:'application/zip'});
+}
+let downloads=null;
+(async()=>{ try{ if(window.claude&&claude.use) downloads=await claude.use('downloads'); }catch(e){} })();
+function localDownload(name,blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+$('saveDxf').addEventListener('click',async()=>{
+  const dxf=buildDxf(), name=imgName+'.dxf';
+  if(downloads){
+    try{ await downloads.save({filename:imgName+'.zip', data:zipOne(name,dxf)}); setStatus(imgName+'.zip 저장 — 압축을 풀면 '+name+' 이 나옵니다.'); }
+    catch(e){ setStatus(e&&e.code==='declined'?'저장을 취소했습니다.':'저장 실패: '+(e&&e.message||e),!(e&&e.code==='declined')); }
+    return;
+  }
+  try{ localDownload(name,new Blob([dxf],{type:'application/dxf'})); setStatus(name+' 저장을 요청했습니다.'); }
+  catch(e){ setStatus('이 화면에서는 저장이 막혀 있습니다.',true); }
+});
+$('saveSvg').addEventListener('click',async()=>{
+  const svg=buildSvg(), name=imgName+'.svg';
+  if(downloads){ try{ await downloads.save({filename:name,data:svg}); setStatus(name+' 저장했습니다.'); }catch(e){ if(!(e&&e.code==='declined')) setStatus('저장 실패: '+(e&&e.message||e),true); } return; }
+  try{ localDownload(name,new Blob([svg],{type:'image/svg+xml'})); }catch(e){ setStatus('이 화면에서는 저장이 막혀 있습니다.',true); }
+});
+</script>
+</body>
+</html>
