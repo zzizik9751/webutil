@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!--CRV index_webutil r1 20261027 h:48e0cf4c f:폴더정리섹션,flac2mp3카드-->
+<!--CRV index_webutil r2 20261119 f:pdf2md카드,img2dxf카드-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Webutil · zzizik</title>
-<meta name="description" content="브라우저에서 바로 쓰는 작은 웹 도구 모음 — PDF 검색, 문서 스캔, OCR, HTML 문서 편집, 유튜브 자막, 엑셀 수식 계산기, 한글 타자 연습, 특수문자, 정렬, 패스워드, 음악, 음원 중복 정리, 오디오 자르기, 변환, FLAC→MP3, 사진·파일 날짜별 폴더 정리, D-day">
+<meta name="description" content="브라우저에서 바로 쓰는 작은 웹 도구 모음 — PDF 검색, 문서 스캔, OCR, HTML 문서 편집, PDF→Markdown, 이미지→DXF 도면 변환, 유튜브 자막, 엑셀 수식 계산기, 한글 타자 연습, 특수문자, 정렬, 패스워드, 음악, 음원 중복 정리, 오디오 자르기, 변환, FLAC→MP3, 사진·파일 날짜별 폴더 정리, D-day">
 <style>
   :root{
     --bg-1:#fafaf9; --bg-2:#f1f0ee;
@@ -150,6 +150,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="meta"><span class="chip net">수식·글꼴 인터넷</span><span class="file">doc_editor.html</span></div>
         </div>
       </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M7 17v-4l2 2 2-2v4"/><path d="M15 13v4M13.5 15.5 15 17l1.5-1.5"/></svg></div>
+        <div class="body">
+          <a class="name" href="PDF2MD.html">PDF to Markdown</a>
+          <p class="desc">PDF에서 본문 텍스트만 뽑아 Markdown(.md)으로 저장. 머리말·꼬리말·이미지는 빼고, 위·아래 첨자 같은 간단한 수식은 LaTeX($…$)로 변환.</p>
+          <div class="meta"><span class="chip net">인터넷 필요</span><span class="file">PDF2MD.html</span></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -208,7 +216,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </section>
 
   <section>
-    <h2>이미지 · 색상</h2>
+    <h2>이미지 · 도면</h2>
     <div class="grid">
       <div class="tool">
         <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A3.7 3.7 0 0 0 21 8.7C21 5.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15.5" cy="7.5" r="1"/></svg></div>
@@ -216,6 +224,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <a class="name" href="colorpick.html">색상 추출기</a>
           <p class="desc">이미지를 붙여 넣으면 대표 색을 뽑아 HEX·CSS로 복사. 디자인 가이드(프롬프트) 자동 생성.</p>
           <div class="meta"><span class="chip">오프라인</span><span class="file">colorpick.html</span></div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><path d="M5 9l2-2.5L9 9"/><path d="M14 7h4l3 3"/><path d="M13 21l3-6 3 2 2-4"/><circle cx="13" cy="21" r=".6"/><circle cx="21" cy="13" r=".6"/></svg></div>
+        <div class="body">
+          <a class="name" href="IMG2DXF.html">이미지 to DXF</a>
+          <p class="desc">흑백 선 도면 이미지(또는 PDF)의 선 중심을 따라 폴리라인으로 바꿔 DXF(R12)로 저장. AutoCAD에서 열어 DWG로 저장 가능.</p>
+          <div class="meta"><span class="chip">이미지 오프라인</span><span class="chip net">PDF 인터넷</span><span class="file">IMG2DXF.html</span></div>
         </div>
       </div>
     </div>
