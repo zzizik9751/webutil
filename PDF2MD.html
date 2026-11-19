@@ -33,6 +33,9 @@
   #preview h1,#preview h2,#preview h3{line-height:1.35;margin:18px 0 6px}
   #preview h1{font-size:21px}#preview h2{font-size:18px}#preview h3{font-size:16px}
   #preview p{margin:8px 0}
+  #preview table{border-collapse:collapse;margin:10px 0;font-size:13.5px;max-width:100%}
+  #preview th,#preview td{border:1px solid #cfccc5;padding:4px 9px;text-align:left;vertical-align:top}
+  #preview th{background:#f1efea;font-weight:600}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 <script>
@@ -49,12 +52,13 @@ window.MathJax={tex:{inlineMath:[['$','$']],processEscapes:true,packages:{'[+]':
 </header>
 <main>
   <div class="bar">
-    <div id="drop"><b>PDF를 여기로 끌어다 놓기</b> 또는 클릭해서 선택<input id="file" type="file" accept="application/pdf,.pdf" hidden></div>
+    <div id="drop"><b>PDF를 끌어다 놓기</b> · 클릭해서 선택 · <b>Ctrl+V</b>로 PDF 파일이나 복사한 글 붙여넣기<input id="file" type="file" accept="application/pdf,.pdf" hidden></div>
     <div class="opts">
       <label><input type="checkbox" id="optMath" checked>수식 → LaTeX</label>
       <label><input type="checkbox" id="optHF" checked>머릿말·꼬릿말 제거</label>
       <label><input type="checkbox" id="optHead" checked>큰 글씨 → 제목(#)</label>
       <label><input type="checkbox" id="optSplit" checked>붙은 항목 나누기</label>
+      <label><input type="checkbox" id="optTable" checked>표 → Markdown 표</label>
       <label><input type="checkbox" id="optLines">원래 줄바꿈 유지</label>
     </div>
   </div>
@@ -102,7 +106,7 @@ const SUP = {'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6',
 const SUB = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9','₊':'+','₋':'-','₌':'=','₍':'(','₎':')','ₐ':'a','ₑ':'e','ₒ':'o','ₓ':'x','ₙ':'n','ₘ':'m','ₖ':'k'};
 const FUNCS = new Set(['sin','cos','tan','cot','sec','csc','log','ln','exp','lim','max','min','arcsin','arccos','arctan','sinh','cosh','tanh','det','sgn']);
 const STOP2 = new Set(['is','of','in','on','at','to','an','as','be','by','or','if','it','we','no','do','so','up','us','me','my','he','am']);
-const OPS = '=+-−×÷±∓≤≥≦≧≠≈≒≃≅≡<>/·⋅∝→⇒←↔⇔^*,';
+const OPS = '=+-−×÷±∓≤≥≦≧≠≈≒≃≅≡<>/·⋅∝→⇒←↔⇔^*';
 const isHangul = s => /[\uAC00-\uD7A3\u3131-\u318E]/.test(s);
 
 function median(a){ if(!a.length) return 0; const b=[...a].sort((x,y)=>x-y); return b[Math.floor(b.length/2)]; }
@@ -135,12 +139,15 @@ function pageToLines(page){
   for(const L of lines){
     L.items.sort((p,q)=>p.x-q.x);
     let out='', role='n', prevEnd=null, prevSize=L.size, chars=0;
+    const segs=[]; let segStart=0, segX=null;
     for(const it of L.items){
       const dy=it.y-L.y;
       let r = Math.abs(dy)<=0.2*L.size ? 'n' : (dy>0 ? '^' : '_');
       if(r!=='n' && (isHangul(it.s) || it.s.trim().length>10)) r='n';
       const gap = prevEnd==null ? 0 : it.x-prevEnd;
       const needSpace = prevEnd!=null && gap > 0.2*Math.min(prevSize,it.size) && !/\s$/.test(out) && !/^\s/.test(it.s);
+      if(r==='n' && role==='n' && prevEnd!=null && gap>1.8*L.size){ segs.push({x:segX, text:out.slice(segStart)}); out+=' '; segStart=out.length; segX=it.x; }
+      if(segX==null) segX=it.x;
       if(r!==role){
         if(role!=='n') out+='\u0002';
         if(r==='n' && needSpace) out+=' ';
@@ -154,9 +161,164 @@ function pageToLines(page){
       prevEnd=it.x+it.w; prevSize=it.size; chars+=it.s.length;
     }
     if(role!=='n') out+='\u0002';
+    segs.push({x:segX, text:out.slice(segStart)});
+    L.segs=segs.map(g=>({x:g.x, text:g.text.replace(/\s+/g,' ').trim()})).filter(g=>g.text);
     L.text=out.replace(/\s+/g,' ').trim(); L.chars=chars;
   }
   return lines.filter(L=>L.text).sort((p,q)=>q.y-p.y || p.x0-q.x0);
+}
+
+/* PDF 그리기 명령에서 수평·수직 선분 추출 (표 테두리 인식용) */
+function extractRules(opl, OPS){
+  const fn=opl.fnArray, ar=opl.argsArray, H=[], V=[];
+  let ctm=[1,0,0,1,0,0]; const stack=[]; let subs=[], cur=null;
+  const mul=(m,n)=>[m[0]*n[0]+m[2]*n[1], m[1]*n[0]+m[3]*n[1], m[0]*n[2]+m[2]*n[3], m[1]*n[2]+m[3]*n[3], m[0]*n[4]+m[2]*n[5]+m[4], m[1]*n[4]+m[3]*n[5]+m[5]];
+  const P=(x,y)=>[ctm[0]*x+ctm[2]*y+ctm[4], ctm[1]*x+ctm[3]*y+ctm[5]];
+  const addSeg=(a,b)=>{ const dx=Math.abs(a[0]-b[0]), dy=Math.abs(a[1]-b[1]);
+    if(dy<0.8 && dx>=3) H.push({y:(a[1]+b[1])/2, x1:Math.min(a[0],b[0]), x2:Math.max(a[0],b[0])});
+    else if(dx<0.8 && dy>=3) V.push({x:(a[0]+b[0])/2, y1:Math.min(a[1],b[1]), y2:Math.max(a[1],b[1])}); };
+  const strokeSubs=()=>{ for(const s of subs) for(let i=1;i<s.length;i++) addSeg(s[i-1],s[i]); };
+  const fillSubs=()=>{ for(const s of subs){ if(s.length<2) continue;
+      let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity; for(const [x,y] of s){ x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y); }
+      const w=x1-x0, h=y1-y0;
+      if(h<2.5 && w>=3) H.push({y:(y0+y1)/2,x1:x0,x2:x1}); else if(w<2.5 && h>=3) V.push({x:(x0+x1)/2,y1:y0,y2:y1}); } };
+  const STROKE=new Set([OPS.stroke,OPS.closeStroke]), FILL=new Set([OPS.fill,OPS.eoFill]),
+        BOTH=new Set([OPS.fillStroke,OPS.eoFillStroke,OPS.closeFillStroke,OPS.closeEOFillStroke]);
+  for(let i=0;i<fn.length;i++){
+    const f=fn[i], a=ar[i];
+    if(f===OPS.save) stack.push(ctm.slice());
+    else if(f===OPS.restore){ if(stack.length) ctm=stack.pop(); }
+    else if(f===OPS.transform) ctm=mul(ctm,a);
+    else if(f===OPS.paintFormXObjectBegin){ stack.push(ctm.slice()); if(a&&a[0]) ctm=mul(ctm,a[0]); }
+    else if(f===OPS.paintFormXObjectEnd){ if(stack.length) ctm=stack.pop(); }
+    else if(f===OPS.constructPath){
+      const ops=a[0], c=a[1]; let k=0;
+      for(const op of ops){
+        if(op===OPS.moveTo){ cur=[P(c[k],c[k+1])]; subs.push(cur); k+=2; }
+        else if(op===OPS.lineTo){ const p=P(c[k],c[k+1]); k+=2; if(!cur){cur=[p];subs.push(cur);} else cur.push(p); }
+        else if(op===OPS.curveTo){ cur=[P(c[k+4],c[k+5])]; subs.push(cur); k+=6; }
+        else if(op===OPS.curveTo2||op===OPS.curveTo3){ cur=[P(c[k+2],c[k+3])]; subs.push(cur); k+=4; }
+        else if(op===OPS.closePath){ if(cur&&cur.length>1) cur.push(cur[0]); }
+        else if(op===OPS.rectangle){ const x=c[k],y=c[k+1],w=c[k+2],h=c[k+3]; k+=4;
+          const r=[P(x,y),P(x+w,y),P(x+w,y+h),P(x,y+h)]; r.push(r[0]); subs.push(r); cur=null; }
+      }
+    }
+    else if(STROKE.has(f)||BOTH.has(f)){ strokeSubs(); subs=[]; cur=null; }
+    else if(FILL.has(f)){ fillSubs(); subs=[]; cur=null; }
+    else if(f===OPS.endPath){ subs=[]; cur=null; }
+  }
+  return {H,V};
+}
+
+/* 표 인식 (A) 테두리 선 기준 */
+function mergeSegs(arr, k, a, b){
+  const out=[]; [...arr].sort((p,q)=>p[k]-q[k]||p[a]-q[a]).forEach(s=>{
+    const m=out.find(o=>Math.abs(o[k]-s[k])<=1.5 && s[a]<=o[b]+1.5 && s[b]>=o[a]-1.5);
+    if(m){ m[a]=Math.min(m[a],s[a]); m[b]=Math.max(m[b],s[b]); } else out.push({...s});
+  });
+  return out;
+}
+function clusterVals(vals, tol){
+  const v=[...vals].sort((a,b)=>a-b), out=[];
+  for(const x of v){ const last=out[out.length-1]; if(last && x-last.max<=tol){ last.sum+=x; last.n++; last.max=x; } else out.push({sum:x,n:1,max:x}); }
+  return out.map(c=>c.sum/c.n);
+}
+function findRuledTables(rules){
+  if(!rules) return [];
+  const H=mergeSegs(rules.H,'y','x1','x2'), V=mergeSegs(rules.V,'x','y1','y2'), t=2;
+  const n=H.length+V.length, par=[...Array(n).keys()], find=x=>{while(par[x]!==x)x=par[x]=par[par[x]];return x;};
+  H.forEach((h,i)=>V.forEach((v,j)=>{ if(v.x>=h.x1-t && v.x<=h.x2+t && h.y>=v.y1-t && h.y<=v.y2+t) par[find(i)]=find(H.length+j); }));
+  const comps={};
+  for(let i=0;i<n;i++){ const r=find(i); (comps[r]=comps[r]||{h:[],v:[]}); if(i<H.length) comps[r].h.push(H[i]); else comps[r].v.push(V[i-H.length]); }
+  const tables=[];
+  for(const c of Object.values(comps)){
+    if(c.h.length<2 || c.v.length<2) continue;
+    const ys=clusterVals(c.h.map(h=>h.y),2).sort((a,b)=>b-a), xs=clusterVals(c.v.map(v=>v.x),2);
+    const rows=ys.length-1, cols=xs.length-1;
+    if(cols<2 || rows<1 || rows*cols<3) continue;
+    tables.push({xs, ys, x0:xs[0], x1:xs[xs.length-1], y0:ys[ys.length-1], y1:ys[0]});
+  }
+  return tables;
+}
+// 칸 안의 여러 줄을 한 줄로 (세로로 쓴 "분/야" → "분야")
+function joinCellLines(lines){
+  let out='', prevLine='';
+  for(const s of lines){
+    const a=prevLine.replace(/[\u0001\u0002]/g,''), b=s.replace(/[\u0001\u0002]/g,'');
+    if(!out) out=s;
+    else if(/[가-힣]$/.test(a) && /^[가-힣]/.test(b) && ((a.length<=2 && b.length<=2) || JOSA.test(b))) out+=s;
+    else if(/[a-z]-$/.test(a) && /^[a-z]/.test(b)) out=out.slice(0,-1)+s;
+    else out+=' '+s;
+    prevLine=s;
+  }
+  return out;
+}
+const cellMd=(t,opts)=>(opts.math?convertMath(t):escText(t)).replace(/\|/g,'\\|').trim();
+function tableToMd(rows, opts){
+  const cols=Math.max(...rows.map(r=>r.length));
+  const line=r=>'| '+Array.from({length:cols},(_,i)=>cellMd(r[i]||'',opts)).join(' | ')+' |';
+  return [line(rows[0]), '|'+Array(cols).fill('---').join('|')+'|', ...rows.slice(1).map(line)].join('\n');
+}
+// 테두리 표 안의 글자를 칸별로 모아 MD 표로. 칸에 글이 너무 많으면(본문을 감싼 틀) 표로 보지 않음
+function buildRuledTables(items, rules, opts){
+  const tables=findRuledTables(rules), used=new Set(), out=[];
+  for(const T of tables){
+    const R=T.ys.length-1, C=T.xs.length-1, cells=Array.from({length:R},()=>Array.from({length:C},()=>[]));
+    const mine=[];
+    items.forEach((it,idx)=>{
+      if(used.has(idx) || !it.str || !it.str.trim()) return;
+      const size=Math.abs(it.transform[3])||it.height||10;
+      const cx=it.transform[4]+(it.width||0)/2, cy=it.transform[5]+size*0.35;
+      if(cx<T.x0-1||cx>T.x1+1||cy<T.y0-1||cy>T.y1+1) return;
+      let r=0; while(r<R-1 && cy<T.ys[r+1]) r++;
+      let c=0; while(c<C-1 && cx>T.xs[c+1]) c++;
+      cells[r][c].push(it); mine.push(idx);
+    });
+    let ok=mine.length>0;
+    const rows=cells.map(row=>row.map(list=>{
+      if(!list.length) return '';
+      const ls=pageToLines({items:list}).map(l=>l.text);
+      const t=joinCellLines(ls); if(ls.length>8 || t.length>400) ok=false;
+      return t;
+    }));
+    if(!ok) continue;
+    mine.forEach(i=>used.add(i));
+    out.push({y:T.y1, x0:T.x0, md:tableToMd(rows,opts)});
+  }
+  return {tables:out, used};
+}
+/* 표 인식 (B) 테두리 없는 표: 3줄 이상이 같은 위치에서 칸이 나뉘어 있을 때 */
+function detectAlignedTables(lines, body, opts){
+  const out=[]; let i=0;
+  while(i<lines.length){
+    if(lines[i].table || (lines[i].segs||[]).length<2){ out.push(lines[i]); i++; continue; }
+    let j=i+1;
+    let g0=null;   // 행 간격이 일정해야 같은 표로 봄
+    while(j<lines.length && !lines[j].table && (lines[j].segs||[]).length>=2){
+      const gp=lines[j-1].y-lines[j].y;
+      if(gp>2.6*lines[j].size || (g0!=null && gp>g0*1.35)) break;
+      if(g0==null) g0=gp; j++;
+    }
+    const g=lines.slice(i,j);
+    let made=false;
+    if(g.length>=3){
+      const tol=Math.max(4,0.9*body);
+      const anchors=clusterVals(g.flatMap(l=>l.segs.map(s=>s.x)),tol)
+        .filter(a=>g.filter(l=>l.segs.some(s=>Math.abs(s.x-a)<=tol)).length>=Math.max(2,g.length*0.5));
+      const allSegs=g.flatMap(l=>l.segs), fit=allSegs.filter(s=>anchors.some(a=>Math.abs(s.x-a)<=tol)).length/allSegs.length;
+      const avgLen=allSegs.reduce((a,s)=>a+s.text.length,0)/allSegs.length;
+      if(anchors.length>=2 && fit>=0.8 && avgLen<=40){
+        const rows=g.map(l=>{ const r=anchors.map(()=>[]);
+          for(const s of l.segs){ let k=0; for(let a=0;a<anchors.length;a++) if(anchors[a]<=s.x+tol) k=a; r[k].push(s.text); }
+          return r.map(c=>c.join(' ')); });
+        out.push({y:g[0].y, x0:g[0].x0, size:g[0].size, table:tableToMd(rows,opts), text:'', chars:0});
+        made=true;
+      }
+    }
+    if(!made) out.push(...g);
+    i=j;
+  }
+  return out;
 }
 
 /* 2) 머릿말·꼬릿말 제거: 페이지 위/아래 여백 영역에서 반복되는 줄, 쪽번호 줄 */
@@ -167,6 +329,7 @@ function removeHeaderFooter(pages, body){
   const cands=pages.map(P=>{
     const L=P.lines, h=P.yMax-P.yMin, set=new Set(), list=[];
     L.forEach((ln,i)=>{
+      if(ln.table) return;
       // 쪽번호 형태의 줄은 넓은 범위(위 15%, 아래 30%)에서 제거
       if((i<2 && ln.y > P.yMax-0.15*h) || (i>=L.length-2 && ln.y < P.yMin+0.3*h)){
         if(PAGE_NUM.test(ln.text.replace(/[\u0001\u0002^_]/g,''))){ list.push([ln,'#PN']); return; }
@@ -288,7 +451,14 @@ function convertMath(text){
 const LIST_START=/^\s*([①-⑳㉠-㉭ⓐ-ⓩ]|\d{1,3}\)|\d{1,3}\.\s|\(\d{1,3}\)|[가-하]\)|[가-하]\.\s|\([가-하]\)|[ㄱ-ㅎ][.)]|[•▪■□○●◦◆◇※▶►◎△▲▷]|[-–*]\s|[A-Za-z][.)]\s|\[\d{1,3}\]|문\s*\d|【|〔)/;
 const JOSA=/^(에서|에게|으로|하시오|하여|한다|이다|합니다|입니다|된다|되는|에|의|을|를|은|는|이|가|와|과|로|도|만)([\s.,)!?]|$)/;
 function buildMarkdown(rawPages, opts){
-  const pages=rawPages.map(p=>({lines:pageToLines(p), yMin:p.yMin, yMax:p.yMax}));
+  const pages=rawPages.map(p=>{
+    if(opts.tables===false || !p.rules) return {lines:pageToLines(p), yMin:p.yMin, yMax:p.yMax};
+    const {tables, used}=buildRuledTables(p.items, p.rules, opts);
+    const lines=pageToLines({items:p.items.filter((_,i)=>!used.has(i))});
+    for(const T of tables) lines.push({y:T.y, x0:T.x0, size:10, table:T.md, text:'', chars:0, segs:[]});
+    lines.sort((a,b)=>b.y-a.y || a.x0-b.x0);
+    return {lines, yMin:p.yMin, yMax:p.yMax};
+  });
   // 본문 글자 크기 (글자 수 가중 최빈값)
   const hist={};
   pages.forEach(P=>P.lines.forEach(L=>{ const k=Math.round(L.size*2)/2; hist[k]=(hist[k]||0)+L.chars; }));
@@ -296,19 +466,21 @@ function buildMarkdown(rawPages, opts){
   if(opts.dropHF) removeHeaderFooter(pages, body);
   const blocks=[];
   for(const P of pages){
+    if(opts.tables!==false) P.lines=detectAlignedTables(P.lines, body, opts);
     const L=P.lines;
-    const gaps=[]; for(let i=1;i<L.length;i++){ const g=L[i-1].y-L[i].y; if(g>=1.0*L[i].size && g<3*L[i].size) gaps.push(g); }
+    const gaps=[]; for(let i=1;i<L.length;i++){ if(L[i].table||L[i-1].table) continue; const g=L[i-1].y-L[i].y; if(g>=1.0*L[i].size && g<3*L[i].size) gaps.push(g); }
     gaps.sort((a,b)=>a-b);
     const mg=gaps.length? gaps[Math.floor(gaps.length*0.2)] : body*1.4;
     let cur=null;
     L.forEach((ln,i)=>{
+      if(ln.table){ cur={level:0, table:ln.table}; blocks.push(cur); cur=null; return; }
       const plainLen=ln.text.replace(/[\u0001\u0002]/g,'').length;
       let level=0;
       if(opts.headings && plainLen<=80){
         const r=ln.size/body;
         level = r>=1.6?1 : r>=1.3?2 : r>=1.13?3 : 0;
       }
-      const prev=L[i-1];
+      const prev=L[i-1] && !L[i-1].table ? L[i-1] : null;
       const gap=prev? prev.y-ln.y : 0;
       const newBlock = !cur || level || cur.level || gap>1.35*mg || gap<0 || isItemStart(ln.text, prev&&prev.text)
                         || (prev && Math.abs(prev.size-ln.size)>0.15*body);
@@ -318,6 +490,7 @@ function buildMarkdown(rawPages, opts){
   }
   const md=[];
   for(const b of blocks){
+    if(b.table){ md.push(b.table); continue; }
     let t;
     if(opts.keepLines) t=b.lines.join('\n');
     else t=b.lines.reduce((acc,s)=>{
@@ -399,7 +572,15 @@ function splitItems(text){
   });
   return {text:lines.join('\n'), split:count};
 }
-if(typeof module!=='undefined') module.exports={splitItems, reflowText, buildMarkdown, convertMath, toLatex, pageToLines};
+/* 7) 복사해 붙여넣은 텍스트 → MD (줄바꿈 정리·항목 나누기·수식 변환을 옵션대로) */
+function textToMarkdown(raw, opts){
+  let t=raw.replace(/\r\n?/g,'\n').replace(/ /g,' ').replace(/[ \t]+\n/g,'\n').trim();
+  if(!opts.keepLines) t=reflowText(t).text;
+  if(opts.splitItems) t=splitItems(t).text;
+  t = opts.math ? t.split('\n').map(convertMath).join('\n') : escText(t);
+  return t+'\n';
+}
+if(typeof module!=='undefined') module.exports={extractRules, findRuledTables, textToMarkdown, splitItems, reflowText, buildMarkdown, convertMath, toLatex, pageToLines};
 /* ===== 변환 로직 끝 ===== */
 
 </script>
@@ -417,12 +598,12 @@ class InlineCMapFactory{
   }
 }
 const $=id=>document.getElementById(id);
-let rawPages=null, fileName='document';
+let rawPages=null, rawText=null, fileName='document';
 const statusEl=$('status');
 function setStatus(t,warn){ statusEl.textContent=t; statusEl.className=warn?'warn':''; }
 
 async function loadPdf(file){
-  fileName=file.name.replace(/\.pdf$/i,'')||'document';
+  fileName=file.name.replace(/\.pdf$/i,'')||'document'; rawText=null;
   setStatus('PDF 읽는 중…');
   try{
     const buf=await file.arrayBuffer();
@@ -431,7 +612,9 @@ async function loadPdf(file){
     for(let i=1;i<=doc.numPages;i++){
       const pg=await doc.getPage(i);
       const tc=await pg.getTextContent();
-      rawPages.push({items:tc.items, yMin:pg.view[1], yMax:pg.view[3]});
+      let rules=null;
+      try{ rules=extractRules(await pg.getOperatorList(), pdfjsLib.OPS); }catch(e){ console.warn('표 선 추출 실패',e); }
+      rawPages.push({items:tc.items, yMin:pg.view[1], yMax:pg.view[3], rules});
       setStatus(`텍스트 추출 중… ${i} / ${doc.numPages}쪽`);
     }
     run();
@@ -440,14 +623,22 @@ async function loadPdf(file){
     setStatus('읽기 실패: '+(e.message||e)+(e.name==='PasswordException'?' (암호가 걸린 PDF)':''),true);
   }
 }
+const curOpts=()=>({math:$('optMath').checked, dropHF:$('optHF').checked, headings:$('optHead').checked, keepLines:$('optLines').checked, splitItems:$('optSplit').checked, tables:$('optTable').checked});
 function run(){
+  if(rawText!=null){
+    const md=textToMarkdown(rawText, curOpts());
+    $('md').value=md; undoText=null; $('undo').disabled=true;
+    const nMath=(md.match(/(^|[^\\])\$[^$\n]+\$/g)||[]).length;
+    setStatus(`붙여넣은 글 변환 완료 (${rawText.length.toLocaleString()}자) · 수식 ${nMath}곳 — 옵션을 바꾸면 다시 변환됩니다.`);
+    render(); return;
+  }
   if(!rawPages) return;
-  const md=buildMarkdown(rawPages,{math:$('optMath').checked, dropHF:$('optHF').checked, headings:$('optHead').checked, keepLines:$('optLines').checked, splitItems:$('optSplit').checked});
+  const md=buildMarkdown(rawPages,curOpts());
   $('md').value=md; undoText=null; $('undo').disabled=true;
   const chars=rawPages.reduce((s,p)=>s+p.items.reduce((a,it)=>a+(it.str||'').trim().length,0),0);
   const nMath=(md.match(/(^|[^\\])\$[^$\n]+\$/g)||[]).length;
   if(chars<20*rawPages.length) setStatus(`${rawPages.length}쪽 — 글자 정보가 거의 없습니다. 스캔(이미지) PDF로 보이며, 이 방식으로는 변환되지 않습니다(OCR 필요).`,true);
-  else setStatus(`${rawPages.length}쪽 변환 완료 · 수식 ${nMath}곳`);
+  else { const nTbl=(md.match(/^\|(---\|)+$/gm)||[]).length; setStatus(`${rawPages.length}쪽 변환 완료 · 수식 ${nMath}곳`+(nTbl?` · 표 ${nTbl}개`:'')); }
   render();
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -457,6 +648,13 @@ function render(){
   $('count').textContent=md ? md.length.toLocaleString()+'자' : '';
   $('copy').disabled=$('save').disabled=!md.trim();
   const html=md.split(/\n{2,}/).map(b=>{
+    const ls=b.split('\n');
+    if(ls.length>=2 && ls.every(l=>/^\|.*\|\s*$/.test(l)) && /^\|(\s*:?-{3,}:?\s*\|)+\s*$/.test(ls[1])){
+      const cells=l=>l.trim().slice(1,-1).split(/(?<!\\)\|/).map(c=>esc(c.trim().replace(/\\\|/g,'|')));
+      const head=cells(ls[0]).map(c=>`<th>${c}</th>`).join('');
+      const body=ls.slice(2).map(l=>'<tr>'+cells(l).map(c=>`<td>${c}</td>`).join('')+'</tr>').join('');
+      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
     let out='', para=[];
     const flush=()=>{ if(para.length){ out+=`<p>${para.map(esc).join('<br>')}</p>`; para=[]; } };
     for(const ln of b.split('\n')){
@@ -486,13 +684,24 @@ $('split').addEventListener('click',()=>{
 });
 $('undo').addEventListener('click',()=>{ if(undoText==null) return; $('md').value=undoText; undoText=null; $('undo').disabled=true; setStatus('줄바꿈 정리를 되돌렸습니다.'); render(); });
 $('md').addEventListener('input',()=>{ clearTimeout(renderTimer); renderTimer=setTimeout(render,400); });
-['optMath','optHF','optHead','optLines','optSplit'].forEach(id=>$(id).addEventListener('change',run));
+['optMath','optHF','optHead','optLines','optSplit','optTable'].forEach(id=>$(id).addEventListener('change',run));
 const drop=$('drop'), fileIn=$('file');
 drop.addEventListener('click',()=>fileIn.click());
 fileIn.addEventListener('change',()=>{ if(fileIn.files[0]) loadPdf(fileIn.files[0]); fileIn.value=''; });
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
 drop.addEventListener('drop',e=>{ const f=[...e.dataTransfer.files].find(f=>/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)); if(f) loadPdf(f); else setStatus('PDF 파일만 넣을 수 있습니다.',true); });
+// Ctrl+V: PDF 파일은 변환, 글은 (MD 칸에서 직접 편집 중이 아닐 때) 붙여넣은 글로 변환
+document.addEventListener('paste',e=>{
+  const cd=e.clipboardData; if(!cd) return;
+  const files=[...(cd.files||[])];
+  const pdf=files.find(f=>/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name));
+  if(pdf){ e.preventDefault(); loadPdf(pdf); return; }
+  if(files.length && !cd.getData('text/plain')){ e.preventDefault(); setStatus('PDF 파일이나 글만 붙여넣을 수 있습니다.',true); return; }
+  if(document.activeElement===$('md')) return;           // MD 칸 편집 중이면 일반 붙여넣기
+  const txt=cd.getData('text/plain');
+  if(txt && txt.trim()){ e.preventDefault(); rawText=txt; rawPages=null; fileName='붙여넣은글'; run(); }
+});
 document.addEventListener('dragover',e=>e.preventDefault()); document.addEventListener('drop',e=>e.preventDefault());
 
 $('copy').addEventListener('click',async()=>{
